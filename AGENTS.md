@@ -25,7 +25,7 @@ Voice agent that captures foremen's phoned-in requests and tracks each to a reso
 
 ### Issue tracker
 
-GitHub Issues on Schrex/voice-agent, via `gh`. See `docs/agents/issue-tracker.md`.
+GitHub Issues on Schrex/voice-agent, via `gh api` (REST; `gh issue`/`gh pr` fail in cloud sessions). See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

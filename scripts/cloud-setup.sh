@@ -50,7 +50,8 @@ if ! command -v gh >/dev/null; then
   log "installing gh"
   { $SUDO apt-get update -qq && $SUDO apt-get install -y -qq gh; } >/dev/null 2>&1 || warn "gh install failed"
 fi
-[ -z "${GH_TOKEN:-}" ] && warn "GH_TOKEN not set; gh issue/pr commands will fail. Add it in the cloud environment's variables."
+# No GH_TOKEN needed: the session proxy authenticates `gh api` REST calls.
+# `gh issue`/`gh pr` use GraphQL, which cloud sessions block; see docs/agents/issue-tracker.md.
 
 # --- Postgres (stands in for Supabase local) --------------------------------
 PG_USER=postgres PG_PASS=postgres

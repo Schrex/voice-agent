@@ -1,7 +1,7 @@
 # Progress
 
 Work is tracked as GitHub issues #1–#37 on Schrex/voice-agent (thin vertical slices, native "blocked by" edges; issue number = ticket number).
-Frontier = open issues with no open blockers: `gh issue list --label ready-for-agent --state open`.
+Frontier = open issues with no open blockers: the **Frontier query** in `docs/agents/issue-tracker.md`.
 docs/task-dependencies.md is the original layer-based plan, superseded by the issues for build order.
 
 | Current | Status | Notes |
