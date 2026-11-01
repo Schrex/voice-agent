@@ -8,8 +8,9 @@ from datetime import datetime, timedelta
 
 from app.domain.lifecycle import Status
 
-# Spec §4 "Uninformed threshold: 2 h after Resolved" (placeholder pending the baseline).
-# Architecture §5 moves it to `settings.uninformed_after_min` once that table exists.
+# Spec §4 "Uninformed threshold: 2 h after Resolved" (placeholder pending the baseline). The
+# office's value is `settings.uninformed_after_min` (architecture §5, default 120), read by
+# `services.settings.uninformed_after`; this is the default when no settings row exists.
 UNINFORMED_AFTER = timedelta(hours=2)
 
 

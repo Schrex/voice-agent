@@ -1,7 +1,7 @@
 """Dashboard API (`/api/*`, architecture §4.3). Every route requires a staff token."""
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -35,6 +35,7 @@ from app.services.requests import (
     resolve_request,
     start_request,
 )
+from app.services.settings import uninformed_after
 from app.services.uninformed import uninformed_requests
 
 router = APIRouter(prefix="/api")
@@ -197,7 +198,7 @@ def detail(
     found = request_detail(session, ref)
     if found is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such request")
-    return _detail_out(found, clock())
+    return _detail_out(found, clock(), uninformed_after(session))
 
 
 class AcknowledgeIn(BaseModel):
@@ -342,7 +343,7 @@ def informed(
 def _updated(session: Session, ref: str, now: datetime) -> RequestDetailOut:
     found = request_detail(session, ref)
     assert found is not None
-    return _detail_out(found, now)
+    return _detail_out(found, now, uninformed_after(session))
 
 
 class OwnersOut(BaseModel):
@@ -355,7 +356,7 @@ def owners(staff: CurrentStaff, session: Annotated[Session, Depends(get_session)
     return OwnersOut(owners=[OwnerOut(id=o.id, name=o.name) for o in list_owners(session)])
 
 
-def _detail_out(found: RequestDetail, now: datetime) -> RequestDetailOut:
+def _detail_out(found: RequestDetail, now: datetime, after: timedelta) -> RequestDetailOut:
     return RequestDetailOut(
         ref=found.ref,
         foreman=found.foreman,
@@ -384,6 +385,7 @@ def _detail_out(found: RequestDetail, now: datetime) -> RequestDetailOut:
             resolved_at=found.resolved_at,
             foreman_informed_at=found.foreman_informed_at,
             now=now,
+            after=after,
         ),
         default_owner_id=found.default_owner_id,
         events=[

@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.clock import get_clock
-from app.db.models import Call, Foreman, Job, Owner, Staff
+from app.db.models import Call, Foreman, Job, Owner, Settings, Staff
 from app.main import app
 from app.services.calls import Caller
 from app.services.requests import NewItem, submit_requests
@@ -278,3 +278,23 @@ def test_the_open_queue_is_unchanged_by_uninformed_requests(
     queue = client.get("/api/requests", headers=headers).json()["requests"]
 
     assert [r["ref"] for r in queue] == [open_ref]
+
+
+def test_the_uninformed_threshold_is_the_offices_setting(
+    client: TestClient, db_session: Session, headers: dict[str, str], clock: MovableClock
+) -> None:
+    """#32 + #21: the threshold is `settings.uninformed_after_min` (default 120 min)."""
+    settings = db_session.get(Settings, 1)
+    assert settings is not None
+    assert settings.uninformed_after_min == 120
+    settings.uninformed_after_min = 30
+    db_session.flush()
+    ref = _resolved(client, db_session, headers, clock)
+
+    clock.now = RESOLVED_AT + timedelta(minutes=30)
+    assert _detail(client, headers, ref)["uninformed"] is False
+    assert _uninformed_refs(client, headers) == []
+
+    clock.now = RESOLVED_AT + timedelta(minutes=30, seconds=1)
+    assert _detail(client, headers, ref)["uninformed"] is True
+    assert _uninformed_refs(client, headers) == [ref]
