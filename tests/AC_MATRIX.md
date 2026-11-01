@@ -42,6 +42,7 @@ Status: **done** = test exists and passes in CI · **defined** = test written in
 | AC9.4 | Resolved, not Foreman Informed in 2 h → Uninformed | U, I | #32 | planned | |
 | AC9.5 | Every field change audited; no hard delete | I | #12 | planned | |
 | J9 (no numbered AC) | Queue: open requests sorted urgency then age, refresh 10 s, times in America/New_York | I, P, U (Vitest) | #9 | done | I `tests/integration/test_queue.py`; P `tests/e2e/queue.spec.ts`; Vitest `frontend/src/QueuePage.test.tsx` |
+| J9 detail (no numbered AC; supports AC9.5) | Request detail: all fields and audit history (who, when, before/after), oldest first, times in America/New_York | I, P, U (Vitest) | #10 | done | I `tests/integration/test_request_detail.py`; P `tests/e2e/request-detail.spec.ts`; Vitest `frontend/src/RequestDetailPage.test.tsx` |
 | ACX.1 | Never states availability, ETA or unrecorded decision | S | #16, #36 | planned | |
 | ACX.2 | Never asks about mood, day or productivity | S | #36 | planned | |
 
