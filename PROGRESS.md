@@ -9,6 +9,7 @@ docs/task-dependencies.md is the original layer-based plan, superseded by the is
 | #1 Backend skeleton with health check and CI | done | PR #39; CI red-on-failing-test proven in run 41345092960 |
 | #2 Database baseline with roster and jobs | done | Migration `0001` (foremen, foreman_phones, jobs, job_aliases); seed command; `/healthz` checks DB |
 | #3 Staging environment, always on | code done; deploy deferred | `render.yaml`, `deploy-staging.yml`, Sentry init (`app/observability.py`), `.env.example`, `docs/staging.md`. Live deploy, uptime alert and Sentry screenshot need accounts (runbook) |
+| #4 Call-start check: rostered vs unrostered | done (I-tests); S/L deferred | Migration `0002` (calls); `POST /hooks/call-start`; synthetic EL fixtures in `tests/fixtures/elevenlabs/` |
 
 ## Decisions log
 
@@ -24,6 +25,10 @@ docs/task-dependencies.md is the original layer-based plan, superseded by the is
 - 2026-11-01 (#3): Host = Render (architecture allowed Render or Railway): Blueprint `render.yaml`, Starter plan (always on), `autoDeploy: false`; build with uv (`uv sync --locked --no-dev`), pre-deploy `alembic upgrade head`, health check `/healthz`.
 - 2026-11-01 (#3): Deploy on merge = `deploy-staging.yml`, triggered by a successful CI `push` run on `main` (or manually); deploys that exact commit through the Render API and waits for `live`, then smoke-tests `/healthz`. GitHub environment `staging`: secret `RENDER_API_KEY`, vars `RENDER_STAGING_SERVICE_ID`, `STAGING_URL`.
 - 2026-11-01 (#3): Sentry: `app/observability.init_sentry` runs at import of `app.main`, only when `SENTRY_DSN` is set; `environment` = `APP_ENV` (default `local`); no tracing, no PII. `python -m app.observability` sends a test exception. Settings live in `app/config.py` as plain functions; every variable is listed in root `.env.example`.
+- 2026-11-01 (#4): `POST /hooks/call-start` auth: `X-Hook-Secret` compared in constant time with env `HOOK_SECRET`; unset → every request 401 (fails closed). Checked in a dependency, so a bad secret is 401 before the body is validated.
+- 2026-11-01 (#4): Call-start response (EL `conversation_initiation_client_data`) dynamic variables: `rejected` (bool), `foreman_first_name`, `jobs` (all active Job names, sorted, joined with "; "), `now_local` (America/New_York, e.g. "Sunday, November 1, 2026, 3:04 PM", `app/domain/local_time.py`). Unrostered: same keys empty, `rejected: true`, plus `conversation_config_override.agent.first_message` = spec J8 line with env `OFFICE_MAIN_NUMBER` inserted as written (unset → error).
+- 2026-11-01 (#4): `calls` (`0002`): conversation_id unique, call_sid indexed, caller_e164, foreman_id nullable, started_at, outcome (A§5 values, non-native CHECK). Insert is `ON CONFLICT (conversation_id) DO NOTHING`; the first delivery binds the conversation and repeats reuse that row (never rebind). Rostered calls start with outcome null; unrostered get `rejected`. `conversation_id` is required in the payload (422 if absent).
+- 2026-11-01 (#4): Clock: `app/clock.py` `get_clock` dependency returns a `() -> datetime` (UTC); I-tests override it to freeze time.
 
 ## Open items
 

@@ -1,6 +1,8 @@
 """SQLAlchemy models (architecture §5). Schema changes go through an Alembic migration."""
 
-from sqlalchemy import CheckConstraint, ForeignKey, MetaData, String
+from datetime import datetime
+
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, MetaData, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 # Stable constraint names so migrations can reference them.
@@ -59,3 +61,40 @@ class JobAlias(Base):
     alias: Mapped[str] = mapped_column(String(200))
 
     job: Mapped[Job] = relationship(back_populates="aliases")
+
+
+CALL_OUTCOMES = (
+    "submitted",
+    "draft",
+    "transferred",
+    "emergency",
+    "rejected",
+    "status_only",
+    "none",
+)
+
+
+class Call(Base):
+    """One ElevenLabs conversation. Binds the conversation to the verified Foreman (ADR 0004).
+
+    `foreman_id` is null for an unrostered caller (outcome `rejected`). `outcome` of a rostered
+    call stays null until the post-call webhook sets it.
+    """
+
+    __tablename__ = "calls"
+    __table_args__ = (
+        CheckConstraint(
+            "outcome IN (" + ", ".join(f"'{o}'" for o in CALL_OUTCOMES) + ")",
+            name="outcome_values",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    conversation_id: Mapped[str] = mapped_column(String(128), unique=True)
+    call_sid: Mapped[str | None] = mapped_column(String(64), index=True)
+    caller_e164: Mapped[str] = mapped_column(String(32))
+    foreman_id: Mapped[int | None] = mapped_column(ForeignKey("foremen.id"), index=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    outcome: Mapped[str | None] = mapped_column(String(20))
+
+    foreman: Mapped[Foreman | None] = relationship()
