@@ -31,6 +31,10 @@ GitHub Issues on Schrex/voice-agent, via `gh`. See `docs/agents/issue-tracker.md
 
 Default five-role vocabulary (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
 
+### Cloud sessions
+
+Tickets can run in parallel on claude.ai/code. Setup and rules: `docs/agents/cloud-sessions.md`.
+
 ### Domain docs
 
 Single-context: root `GLOSSARY.md` + `docs/adr/`. See `docs/agents/domain.md`.
