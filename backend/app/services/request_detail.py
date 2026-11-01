@@ -64,6 +64,7 @@ class RequestDetail:
     foreman: str
     job: str | None
     """The Job's name; None when Unmatched."""
+    job_id: int | None
     job_spoken: str
     category: str
     need: str
@@ -105,6 +106,7 @@ def request_detail(session: Session, ref: str) -> RequestDetail | None:
         ref=request.ref_display,
         foreman=f"{foreman.first_name} {foreman.last_name}",
         job=job_name,
+        job_id=request.job_id,
         job_spoken=request.job_spoken,
         category=request.category,
         need=request.need,
