@@ -66,6 +66,8 @@ def _add(
         source="ai_call",
         recorded_at=recorded_at,
     )
+    if status == "Resolved":  # a Resolved request always carries its Outcome (#12)
+        request.outcome, request.explanation, request.resolved_at = "Fulfilled", "Sent", T0
     session.add(request)
     session.flush()
     return request

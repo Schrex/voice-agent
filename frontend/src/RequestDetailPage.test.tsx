@@ -34,6 +34,9 @@ const DETAIL: RequestDetail = {
   recorded_at: "2026-11-02T01:30:00Z",
   owner: null,
   acknowledged_at: null,
+  outcome: null,
+  explanation: null,
+  resolved_at: null,
   default_owner_id: null,
   events: [
     {

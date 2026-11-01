@@ -118,6 +118,9 @@ def test_detail_returns_the_request_fields(
         "recorded_at": "2026-11-01T12:00:00Z",
         "owner": None,
         "acknowledged_at": None,
+        "outcome": None,
+        "explanation": None,
+        "resolved_at": None,
         "default_owner_id": db_session.scalar(select(Owner.id).where(Owner.name == "Dispatch")),
     }
 

@@ -14,6 +14,8 @@ import {
 import { AcknowledgeAction } from "./AcknowledgeAction";
 import { useAuth } from "./App";
 import { CallRecordings } from "./CallRecordings";
+import { ResolveAction } from "./ResolveAction";
+import { StartAction } from "./StartAction";
 
 /** Spec §5 "source (AI call / coordinator-logged)". */
 const SOURCES: Record<RequestDetail["source"], string> = {
@@ -26,6 +28,8 @@ const KINDS: Record<string, string> = {
   recorded: "Recorded",
   drafted: "Draft",
   acknowledged: "Acknowledged",
+  in_progress: "In Progress",
+  resolved: "Resolved",
 };
 
 /** One request's fields and its full audit history: who, when, what changed. */
@@ -72,6 +76,13 @@ function Detail({ request }: { request: RequestDetail }) {
     ["Source", SOURCES[request.source]],
     ["Recorded", request.recorded_at ? officeTime.format(new Date(request.recorded_at)) : "—"],
   ];
+  if (request.outcome !== null) {
+    fields.push(
+      ["Outcome", request.outcome],
+      ["Explanation", request.explanation ?? "—"],
+      ["Resolved", request.resolved_at ? officeTime.format(new Date(request.resolved_at)) : "—"],
+    );
+  }
   return (
     <>
       <h1>{request.ref}</h1>
@@ -84,6 +95,8 @@ function Detail({ request }: { request: RequestDetail }) {
         ))}
       </dl>
       <AcknowledgeAction request={request} />
+      <StartAction request={request} />
+      <ResolveAction request={request} />
       <h2 id="history">History</h2>
       <table className="history" aria-labelledby="history">
         <thead>
