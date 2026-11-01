@@ -1,6 +1,8 @@
 """SQLAlchemy models (architecture §5). Schema changes go through an Alembic migration."""
 
-from sqlalchemy import CheckConstraint, ForeignKey, MetaData, String
+import uuid
+
+from sqlalchemy import CheckConstraint, ForeignKey, MetaData, String, Uuid
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 # Stable constraint names so migrations can reference them.
@@ -59,3 +61,18 @@ class JobAlias(Base):
     alias: Mapped[str] = mapped_column(String(200))
 
     job: Mapped[Job] = relationship(back_populates="aliases")
+
+
+STAFF_ROLES = ("coordinator", "admin")
+
+
+class Staff(Base):
+    """A dashboard user. `id` is the Supabase Auth user id (the access token's `sub`)."""
+
+    __tablename__ = "staff"
+    __table_args__ = (CheckConstraint("role IN ('coordinator', 'admin')", name="role"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    email: Mapped[str] = mapped_column(String(320))
+    role: Mapped[str] = mapped_column(String(20))

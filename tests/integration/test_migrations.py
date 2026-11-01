@@ -2,7 +2,7 @@ from sqlalchemy import Engine, inspect
 
 from app.db.migrate import downgrade, upgrade
 
-ROSTER_TABLES = {"foremen", "foreman_phones", "jobs", "job_aliases"}
+ALL_TABLES = {"foremen", "foreman_phones", "jobs", "job_aliases", "staff"}
 
 
 def _tables(engine: Engine) -> set[str]:
@@ -16,7 +16,7 @@ def test_migration_applies_on_empty_db_and_rolls_back_cleanly(
     assert _tables(engine) == set()
 
     upgrade(database_url, "head")
-    assert _tables(engine) == ROSTER_TABLES
+    assert _tables(engine) == ALL_TABLES
 
     downgrade(database_url, "base")
     assert _tables(engine) == set()

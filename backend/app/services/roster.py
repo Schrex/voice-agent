@@ -1,17 +1,20 @@
 """Roster and job list loading (seed). Idempotent: re-running a file changes nothing.
 
-Matching keys: a Job by its name, a Foreman by any of their phone numbers (numbers are unique).
+Matching keys: a Job by its name, a Foreman by any of their phone numbers (numbers are unique),
+a Staff member by their Supabase Auth user id.
 Rows are created or updated from the file; nothing absent from the file is removed.
 """
 
 import json
+import uuid
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import Foreman, ForemanPhone, Job, JobAlias
+from app.db.models import Foreman, ForemanPhone, Job, JobAlias, Staff
 
 
 class JobEntry(BaseModel):
@@ -27,9 +30,19 @@ class ForemanEntry(BaseModel):
     phones: list[str] = Field(min_length=1)
 
 
+class StaffEntry(BaseModel):
+    """A dashboard user; `id` is their Supabase Auth user id (created in Supabase first)."""
+
+    id: uuid.UUID
+    name: str = Field(min_length=1)
+    email: str = Field(min_length=3)
+    role: Literal["coordinator", "admin"]
+
+
 class RosterFile(BaseModel):
     jobs: list[JobEntry] = []
     foremen: list[ForemanEntry] = []
+    staff: list[StaffEntry] = []
 
 
 def load_roster_file(path: Path) -> RosterFile:
@@ -37,12 +50,24 @@ def load_roster_file(path: Path) -> RosterFile:
 
 
 def seed_roster(session: Session, roster: RosterFile) -> None:
-    """Upsert jobs (with aliases) and foremen (with phones), then commit."""
+    """Upsert jobs (with aliases), foremen (with phones) and staff, then commit."""
     for job_entry in roster.jobs:
         _upsert_job(session, job_entry)
     for foreman_entry in roster.foremen:
         _upsert_foreman(session, foreman_entry)
+    for staff_entry in roster.staff:
+        _upsert_staff(session, staff_entry)
     session.commit()
+
+
+def _upsert_staff(session: Session, entry: StaffEntry) -> None:
+    staff = session.get(Staff, entry.id)
+    if staff is None:
+        staff = Staff(id=entry.id)
+        session.add(staff)
+    staff.name = entry.name
+    staff.email = entry.email
+    staff.role = entry.role
 
 
 def _upsert_job(session: Session, entry: JobEntry) -> None:
