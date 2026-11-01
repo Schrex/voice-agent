@@ -22,7 +22,8 @@
       "${tool_find_jobs}",
       "${tool_resolve_needed_by}",
       "${tool_submit_requests}",
-      "${tool_find_open_requests}"
+      "${tool_find_open_requests}",
+      "${tool_create_callback_request}"
     ],
     "fallback_strategy": "raise_error"
   },
@@ -48,6 +49,12 @@
     "${tool_find_open_requests}": [
       {
         "mock_result": "[]",
+        "is_error": false
+      }
+    ],
+    "${tool_create_callback_request}": [
+      {
+        "mock_result": "{\"error\": \"The callback request could not be saved.\"}",
         "is_error": false
       }
     ]

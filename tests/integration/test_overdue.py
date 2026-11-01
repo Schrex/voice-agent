@@ -254,9 +254,12 @@ def test_a_scheduler_restart_does_not_double_send(
 
     # Restart: a new scheduler, a new SMS client; the alerts table is all that survives.
     restarted = FakeSms()
-    scheduler = jobs.build_scheduler()
-    [job] = scheduler.get_jobs()
-    assert job.id == "overdue_sweep"
+    jobs.start_scheduler()
+    try:
+        scheduler = jobs.running_scheduler()
+        assert scheduler is not None and scheduler.get_job("overdue_sweep") is not None
+    finally:
+        jobs.stop_scheduler()
     _sweep(db_session, restarted, clock)
 
     assert restarted.sent == []
@@ -542,3 +545,30 @@ def test_a_request_resolved_while_recorded_is_not_alerted(
     _sweep(db_session, sms, clock)
 
     assert _overdue_alerts(db_session) == []
+
+
+def test_a_callback_request_goes_overdue_after_15_minutes_and_texts_the_backup(
+    tools: TestClient, db_session: Session, sms: FakeSms, clock: MovableClock, team: Team
+) -> None:
+    """Spec J5 / §4: a Callback Request is Today with a 15-min window (#24 records it)."""
+    created = tools.post(
+        "/tools/create_callback_request",
+        json={"reason": "the pump"},
+        headers={"X-Tool-Secret": TOOL_SECRET, "X-Conversation-Id": CONVERSATION},
+    )
+    assert created.status_code == 200
+    ref = created.json()["ref"]
+    texted_on_creation = len(_sms_to(sms, team.backup.phone_e164 or ""))
+
+    clock.now = NOW + 15 * MINUTE
+    _sweep(db_session, sms, clock)
+    assert _queue(tools, team.on_duty) == {ref: False}
+
+    clock.now = NOW + 15 * MINUTE + SECOND
+    _sweep(db_session, sms, clock)
+
+    assert _queue(tools, team.on_duty) == {ref: True}
+    assert _sms_to(sms, team.backup.phone_e164 or "")[texted_on_creation:] == [
+        f"Overdue: Callback request {ref} from Dale Kramer, about: the pump. "
+        "Recorded Sun, Nov 1, 3:04 PM, not Acknowledged"
+    ]

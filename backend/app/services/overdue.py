@@ -19,7 +19,12 @@ from sqlalchemy.orm import Session
 from app.db.models import Alert, DutyRoster, Foreman, Job, Request, Staff
 from app.domain.lifecycle import Status
 from app.domain.local_time import LOCAL_TZ
-from app.domain.sms_text import TodayRequestFacts, overdue_request_text, short_date
+from app.domain.sms_text import (
+    TodayRequestFacts,
+    overdue_callback_text,
+    overdue_request_text,
+    short_date,
+)
 from app.integrations.twilio_sms import SmsNotSent, SmsSender
 from app.services.queue import as_said
 
@@ -90,21 +95,29 @@ def _alert_overdue(
     if alert_id is None or not can_send:
         return
     assert staff is not None and staff.phone_e164 is not None
-    body = overdue_request_text(
-        TodayRequestFacts(
+    if request.category == "Callback":  # no Job; the reason is the need (#24's wording)
+        body = overdue_callback_text(
             ref=request.ref_display,
             foreman=foreman,
-            job=job_name,
-            job_spoken=request.job_spoken,
-            need=request.need,
-            quantity=as_said(request.quantity),
-            unit=request.unit,
-            needed_by=request.needed_by,
-            needed_by_spoken=request.needed_by_spoken,
-        ),
-        urgency=request.urgency,
-        recorded_at=request.recorded_at,
-    )
+            reason=request.need,
+            recorded_at=request.recorded_at,
+        )
+    else:
+        body = overdue_request_text(
+            TodayRequestFacts(
+                ref=request.ref_display,
+                foreman=foreman,
+                job=job_name,
+                job_spoken=request.job_spoken,
+                need=request.need,
+                quantity=as_said(request.quantity),
+                unit=request.unit,
+                needed_by=request.needed_by,
+                needed_by_spoken=request.needed_by_spoken,
+            ),
+            urgency=request.urgency,
+            recorded_at=request.recorded_at,
+        )
     alert = session.get_one(Alert, alert_id)
     try:
         alert.provider_id = sms.send(staff.phone_e164, body)

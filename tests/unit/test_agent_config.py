@@ -19,6 +19,7 @@ TOOL_IDS = {
     "resolve_needed_by": "tool_resolve",
     "submit_requests": "tool_submit",
     "find_open_requests": "tool_status",
+    "create_callback_request": "tool_callback",
 }
 
 
@@ -38,12 +39,19 @@ def test_first_message_is_automated_recorded_and_names_the_foreman() -> None:
 
 def test_tools_are_end_call_and_the_backend_tools() -> None:
     """end_call (built-in) hangs up; find_jobs (#13), resolve_needed_by (#14),
-    submit_requests (#7) and find_open_requests (#16) are attached by their workspace ids."""
+    submit_requests (#7), find_open_requests (#16) and create_callback_request (#24) are
+    attached by their workspace ids."""
     prompt = _agent()["prompt"]
 
     assert set(prompt["built_in_tools"]) == {"end_call"}
     assert prompt["built_in_tools"]["end_call"]["params"] == {"system_tool_type": "end_call"}
-    assert prompt["tool_ids"] == ["tool_find", "tool_resolve", "tool_submit", "tool_status"]
+    assert prompt["tool_ids"] == [
+        "tool_find",
+        "tool_resolve",
+        "tool_submit",
+        "tool_status",
+        "tool_callback",
+    ]
     assert not prompt.get("tools")
 
 
@@ -132,3 +140,35 @@ def test_submit_tool_takes_every_confirmed_need_not_exactly_one() -> None:
     assert "Exactly one" not in items["description"]
     assert "one item per need" in items["description"]
     assert "maxItems" not in items
+
+
+def test_prompt_takes_a_callback_request_asking_one_optional_question() -> None:
+    """Ticket #24 / spec J5 "Callback Request", AC5.4: one optional "What's it about?", a yes
+    before recording, and never a callback time. The S tests check the spoken behavior."""
+    prompt = _agent()["prompt"]["prompt"]
+
+    assert "# J5: Callback Request" in prompt
+    assert '"What\'s it about?"' in prompt
+    assert "`create_callback_request`" in prompt
+    assert "Never say when anyone will call back" in prompt
+
+
+def test_accepting_the_callback_offer_after_a_failed_lookup_takes_a_callback_request() -> None:
+    """AC3.4 (#16 left the Callback offer unwired): accepting it now leads to J5."""
+    prompt = _agent()["prompt"]["prompt"]
+
+    assert "If they accept the offer to have someone call them back" in prompt
+    assert "put through or called back and you have no tool" not in prompt
+
+
+def test_callback_tool_takes_only_the_optional_reason() -> None:
+    """Architecture §4.2: `create_callback_request(reason?)`; the backend sets the rest."""
+    [tool] = [
+        t["tool_config"]
+        for t in desired_tools(ENV)
+        if t["tool_config"]["name"] == "create_callback_request"
+    ]
+    body = tool["api_schema"]["request_body_schema"]
+
+    assert list(body["properties"]) == ["reason"]
+    assert not body.get("required")

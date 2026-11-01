@@ -2,7 +2,12 @@
 
 from datetime import UTC, datetime
 
-from app.domain.sms_text import TodayRequestFacts, overdue_request_text, today_request_text
+from app.domain.sms_text import (
+    TodayRequestFacts,
+    overdue_callback_text,
+    overdue_request_text,
+    today_request_text,
+)
 
 FACTS = TodayRequestFacts(
     ref="R-1000",
@@ -52,3 +57,17 @@ def test_overdue_names_urgency_the_request_and_when_it_was_recorded() -> None:
         "tri-axle dump trucks, 3 trucks, needed by Mon, Nov 2, 7:00 AM. "
         "Recorded Sun, Nov 1, 3:04 PM, not Acknowledged"
     )
+
+
+def test_an_overdue_callback_request_says_what_it_is_about() -> None:
+    """Ticket #22 with #24's Callback wording: no Job, the reason is the need."""
+    recorded_at = datetime(2026, 11, 1, 20, 4, tzinfo=UTC)
+    assert overdue_callback_text(
+        ref="R-1042", foreman="Dale Kramer", reason="the pump", recorded_at=recorded_at
+    ) == (
+        "Overdue: Callback request R-1042 from Dale Kramer, about: the pump. "
+        "Recorded Sun, Nov 1, 3:04 PM, not Acknowledged"
+    )
+    assert overdue_callback_text(
+        ref="R-1042", foreman="Dale Kramer", reason="", recorded_at=recorded_at
+    ).startswith("Overdue: Callback request R-1042 from Dale Kramer, about: not stated.")

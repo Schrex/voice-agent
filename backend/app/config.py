@@ -95,14 +95,19 @@ def twilio_api_base() -> str:
     return os.environ.get("TWILIO_API_BASE") or "https://api.twilio.com"
 
 
-def scheduler_enabled() -> bool:
-    """Run the scheduled jobs (architecture §6) in this process; on unless `SCHEDULER_ENABLED`
-    is false, 0 or off."""
-    return (os.environ.get("SCHEDULER_ENABLED") or "true").strip().lower() not in {
-        "false",
-        "0",
-        "off",
-    }
+def postmark_server_token() -> str | None:
+    """Postmark server API token for the end-of-day email. Unset: each email is recorded failed."""
+    return os.environ.get("POSTMARK_SERVER_TOKEN") or None
+
+
+def postmark_from() -> str | None:
+    """Sender address of the end-of-day email (a verified Postmark sender). Unset: not sent."""
+    return os.environ.get("POSTMARK_FROM") or None
+
+
+def postmark_api_base() -> str:
+    """Postmark API base URL; `POSTMARK_API_BASE` overrides it (tests, stubs)."""
+    return os.environ.get("POSTMARK_API_BASE") or "https://api.postmarkapp.com"
 
 
 def frontend_dist() -> Path:
