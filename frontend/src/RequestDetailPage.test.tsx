@@ -26,8 +26,9 @@ const DETAIL: RequestDetail = {
   need: "tri-axle dump trucks",
   quantity: "3",
   unit: "trucks",
-  needed_by: "tomorrow at seven",
-  urgency: null,
+  needed_by: "2026-11-02T12:00:00Z",
+  needed_by_spoken: "tomorrow at seven",
+  urgency: "Planned",
   status: "Recorded",
   source: "ai_call",
   recorded_at: "2026-11-02T01:30:00Z",
@@ -92,6 +93,20 @@ describe("request detail", () => {
     expect(job).toHaveTextContent("Unmatched: “the Smith pit”");
   });
 
+  it.each([
+    [{ needed_by: null, needed_by_spoken: "next Tuesday" }, "“next Tuesday”"],
+    [{ needed_by: null, needed_by_spoken: null }, "Unknown"],
+  ])("shows a needed-by that was not resolved (%o) as %s", async (overrides, expected) => {
+    serve({ ...DETAIL, ...overrides });
+    renderAt("/requests/R-1000");
+
+    expect(await screen.findByRole("heading", { name: "R-1000" })).toBeInTheDocument();
+    const fields = screen.getByRole("group", { name: "Fields" });
+    expect(within(fields).getByText("Needed-by").nextElementSibling).toHaveTextContent(
+      new RegExp(`^${expected}$`),
+    );
+  });
+
   it("shows every field of the request", async () => {
     const fetchMock = serve(DETAIL);
     renderAt("/requests/R-1000");
@@ -107,8 +122,8 @@ describe("request detail", () => {
       ["Category", "Trucking"],
       ["Need", "tri-axle dump trucks"],
       ["Quantity", "3 trucks"],
-      ["Needed-by", "tomorrow at seven"],
-      ["Urgency", "—"],
+      ["Needed-by", "Mon, Nov 2, 7:00 AM"],
+      ["Urgency", "Planned"],
       ["Status", "Recorded"],
       ["Owner", "—"],
       ["Source", "AI call"],
@@ -159,7 +174,8 @@ describe("request detail", () => {
         need: "tri-axle dump trucks",
         quantity: "3",
         unit: "trucks",
-        needed_by: "tomorrow at seven",
+        needed_by: "2026-11-02T12:00:00Z",
+        needed_by_spoken: "tomorrow at seven",
         urgency: null,
         status: "Recorded",
         recorded_at: "2026-11-02T01:30:00Z",

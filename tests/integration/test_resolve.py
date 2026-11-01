@@ -70,7 +70,7 @@ def _record(session: Session) -> str:
     session.add(call)
     session.flush()
     job_id = session.scalars(select(Job.id).where(Job.name == "Route 104 Widening")).one()
-    [ref] = submit_requests(
+    [recorded] = submit_requests(
         session,
         caller=Caller(call_id=call.id, foreman_id=dale.id),
         items=[
@@ -80,7 +80,7 @@ def _record(session: Session) -> str:
         ],
         now=T0,
     )
-    return ref
+    return recorded.ref
 
 
 def _acknowledged(

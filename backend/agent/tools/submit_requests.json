@@ -2,7 +2,7 @@
   "tool_config": {
     "type": "webhook",
     "name": "submit_requests",
-    "description": "Record the Foreman's need as a Request. Call it only after you have read back the Job, quantity, unit and needed-by time and the Foreman said yes. Returns [{\"ref\": \"R-1042\"}] with the reference number, or {\"error\": \"...\"} if the request could not be saved.",
+    "description": "Record the Foreman's need as a Request. Call it only after you have read back the Job, quantity, unit and needed-by time and the Foreman said yes. Returns [{\"ref\": \"R-1042\", \"needed_by_resolved\": \"Monday, November 2 at 7:00 AM\", \"urgency\": \"Planned\"}] with the reference number, or {\"error\": \"...\"} if the request could not be saved.",
     "api_schema": {
       "url": "${backend_url}/tools/submit_requests",
       "method": "POST",
@@ -59,7 +59,7 @@
                 },
                 "needed_by_spoken": {
                   "type": "string",
-                  "description": "When it is needed, exactly as the Foreman said it, for example 'tomorrow at 7 AM'. Do not convert it."
+                  "description": "When it is needed, exactly as the Foreman said it, for example 'tomorrow at seven'. Do not convert it. Leave it out when the Foreman could not say when (needed-by unknown)."
                 }
               }
             }

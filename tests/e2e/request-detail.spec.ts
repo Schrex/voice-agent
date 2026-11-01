@@ -42,8 +42,9 @@ test("opening a recorded request shows its fields and the Recorded event in its 
     "Equipment",
     need,
     "1 excavator",
-    "Monday morning",
-    "—",
+    // "Monday morning": the next Monday at 7:00 AM, resolved by the backend.
+    /^Mon, \w{3} \d{1,2}, 7:00 AM$/,
+    "Planned",
     "Recorded",
     "—",
     "AI call",

@@ -53,8 +53,9 @@ test("a request recorded by the agent appears in the open queue on the next 10 s
     "Route 104 Widening",
     need,
     "3 trucks",
-    "tomorrow at seven",
-    "—",
+    // "tomorrow at seven", resolved by the backend and shown in New York time.
+    /^\w{3}, \w{3} \d{1,2}, 7:00 AM$/,
+    "Planned",
     "Recorded",
     /^0m\s*Recorded /,
   ]);

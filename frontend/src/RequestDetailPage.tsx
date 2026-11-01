@@ -4,6 +4,8 @@ import { Link, useParams } from "react-router-dom";
 import {
   fetchRequestDetail,
   jobText,
+  neededByText,
+  officeTime,
   type Actor,
   type RequestDetail,
   type RequestEvent,
@@ -14,16 +16,6 @@ import { useAuth } from "./App";
 import { CallRecordings } from "./CallRecordings";
 import { ResolveAction } from "./ResolveAction";
 import { StartAction } from "./StartAction";
-
-/** Every time on the dashboard is shown in the office's zone, whatever the browser's zone. */
-const timeFormat = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/New_York",
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-});
 
 /** Spec §5 "source (AI call / coordinator-logged)". */
 const SOURCES: Record<RequestDetail["source"], string> = {
@@ -77,18 +69,18 @@ function Detail({ request }: { request: RequestDetail }) {
     ["Category", request.category],
     ["Need", request.need],
     ["Quantity", quantity(request)],
-    ["Needed-by", request.needed_by ?? "—"],
+    ["Needed-by", neededByText(request)],
     ["Urgency", request.urgency ?? "—"],
     ["Status", request.status],
     ["Owner", request.owner?.name ?? "—"],
     ["Source", SOURCES[request.source]],
-    ["Recorded", request.recorded_at ? timeFormat.format(new Date(request.recorded_at)) : "—"],
+    ["Recorded", request.recorded_at ? officeTime.format(new Date(request.recorded_at)) : "—"],
   ];
   if (request.outcome !== null) {
     fields.push(
       ["Outcome", request.outcome],
       ["Explanation", request.explanation ?? "—"],
-      ["Resolved", request.resolved_at ? timeFormat.format(new Date(request.resolved_at)) : "—"],
+      ["Resolved", request.resolved_at ? officeTime.format(new Date(request.resolved_at)) : "—"],
     );
   }
   return (
@@ -119,7 +111,7 @@ function Detail({ request }: { request: RequestDetail }) {
           {request.events.map((e, i) => (
             <tr key={i}>
               <td>
-                <time dateTime={e.at}>{timeFormat.format(new Date(e.at))}</time>
+                <time dateTime={e.at}>{officeTime.format(new Date(e.at))}</time>
               </td>
               <td>{who(e.actor)}</td>
               <td>{KINDS[e.kind] ?? e.kind}</td>

@@ -1,0 +1,82 @@
+{
+  "name": "AC1.5 an unknown needed-by is submitted without needed_by_spoken",
+  "type": "tool",
+  "dynamic_variables": {
+    "rejected": false,
+    "foreman_first_name": "Dale",
+    "jobs": "Penfield Sewer Replacement; Route 104 Widening",
+    "now_local": "Sunday, November 1, 2026, 3:04 PM"
+  },
+  "chat_history": [
+    {
+      "role": "agent",
+      "message": "Hi Dale, this is the Schreiber Excavating automated assistant. This call is recorded. What do you need?",
+      "time_in_call_secs": 0
+    },
+    {
+      "role": "user",
+      "message": "I need two tri-axle dump trucks at Route 104.",
+      "time_in_call_secs": 6
+    },
+    {
+      "role": "agent",
+      "message": null,
+      "time_in_call_secs": 8,
+      "tool_calls": [
+        {
+          "type": "webhook",
+          "request_id": "find_jobs_0001",
+          "tool_name": "find_jobs",
+          "tool_id": "${tool_find_jobs}",
+          "params_as_json": "{\"query\": \"Route 104\"}",
+          "tool_has_been_called": true
+        }
+      ],
+      "tool_results": [
+        {
+          "type": "webhook",
+          "request_id": "find_jobs_0001",
+          "tool_name": "find_jobs",
+          "result_value": "[{\"job_id\": 14, \"name\": \"Route 104 Widening\", \"score\": 95}]",
+          "is_error": false,
+          "tool_has_been_called": true
+        }
+      ]
+    },
+    {
+      "role": "agent",
+      "message": "When do you need them?",
+      "time_in_call_secs": 10
+    },
+    {
+      "role": "user",
+      "message": "Don't know yet.",
+      "time_in_call_secs": 13
+    },
+    {
+      "role": "agent",
+      "message": "I'll record it without a needed-by time. Two tri-axle dump trucks at Route 104 Widening. Should I submit it?",
+      "time_in_call_secs": 15
+    },
+    {
+      "role": "user",
+      "message": "Yes.",
+      "time_in_call_secs": 18
+    }
+  ],
+  "tool_call_parameters": {
+    "referenced_tool": {
+      "id": "${tool_submit_requests}",
+      "type": "webhook"
+    },
+    "parameters": [
+      {
+        "path": "items",
+        "eval": {
+          "type": "llm",
+          "description": "Exactly one item, with job_id 14 (from find_jobs), category Trucking, quantity 2, and no needed_by_spoken at all (not 'unknown', not 'don't know', not any day or time)."
+        }
+      }
+    ]
+  }
+}

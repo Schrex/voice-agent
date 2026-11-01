@@ -24,7 +24,9 @@ class QueueRow:
     need: str
     quantity: str | None
     unit: str | None
-    needed_by: str | None
+    needed_by: datetime | None
+    """The resolved needed-by; None when unknown, not understood, or only a day was said."""
+    needed_by_spoken: str | None
     urgency: str | None
     status: str
     recorded_at: datetime
@@ -53,7 +55,8 @@ def open_requests(session: Session) -> list[QueueRow]:
             need=request.need,
             quantity=as_said(request.quantity),
             unit=request.unit,
-            needed_by=request.needed_by_spoken,
+            needed_by=request.needed_by,
+            needed_by_spoken=request.needed_by_spoken,
             urgency=request.urgency,
             status=request.status,
             recorded_at=_recorded_at(request),

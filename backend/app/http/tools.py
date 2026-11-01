@@ -20,12 +20,13 @@ from app.config import tool_secret
 from app.db.session import get_session
 from app.services.calls import Caller, caller_for_conversation
 from app.services.jobs import find_jobs
-from app.services.requests import NewItem, submit_requests
+from app.services.requests import NewItem, resolve_needed_by, submit_requests
 
 log = logging.getLogger(__name__)
 
 NOT_SAVED = "The request could not be saved."
 JOBS_NOT_SEARCHED = "The Job list could not be searched."
+TIME_NOT_READ = "The needed-by time could not be worked out."
 
 
 def require_tool_secret(
@@ -90,6 +91,10 @@ class FindJobsBody(BaseModel):
     query: str
 
 
+class ResolveNeededByBody(BaseModel):
+    needed_by_spoken: str
+
+
 @router.post("/find_jobs")
 def find_jobs_tool(
     body: Annotated[Any, Body()],
@@ -129,10 +134,40 @@ def submit_requests_tool(
         return {"error": NOT_SAVED}
     items = [NewItem(**item.model_dump()) for item in parsed.items]
     try:
-        refs = submit_requests(session, caller=caller, items=items, now=clock())
+        recorded = submit_requests(session, caller=caller, items=items, now=clock())
     except Exception:
         session.rollback()
         log.exception("submit_requests_failed", extra=log_ctx)
         return {"error": NOT_SAVED}
-    log.info("submit_requests", extra={**log_ctx, "ref": refs})
-    return [{"ref": ref} for ref in refs]
+    log.info("submit_requests", extra={**log_ctx, "ref": [r.ref for r in recorded]})
+    return [
+        {
+            "ref": r.ref,
+            "needed_by_resolved": r.needed_by.needed_by_resolved,
+            "urgency": r.needed_by.urgency,
+        }
+        for r in recorded
+    ]
+
+
+@router.post("/resolve_needed_by")
+def resolve_needed_by_tool(
+    body: Annotated[Any, Body()],
+    caller: Annotated[Caller, Depends(get_caller)],
+    clock: Annotated[Clock, Depends(get_clock)],
+    x_conversation_id: Annotated[str | None, Header()] = None,
+) -> Any:
+    """The spoken needed-by as the agent must read it back, before the Foreman confirms.
+
+    `{"needed_by_resolved": "Monday, November 2 at 7:00 AM", "urgency": "Planned"}`; both null
+    when the words are not understood (the agent then reads them back as said). Writes nothing.
+    """
+    log_ctx = {"conversation_id": x_conversation_id}
+    try:
+        parsed = ResolveNeededByBody.model_validate(body, strict=True)
+    except ValidationError:
+        log.warning("resolve_needed_by_invalid", extra=log_ctx)
+        return {"error": TIME_NOT_READ}
+    resolved = resolve_needed_by(parsed.needed_by_spoken, clock())
+    log.info("resolve_needed_by", extra={**log_ctx, "resolved": resolved.urgency is not None})
+    return {"needed_by_resolved": resolved.needed_by_resolved, "urgency": resolved.urgency}
