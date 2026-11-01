@@ -17,6 +17,7 @@ import { CallRecordings } from "./CallRecordings";
 import { MergeAction } from "./MergeAction";
 import { EditFieldsAction } from "./EditFieldsAction";
 import { ForemanInformedAction } from "./ForemanInformedAction";
+import { RequestNotes } from "./RequestNotes";
 import { ResolveAction } from "./ResolveAction";
 import { StartAction } from "./StartAction";
 
@@ -37,6 +38,7 @@ const KINDS: Record<string, string> = {
   merged_in: "Merged in",
   edited: "Edited",
   foreman_informed: "Foreman Informed",
+  note_added: "Note added",
 };
 
 /** One request's fields and its full audit history: who, when, what changed. */
@@ -115,6 +117,7 @@ function Detail({ request }: { request: RequestDetail }) {
       <ResolveAction request={request} />
       <MergeAction request={request} />
       <ForemanInformedAction request={request} />
+      <RequestNotes notes={request.notes ?? []} />
       <h2 id="history">History</h2>
       <table className="history" aria-labelledby="history">
         <thead>

@@ -23,7 +23,8 @@
       "${tool_resolve_needed_by}",
       "${tool_submit_requests}",
       "${tool_find_open_requests}",
-      "${tool_create_callback_request}"
+      "${tool_create_callback_request}",
+      "${tool_add_note}"
     ],
     "fallback_strategy": "raise_error"
   },
@@ -55,6 +56,12 @@
     "${tool_create_callback_request}": [
       {
         "mock_result": "{\"ref\": \"R-1050\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_add_note}": [
+      {
+        "mock_result": "{\"ok\": true}",
         "is_error": false
       }
     ]

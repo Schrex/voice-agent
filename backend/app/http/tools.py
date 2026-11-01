@@ -25,6 +25,7 @@ from app.services.alerts import alert_callback, alert_new_today
 from app.services.callbacks import create_callback_request
 from app.services.calls import Caller, caller_for_conversation
 from app.services.jobs import find_jobs
+from app.services.notes import NoteRequestNotFound, add_note_for_caller
 from app.services.requests import NewItem, resolve_needed_by, submit_requests
 from app.services.status_lookup import find_open_requests
 
@@ -298,3 +299,57 @@ def create_callback_request_tool(
         session.rollback()
         log.exception("callback_alert_failed", extra={**log_ctx, "ref": ref})
     return {"ref": ref}
+
+
+# --- add_note (ticket #17, spec J3 step 4) ---
+
+NOTE_NOT_SAVED = "The note could not be saved."
+NOTE_REQUEST_NOT_FOUND = "I couldn't find that request."
+
+
+class AddNoteBody(BaseModel):
+    """Unknown fields (such as a foreman id) are ignored."""
+
+    ref: str
+    """As `find_open_requests` returned it ("R-1042")."""
+    text: str = Field(min_length=1)
+    urgent: bool = False
+
+
+@router.post("/add_note")
+def add_note_tool(
+    body: Annotated[Any, Body()],
+    caller: Annotated[Caller, Depends(get_caller)],
+    session: Annotated[Session, Depends(get_session)],
+    clock: Annotated[Clock, Depends(get_clock)],
+    x_conversation_id: Annotated[str | None, Header()] = None,
+) -> Any:
+    """Appends the Foreman's note to one of his own Requests; `{"ok": true}`. Never creates one.
+
+    Another Foreman's Request, a Draft or an unknown ref is "not found", with nothing written.
+    """
+    log_ctx = {"conversation_id": x_conversation_id}
+    try:
+        parsed = AddNoteBody.model_validate(body, strict=True)
+    except ValidationError:
+        log.warning("add_note_invalid", extra=log_ctx)
+        return {"error": NOTE_NOT_SAVED}
+    try:
+        add_note_for_caller(
+            session,
+            caller=caller,
+            ref=parsed.ref,
+            text=parsed.text,
+            urgent=parsed.urgent,
+            now=clock(),
+        )
+    except NoteRequestNotFound:
+        session.rollback()
+        log.info("add_note_not_found", extra=log_ctx)
+        return {"error": NOTE_REQUEST_NOT_FOUND}
+    except Exception:
+        session.rollback()
+        log.exception("add_note_failed", extra=log_ctx)
+        return {"error": NOTE_NOT_SAVED}
+    log.info("add_note", extra={**log_ctx, "ref": parsed.ref, "urgent": parsed.urgent})
+    return {"ok": True}

@@ -37,6 +37,7 @@ TOOL_IDS = {
     "submit_requests": "tool_submit",
     "find_open_requests": "tool_status",
     "create_callback_request": "tool_callback",
+    "add_note": "tool_note",
 }
 
 

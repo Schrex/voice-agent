@@ -20,6 +20,7 @@ TOOL_IDS = {
     "submit_requests": "tool_submit",
     "find_open_requests": "tool_status",
     "create_callback_request": "tool_callback",
+    "add_note": "tool_note",
 }
 
 
@@ -39,8 +40,8 @@ def test_first_message_is_automated_recorded_and_names_the_foreman() -> None:
 
 def test_tools_are_end_call_and_the_backend_tools() -> None:
     """end_call (built-in) hangs up; find_jobs (#13), resolve_needed_by (#14),
-    submit_requests (#7), find_open_requests (#16) and create_callback_request (#24) are
-    attached by their workspace ids."""
+    submit_requests (#7), find_open_requests (#16), create_callback_request (#24) and
+    add_note (#17) are attached by their workspace ids."""
     prompt = _agent()["prompt"]
 
     assert set(prompt["built_in_tools"]) == {"end_call"}
@@ -51,6 +52,7 @@ def test_tools_are_end_call_and_the_backend_tools() -> None:
         "tool_submit",
         "tool_status",
         "tool_callback",
+        "tool_note",
     ]
     assert not prompt.get("tools")
 
@@ -140,6 +142,30 @@ def test_submit_tool_takes_every_confirmed_need_not_exactly_one() -> None:
     assert "Exactly one" not in items["description"]
     assert "one item per need" in items["description"]
     assert "maxItems" not in items
+
+
+def test_prompt_appends_a_note_or_urgency_to_the_existing_request() -> None:
+    """Ticket #17 / spec J3 step 4, AC3.5: "need an answer today" is a note on the Request the
+    lookup returned, sent with `add_note`, never a new Request; the agent says only that it was
+    added. The S test checks the spoken behavior."""
+    prompt = _agent()["prompt"]["prompt"]
+
+    assert "## Adding a note" in prompt
+    assert "`add_note`" in prompt
+    assert "do not call `submit_requests`" in prompt
+    assert '"urgent": true' in prompt
+
+
+def test_add_note_tool_takes_the_ref_the_text_and_an_optional_urgent_flag() -> None:
+    """Architecture §4.2: `add_note(ref, text, urgent?)` → `{ok}`."""
+    [tool] = [
+        t["tool_config"] for t in desired_tools(ENV) if t["tool_config"]["name"] == "add_note"
+    ]
+    schema = tool["api_schema"]["request_body_schema"]
+
+    assert set(schema["properties"]) == {"ref", "text", "urgent"}
+    assert schema["properties"]["urgent"]["type"] == "boolean"
+    assert schema["required"] == ["ref", "text"]
 
 
 def test_prompt_takes_a_callback_request_asking_one_optional_question() -> None:

@@ -164,6 +164,7 @@ def _tool_id(el: FakeElevenLabs, name: str) -> str:
 @pytest.mark.parametrize(
     "name",
     [
+        "add_note",
         "create_callback_request",
         "find_jobs",
         "find_open_requests",
@@ -174,7 +175,7 @@ def _tool_id(el: FakeElevenLabs, name: str) -> str:
 def test_push_creates_each_tool_pointing_at_the_env_backend(el: FakeElevenLabs, name: str) -> None:
     push(ENV, el.client())
 
-    assert len(el.tools) == 5
+    assert len(el.tools) == 6
     config = el.tools[_tool_id(el, name)]["tool_config"]
     assert config["type"] == "webhook"
     assert config["api_schema"]["url"] == f"https://backend.example.test/tools/{name}"
@@ -195,6 +196,7 @@ def test_pushed_agent_uses_the_created_tools_by_id(el: FakeElevenLabs) -> None:
         _tool_id(el, "submit_requests"),
         _tool_id(el, "find_open_requests"),
         _tool_id(el, "create_callback_request"),
+        _tool_id(el, "add_note"),
     ]
 
 
@@ -256,6 +258,7 @@ def test_push_creates_each_repo_test_by_name(el: FakeElevenLabs) -> None:
         "AC3.3 a Resolved/Denied request: says it was denied and reads the explanation",
         "AC3.4 accepting the Callback offer after no match records a Callback Request",
         "AC3.4 no matching request: says it cannot find one and offers Transfer or Callback",
+        'AC3.5 "need an answer today" is an urgent note on the existing request, not a new one',
         "AC5.4 Callback Request recorded after a yes, with no callback time promised",
         "AC5.4 Callback Request without a reason: asked once, then recorded",
         "AC5.4 the reason is sent as the Foreman said it, after the yes",
@@ -360,16 +363,18 @@ def test_cli_prints_one_line_per_object_and_exits_0(
     assert main(["--env", "staging"], client=el.client(), agent_dir=agent_dir) == 0
 
     out = capsys.readouterr().out.splitlines()
-    assert out[:6] == [
-        "tool 'create_callback_request': created (tool_0001)",
-        "tool 'find_jobs': created (tool_0002)",
-        "tool 'find_open_requests': created (tool_0003)",
-        "tool 'resolve_needed_by': created (tool_0004)",
-        "tool 'submit_requests': created (tool_0005)",
+    assert out[:7] == [
+        "tool 'add_note': created (tool_0001)",
+        "tool 'create_callback_request': created (tool_0002)",
+        "tool 'find_jobs': created (tool_0003)",
+        "tool 'find_open_requests': created (tool_0004)",
+        "tool 'resolve_needed_by': created (tool_0005)",
+        "tool 'submit_requests': created (tool_0006)",
         "agent 'Field Request Assistant (test)': created (agent_0001)",
     ]
     second = out[len(out) // 2 :]
-    assert second[:6] == [
+    assert second[:7] == [
+        "tool 'add_note': unchanged",
         "tool 'create_callback_request': unchanged",
         "tool 'find_jobs': unchanged",
         "tool 'find_open_requests': unchanged",
@@ -377,8 +382,8 @@ def test_cli_prints_one_line_per_object_and_exits_0(
         "tool 'submit_requests': unchanged",
         "agent 'Field Request Assistant (test)': unchanged",
     ]
-    assert len(second) == 6 + len(list((agent_dir / "tests").glob("*.json"))) + 1
-    assert all(line.startswith("test '") and line.endswith("': unchanged") for line in second[6:-1])
+    assert len(second) == 7 + len(list((agent_dir / "tests").glob("*.json"))) + 1
+    assert all(line.startswith("test '") and line.endswith("': unchanged") for line in second[7:-1])
     assert second[-1] == "No changes."
 
 

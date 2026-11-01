@@ -149,6 +149,19 @@ export type RequestDetail = {
   events: RequestEvent[];
   /** Calls that created, looked up or amended the request; oldest first. */
   calls: LinkedCall[];
+  /** Oldest first (ticket #17; optional so fixtures without it still type-check). */
+  notes?: RequestNote[];
+};
+
+/** A note on a request, optionally urgent (`request_notes`). */
+export type RequestNote = {
+  /** UTC, ISO 8601. */
+  at: string;
+  author_type: "agent" | "staff" | "system";
+  /** The staff member's name; null for the agent. */
+  author: string | null;
+  text: string;
+  urgent: boolean;
 };
 
 /** A call linked to a request (`call_requests`). */

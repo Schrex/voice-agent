@@ -1,0 +1,68 @@
+{
+  "name": "AC3.5 \"need an answer today\" is an urgent note on the existing request, not a new one",
+  "type": "simulation",
+  "dynamic_variables": {
+    "rejected": false,
+    "foreman_first_name": "Dale",
+    "jobs": "Penfield Sewer Replacement; Route 104 Widening",
+    "now_local": "Sunday, November 1, 2026, 3:04 PM"
+  },
+  "simulation_scenario": "You are Dale, a foreman on the Roster. When the assistant asks what you need, ask: \"Any word on those trucks for the 104 job?\" After it answers, say: \"Tell them I need an answer today.\" After it answers, say thanks, goodbye.",
+  "simulation_max_turns": 8,
+  "success_conditions": [
+    "The agent calls add_note once with ref R-1042, a text that carries the Foreman's words about needing an answer today, and urgent set to true.",
+    "The agent does not take a new request and does not call submit_requests.",
+    "After add_note returns ok, the agent says the note was added to the request for the office, and does not say anyone has seen it, been told, or will answer by any time.",
+    "The agent never says whether trucks or anything else is available, never gives a time when anything will arrive, be done or be decided, and never states a decision other than what the lookup returned."
+  ],
+  "tool_mock_config": {
+    "mocking_strategy": "selected",
+    "mocked_tool_ids": [
+      "${tool_find_jobs}",
+      "${tool_resolve_needed_by}",
+      "${tool_submit_requests}",
+      "${tool_find_open_requests}",
+      "${tool_create_callback_request}",
+      "${tool_add_note}"
+    ],
+    "fallback_strategy": "raise_error"
+  },
+  "tool_mock_overrides": {
+    "${tool_find_jobs}": [
+      {
+        "mock_result": "[{\"job_id\": 14, \"name\": \"Route 104 Widening\", \"score\": 95}]",
+        "is_error": false
+      }
+    ],
+    "${tool_resolve_needed_by}": [
+      {
+        "mock_result": "{\"needed_by_resolved\": \"Monday, November 2 at 7:00 AM\", \"urgency\": \"Planned\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_submit_requests}": [
+      {
+        "mock_result": "{\"error\": \"The request could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_find_open_requests}": [
+      {
+        "mock_result": "[{\"ref\": \"R-1042\", \"job\": \"Route 104 Widening\", \"category\": \"Trucking\", \"need\": \"tri-axle dump trucks\", \"quantity\": 3, \"unit\": \"trucks\", \"needed_by\": \"Monday, November 2 at 7:00 AM\", \"status\": \"Recorded\", \"owner\": null, \"outcome\": null, \"explanation\": null}]",
+        "is_error": false
+      }
+    ],
+    "${tool_create_callback_request}": [
+      {
+        "mock_result": "{\"error\": \"The callback request could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_add_note}": [
+      {
+        "mock_result": "{\"ok\": true}",
+        "is_error": false
+      }
+    ]
+  }
+}

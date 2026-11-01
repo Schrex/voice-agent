@@ -20,6 +20,7 @@ from app.db.models import (
     RequestEvent,
     Staff,
 )
+from app.services.notes import notes_of
 from app.services.queue import as_said
 
 _REF = re.compile(r"^R-(\d{1,18})$")
@@ -41,6 +42,17 @@ class Event:
     kind: str
     before: dict[str, Any] | None
     after: dict[str, Any] | None
+
+
+@dataclass(frozen=True)
+class DetailNote:
+    """A note (ticket #17); `author` is the staff member's name, None for the agent."""
+
+    at: datetime
+    author_type: str
+    author: str | None
+    text: str
+    urgent: bool
 
 
 @dataclass(frozen=True)
@@ -88,6 +100,7 @@ class RequestDetail:
     default_owner_id: int | None
     events: list[Event]
     calls: list[LinkedCall]  # oldest first
+    notes: list[DetailNote]  # oldest first
 
 
 def request_detail(session: Session, ref: str) -> RequestDetail | None:
@@ -134,6 +147,7 @@ def request_detail(session: Session, ref: str) -> RequestDetail | None:
         ),
         events=_events(session, request.id),
         calls=_linked_calls(session, request.id),
+        notes=_notes(session, request.id),
     )
 
 
@@ -150,6 +164,25 @@ def _linked_calls(session: Session, request_id: int) -> list[LinkedCall]:
         .order_by(Call.started_at, Call.id, CallRequest.relation)
     )
     return [LinkedCall(id=i, started_at=at, relation=rel) for i, at, rel in rows.tuples()]
+
+
+def _notes(session: Session, request_id: int) -> list[DetailNote]:
+    notes = notes_of(session, request_id)
+    staff_ids = {i for n in notes if n.author_type == "staff" and (i := _uuid(n.author_id))}
+    names: dict[uuid.UUID, str] = {}
+    if staff_ids:
+        rows = session.execute(select(Staff.id, Staff.name).where(Staff.id.in_(staff_ids)))
+        names = dict(rows.tuples())
+    return [
+        DetailNote(
+            at=n.at,
+            author_type=n.author_type,
+            author=names.get(i) if (i := _uuid(n.author_id)) else None,
+            text=n.text,
+            urgent=n.urgent,
+        )
+        for n in notes
+    ]
 
 
 def _owner(session: Session, owner_id: int | None) -> OwnerRef | None:
