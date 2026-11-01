@@ -40,10 +40,16 @@ def short_date(day: date) -> str:
 def today_request_text(facts: TodayRequestFacts) -> str:
     """E.g. "Today request R-1000 from Dale Kramer, Route 104 Widening: tri-axle dump trucks,
     3 trucks, needed by Sun, Nov 1, 5:00 PM"."""
+    return f"Today request {request_line(facts)}"
+
+
+def request_line(facts: TodayRequestFacts) -> str:
+    """E.g. "R-1000 from Dale Kramer, Route 104 Widening: tri-axle dump trucks, 3 trucks,
+    needed by Sun, Nov 1, 5:00 PM" (also used by the end-of-day summary email, #23)."""
     job = facts.job if facts.job is not None else f"“{facts.job_spoken}” (Unmatched)"
     amount = " ".join(part for part in (facts.quantity, facts.unit) if part)
     what = f"{facts.need}, {amount}" if amount else facts.need
-    text = f"Today request {facts.ref} from {facts.foreman}, {job}: {what}"
+    text = f"{facts.ref} from {facts.foreman}, {job}: {what}"
     if facts.needed_by is not None:
         return f"{text}, needed by {short_time(facts.needed_by)}"
     if facts.needed_by_spoken:

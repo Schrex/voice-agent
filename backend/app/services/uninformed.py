@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.db.models import Foreman, Job, Request
 from app.domain.lifecycle import Status
 from app.domain.sla import uninformed_cutoff
+from app.services.settings import uninformed_after
 
 
 @dataclass(frozen=True)
@@ -26,7 +27,10 @@ class UninformedRow:
 
 
 def uninformed_requests(session: Session, now: datetime) -> list[UninformedRow]:
-    """Uninformed at `now`, longest-waiting (oldest Resolved) first; ref breaks ties."""
+    """Uninformed at `now`, longest-waiting (oldest Resolved) first; ref breaks ties.
+
+    The threshold is the office's `settings.uninformed_after_min`."""
+    cutoff = uninformed_cutoff(now, uninformed_after(session))
     rows = session.execute(
         select(Request, Foreman, Job.name)
         .join(Foreman, Request.foreman_id == Foreman.id)
@@ -34,7 +38,7 @@ def uninformed_requests(session: Session, now: datetime) -> list[UninformedRow]:
         .where(
             Request.status == Status.RESOLVED.value,
             Request.foreman_informed_at.is_(None),
-            Request.resolved_at < uninformed_cutoff(now),
+            Request.resolved_at < cutoff,
         )
         .order_by(Request.resolved_at, Request.ref)
     ).all()

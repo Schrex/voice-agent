@@ -326,7 +326,8 @@ class Alert(Base):
 
     `status` pending (being sent), sent (provider accepted it; `provider_id` set) or failed
     (`detail` says why, e.g. nobody on duty). `sent_at` is when it was attempted.
-    One `today_new` alert per Request at most (`uq_alerts_today_new`).
+    One `today_new` alert per Request at most (`uq_alerts_today_new`); one `eod_summary` per
+    Coordinator per New York day (`summary_date`, `uq_alerts_eod_summary`, ticket #23).
     """
 
     __tablename__ = "alerts"
@@ -339,6 +340,17 @@ class Alert(Base):
             "request_id",
             unique=True,
             postgresql_where=text("kind = 'today_new'"),
+        ),
+        CheckConstraint(
+            "(kind = 'eod_summary') = (summary_date IS NOT NULL AND to_staff_id IS NOT NULL)",
+            name="summary_date_only_for_eod_summary",
+        ),
+        Index(
+            "uq_alerts_eod_summary",
+            "to_staff_id",
+            "summary_date",
+            unique=True,
+            postgresql_where=text("kind = 'eod_summary'"),
         ),
     )
 
@@ -353,6 +365,8 @@ class Alert(Base):
     status: Mapped[str] = mapped_column(String(10))
     detail: Mapped[str | None] = mapped_column(Text)
     seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The New York day an `eod_summary` alert summarizes; null for every other kind.
+    summary_date: Mapped[date | None] = mapped_column(Date)
 
 
 class Settings(Base):
