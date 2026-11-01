@@ -49,3 +49,10 @@ def today_request_text(facts: TodayRequestFacts) -> str:
     if facts.needed_by_spoken:
         return f"{text}, needed by “{facts.needed_by_spoken}”"
     return text
+
+
+def callback_request_text(*, ref: str, foreman: str, caller_e164: str | None, reason: str) -> str:
+    """E.g. "Callback request R-1042 from Dale Kramer (+15855550102), about: the pump"
+    (ticket #24). No reason given → "about: not stated", as in the spec J5 transfer text."""
+    who = f"{foreman} ({caller_e164})" if caller_e164 else foreman
+    return f"Callback request {ref} from {who}, about: {reason or 'not stated'}"

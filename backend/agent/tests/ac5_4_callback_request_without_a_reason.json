@@ -1,0 +1,61 @@
+{
+  "name": "AC5.4 Callback Request without a reason: asked once, then recorded",
+  "type": "simulation",
+  "dynamic_variables": {
+    "rejected": false,
+    "foreman_first_name": "Dale",
+    "jobs": "Penfield Sewer Replacement; Route 104 Widening",
+    "now_local": "Sunday, November 1, 2026, 3:04 PM"
+  },
+  "simulation_scenario": "You are Dale, a foreman on the Roster. When the assistant asks what you need, say: \"Just have somebody call me back.\" If it asks what it's about, say: \"I'd rather just talk to them.\" When it asks whether to record or send it, say yes. Then say goodbye.",
+  "simulation_max_turns": 10,
+  "success_conditions": [
+    "The agent asks what the callback is about at most once and does not insist on a reason.",
+    "The agent asks Dale whether to record or send the Callback Request before it calls create_callback_request.",
+    "The agent calls create_callback_request and then gives the reference number R-1050.",
+    "The agent never says when anyone will call back, never says anyone will call back soon or at all, and never says that anyone has been reached."
+  ],
+  "tool_mock_config": {
+    "mocking_strategy": "selected",
+    "mocked_tool_ids": [
+      "${tool_find_jobs}",
+      "${tool_resolve_needed_by}",
+      "${tool_submit_requests}",
+      "${tool_find_open_requests}",
+      "${tool_create_callback_request}"
+    ],
+    "fallback_strategy": "raise_error"
+  },
+  "tool_mock_overrides": {
+    "${tool_find_jobs}": [
+      {
+        "mock_result": "[{\"job_id\": 14, \"name\": \"Route 104 Widening\", \"score\": 95}]",
+        "is_error": false
+      }
+    ],
+    "${tool_resolve_needed_by}": [
+      {
+        "mock_result": "{\"needed_by_resolved\": \"Monday, November 2 at 7:00 AM\", \"urgency\": \"Planned\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_submit_requests}": [
+      {
+        "mock_result": "{\"error\": \"The request could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_find_open_requests}": [
+      {
+        "mock_result": "[]",
+        "is_error": false
+      }
+    ],
+    "${tool_create_callback_request}": [
+      {
+        "mock_result": "{\"ref\": \"R-1050\"}",
+        "is_error": false
+      }
+    ]
+  }
+}
