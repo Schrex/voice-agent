@@ -21,7 +21,8 @@ from app.db.session import get_session
 from app.domain.urgency import Urgency
 from app.http.sms import get_sms_sender
 from app.integrations.twilio_sms import SmsSender
-from app.services.alerts import alert_new_today
+from app.services.alerts import alert_callback, alert_new_today
+from app.services.callbacks import create_callback_request
 from app.services.calls import Caller, caller_for_conversation
 from app.services.jobs import find_jobs
 from app.services.notes import NoteRequestNotFound, add_note_for_caller
@@ -251,6 +252,53 @@ def _number(quantity: Decimal | None) -> int | float | None:
     if quantity is None:
         return None
     return int(quantity) if quantity == quantity.to_integral_value() else float(quantity)
+
+
+# --- create_callback_request (ticket #24, spec J5 "Callback Request") ---
+
+CALLBACK_NOT_SAVED = "The callback request could not be saved."
+
+
+class CreateCallbackBody(BaseModel):
+    """Unknown fields (such as a foreman id) are ignored."""
+
+    reason: str | None = None
+    """The Foreman's answer to "What's it about?"; omitted when they gave none."""
+
+
+@router.post("/create_callback_request")
+def create_callback_request_tool(
+    body: Annotated[Any, Body()],
+    caller: Annotated[Caller, Depends(get_caller)],
+    session: Annotated[Session, Depends(get_session)],
+    clock: Annotated[Clock, Depends(get_clock)],
+    sms: Annotated[SmsSender, Depends(get_sms_sender)],
+    x_conversation_id: Annotated[str | None, Header()] = None,
+) -> Any:
+    """Records a Callback Request (Today) and texts the on-duty and backup Coordinators.
+
+    `{"ref": "R-1042"}`. No callback time is returned: there is none to promise.
+    """
+    log_ctx = {"conversation_id": x_conversation_id}
+    try:
+        parsed = CreateCallbackBody.model_validate(body, strict=True)
+    except ValidationError:
+        log.warning("create_callback_request_invalid", extra=log_ctx)
+        return {"error": CALLBACK_NOT_SAVED}
+    try:
+        ref = create_callback_request(session, caller=caller, reason=parsed.reason, now=clock())
+    except Exception:
+        session.rollback()
+        log.exception("create_callback_request_failed", extra=log_ctx)
+        return {"error": CALLBACK_NOT_SAVED}
+    log.info("create_callback_request", extra={**log_ctx, "ref": ref})
+    # The Request is saved; an alert problem must not turn into a spoken error.
+    try:
+        alert_callback(session, sms, ref=ref, now=clock())
+    except Exception:
+        session.rollback()
+        log.exception("callback_alert_failed", extra={**log_ctx, "ref": ref})
+    return {"ref": ref}
 
 
 # --- add_note (ticket #17, spec J3 step 4) ---

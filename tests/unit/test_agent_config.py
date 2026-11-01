@@ -19,6 +19,7 @@ TOOL_IDS = {
     "resolve_needed_by": "tool_resolve",
     "submit_requests": "tool_submit",
     "find_open_requests": "tool_status",
+    "create_callback_request": "tool_callback",
     "add_note": "tool_note",
 }
 
@@ -39,8 +40,8 @@ def test_first_message_is_automated_recorded_and_names_the_foreman() -> None:
 
 def test_tools_are_end_call_and_the_backend_tools() -> None:
     """end_call (built-in) hangs up; find_jobs (#13), resolve_needed_by (#14),
-    submit_requests (#7), find_open_requests (#16) and add_note (#17) are attached by their
-    workspace ids."""
+    submit_requests (#7), find_open_requests (#16), create_callback_request (#24) and
+    add_note (#17) are attached by their workspace ids."""
     prompt = _agent()["prompt"]
 
     assert set(prompt["built_in_tools"]) == {"end_call"}
@@ -50,6 +51,7 @@ def test_tools_are_end_call_and_the_backend_tools() -> None:
         "tool_resolve",
         "tool_submit",
         "tool_status",
+        "tool_callback",
         "tool_note",
     ]
     assert not prompt.get("tools")
@@ -164,3 +166,35 @@ def test_add_note_tool_takes_the_ref_the_text_and_an_optional_urgent_flag() -> N
     assert set(schema["properties"]) == {"ref", "text", "urgent"}
     assert schema["properties"]["urgent"]["type"] == "boolean"
     assert schema["required"] == ["ref", "text"]
+
+
+def test_prompt_takes_a_callback_request_asking_one_optional_question() -> None:
+    """Ticket #24 / spec J5 "Callback Request", AC5.4: one optional "What's it about?", a yes
+    before recording, and never a callback time. The S tests check the spoken behavior."""
+    prompt = _agent()["prompt"]["prompt"]
+
+    assert "# J5: Callback Request" in prompt
+    assert '"What\'s it about?"' in prompt
+    assert "`create_callback_request`" in prompt
+    assert "Never say when anyone will call back" in prompt
+
+
+def test_accepting_the_callback_offer_after_a_failed_lookup_takes_a_callback_request() -> None:
+    """AC3.4 (#16 left the Callback offer unwired): accepting it now leads to J5."""
+    prompt = _agent()["prompt"]["prompt"]
+
+    assert "If they accept the offer to have someone call them back" in prompt
+    assert "put through or called back and you have no tool" not in prompt
+
+
+def test_callback_tool_takes_only_the_optional_reason() -> None:
+    """Architecture §4.2: `create_callback_request(reason?)`; the backend sets the rest."""
+    [tool] = [
+        t["tool_config"]
+        for t in desired_tools(ENV)
+        if t["tool_config"]["name"] == "create_callback_request"
+    ]
+    body = tool["api_schema"]["request_body_schema"]
+
+    assert list(body["properties"]) == ["reason"]
+    assert not body.get("required")

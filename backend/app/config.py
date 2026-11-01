@@ -95,6 +95,21 @@ def twilio_api_base() -> str:
     return os.environ.get("TWILIO_API_BASE") or "https://api.twilio.com"
 
 
+def postmark_server_token() -> str | None:
+    """Postmark server API token for the end-of-day email. Unset: each email is recorded failed."""
+    return os.environ.get("POSTMARK_SERVER_TOKEN") or None
+
+
+def postmark_from() -> str | None:
+    """Sender address of the end-of-day email (a verified Postmark sender). Unset: not sent."""
+    return os.environ.get("POSTMARK_FROM") or None
+
+
+def postmark_api_base() -> str:
+    """Postmark API base URL; `POSTMARK_API_BASE` overrides it (tests, stubs)."""
+    return os.environ.get("POSTMARK_API_BASE") or "https://api.postmarkapp.com"
+
+
 def frontend_dist() -> Path:
     """Built dashboard (`npm run build` output) served at `/`; defaults to `frontend/dist`."""
     configured = os.environ.get("FRONTEND_DIST")
