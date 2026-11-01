@@ -117,6 +117,7 @@ class RequestDetailOut(BaseModel):
     ref: str
     foreman: str
     job: str | None  # null = Unmatched
+    job_id: int | None  # null = Unmatched
     job_spoken: str
     category: str
     need: str
@@ -291,6 +292,7 @@ def _detail_out(found: RequestDetail) -> RequestDetailOut:
         ref=found.ref,
         foreman=found.foreman,
         job=found.job,
+        job_id=found.job_id,
         job_spoken=found.job_spoken,
         category=found.category,
         need=found.need,

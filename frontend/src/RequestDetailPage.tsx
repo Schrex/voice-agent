@@ -15,6 +15,7 @@ import { AcknowledgeAction } from "./AcknowledgeAction";
 import { useAuth } from "./App";
 import { CallRecordings } from "./CallRecordings";
 import { MergeAction } from "./MergeAction";
+import { EditFieldsAction } from "./EditFieldsAction";
 import { ResolveAction } from "./ResolveAction";
 import { StartAction } from "./StartAction";
 
@@ -33,6 +34,7 @@ const KINDS: Record<string, string> = {
   resolved: "Resolved",
   merged: "Merged",
   merged_in: "Merged in",
+  edited: "Edited",
 };
 
 /** One request's fields and its full audit history: who, when, what changed. */
@@ -105,6 +107,7 @@ function Detail({ request }: { request: RequestDetail }) {
           </div>
         )}
       </dl>
+      <EditFieldsAction request={request} />
       <AcknowledgeAction request={request} />
       <StartAction request={request} />
       <ResolveAction request={request} />

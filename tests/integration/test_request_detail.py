@@ -104,6 +104,7 @@ def test_detail_returns_the_request_fields(
         "ref": ref,
         "foreman": "Dale Kramer",
         "job": "Route 104 Widening",
+        "job_id": db_session.scalars(select(Job.id).where(Job.name == "Route 104 Widening")).one(),
         "job_spoken": "the 104 job",
         "category": "Trucking",
         "need": "tri-axle dump trucks",

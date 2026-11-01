@@ -152,7 +152,7 @@ describe("request detail", () => {
         "Recorded",
         "ref: R-1000need: tri-axle dump trucksstatus: Recorded",
       ],
-      ["Sun, Nov 1, 9:05 PM", "Casey Ng", "edited", "unit: — → trucks"],
+      ["Sun, Nov 1, 9:05 PM", "Casey Ng", "Edited", "unit: — → trucks"],
       ["Sun, Nov 1, 11:00 PM", "System", "flagged", "overdue: false → true"],
     ]);
   });

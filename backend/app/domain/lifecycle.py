@@ -7,6 +7,7 @@ Statuses and Outcomes are the glossary words, stored verbatim. Each move has one
 - `resolve`: any non-Resolved status → Resolved, Outcome and explanation required.
 - `merge`: Request A merged into Request B (ticket #33): A is resolved as `resolve` requires;
   B must be another Request that is not Resolved.
+- `edit`: not a move; a coordinator may edit fields or fix the Job of any non-Resolved Request.
 Any other move raises `TransitionNotAllowed`. The agent's narrower right (only Recorded or
 Acknowledged → Resolved/Withdrawn) is left to the ticket that builds the agent's withdrawal.
 """
@@ -43,6 +44,14 @@ class OwnerRequired(ValueError):
 
     def __init__(self) -> None:
         super().__init__("An Owner is required to acknowledge a request")
+
+
+class NotEditable(ValueError):
+    """A Resolved request is finished; its fields are no longer edited (ticket #31)."""
+
+    def __init__(self, current: "Status") -> None:
+        super().__init__(f"A {current.value} request cannot be edited")
+        self.current = current
 
 
 class OutcomeRequired(ValueError):
@@ -126,3 +135,10 @@ def merge(
     if target is Status.RESOLVED:
         raise TransitionNotAllowed(target, Status.RESOLVED)
     return resolve(source, outcome, explanation)
+
+
+def edit(current: Status) -> Status:
+    """The status is unchanged by an edit; a Resolved request cannot be edited."""
+    if current is Status.RESOLVED:
+        raise NotEditable(current)
+    return current

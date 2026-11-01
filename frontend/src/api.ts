@@ -92,6 +92,8 @@ export type RequestDetail = {
   foreman: string;
   /** Null when Unmatched. */
   job: string | null;
+  /** Null when Unmatched (ticket #31; optional so fixtures without it still type-check). */
+  job_id?: number | null;
   job_spoken: string;
   category: string;
   need: string;
@@ -283,5 +285,53 @@ export async function mergeRequest(
     body: JSON.stringify({ into, outcome, explanation }),
   });
   if (!response.ok) throw new Error(`merge ${ref} failed: ${response.status}`);
+  return (await response.json()) as RequestDetail;
+}
+
+/** Request categories (glossary "Category"), in the spec's order. */
+export const CATEGORIES = [
+  "Trucking",
+  "Equipment",
+  "Equipment Repair",
+  "Material",
+  "Labor",
+  "Information",
+  "Callback",
+  "Other",
+] as const;
+
+/** An active Job a request can be fixed to. */
+export type JobChoice = { id: number; name: string };
+
+/** Every active Job, sorted by name (`GET /api/jobs`). */
+export async function fetchJobs(accessToken: string): Promise<JobChoice[]> {
+  const response = await fetch("/api/jobs", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(`GET /api/jobs failed: ${response.status}`);
+  return ((await response.json()) as { jobs: JobChoice[] }).jobs;
+}
+
+/** The fields a coordinator can edit; only the ones sent change. */
+export type RequestEdit = Partial<{
+  job_id: number;
+  category: string;
+  need: string;
+  quantity: string | null;
+  unit: string | null;
+}>;
+
+/** Edit fields / fix the Job; resolves to the updated request. */
+export async function editRequest(
+  accessToken: string,
+  ref: string,
+  changes: RequestEdit,
+): Promise<RequestDetail> {
+  const response = await fetch(`/api/requests/${encodeURIComponent(ref)}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify(changes),
+  });
+  if (!response.ok) throw new Error(`edit ${ref} failed: ${response.status}`);
   return (await response.json()) as RequestDetail;
 }
