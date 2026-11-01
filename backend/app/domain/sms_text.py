@@ -81,3 +81,20 @@ def overdue_callback_text(*, ref: str, foreman: str, reason: str, recorded_at: d
         f"Overdue: Callback request {ref} from {foreman}, about: {reason or 'not stated'}. "
         f"Recorded {short_time(recorded_at)}, not Acknowledged"
     )
+
+
+NOT_STATED = "not stated"
+
+
+def transfer_text(foreman: str, job: str | None, job_spoken: str | None, about: str | None) -> str:
+    """Spec J5 step 2, verbatim: "Incoming transfer: <foreman>, <job>, about: <need or 'not
+    stated'>". An Unmatched Job is quoted as said (as in the Today text); a Job not said at all
+    is "not stated" too (open question on #25)."""
+    if job is not None:
+        job_text = job
+    elif job_spoken and job_spoken.strip():
+        job_text = f"“{job_spoken.strip()}” (Unmatched)"
+    else:
+        job_text = NOT_STATED
+    need = about.strip() if about and about.strip() else NOT_STATED
+    return f"Incoming transfer: {foreman}, {job_text}, about: {need}"

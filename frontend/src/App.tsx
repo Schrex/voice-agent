@@ -11,6 +11,7 @@ import { LoginPage } from "./LoginPage";
 import { QueuePage } from "./QueuePage";
 import { QuickEntryPage } from "./QuickEntryPage";
 import { RequestDetailPage } from "./RequestDetailPage";
+import { TransferPopups } from "./TransferPopups";
 
 type AuthState = { auth: AuthClient; session: AuthSession | null };
 
@@ -112,5 +113,10 @@ function RequireStaff({ children }: { children: (staff: Staff) => ReactNode }) {
       </main>
     );
   }
-  return <>{children(me.data.staff)}</>;
+  return (
+    <>
+      {children(me.data.staff)}
+      <TransferPopups />
+    </>
+  );
 }

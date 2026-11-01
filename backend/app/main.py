@@ -12,6 +12,7 @@ from app.http import (
     api_alerts,
     api_calls,
     api_drafts,
+    api_popups,
     api_quick_entry,
     api_request_edit,
     health,
@@ -46,5 +47,6 @@ app.include_router(api_calls.router)
 app.include_router(api_quick_entry.router)
 app.include_router(api_request_edit.router)
 app.include_router(api_alerts.router)
+app.include_router(api_popups.router)
 # Last: the dashboard's catch-all route must not shadow the API.
 spa.mount(app, frontend_dist())

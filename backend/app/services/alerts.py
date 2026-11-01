@@ -21,6 +21,7 @@ from app.domain.sms_text import (
     callback_request_text,
     short_date,
     today_request_text,
+    transfer_text,
 )
 from app.domain.urgency import Urgency
 from app.integrations.twilio_sms import SmsNotSent, SmsSender
@@ -108,6 +109,107 @@ def _today_request(session: Session, ref: str) -> tuple[Request, TodayRequestFac
         needed_by=request.needed_by,
         needed_by_spoken=request.needed_by_spoken,
     )
+
+
+def alert_transfer(
+    session: Session,
+    sms: SmsSender,
+    *,
+    call_id: int,
+    job_id: int | None,
+    job_spoken: str | None,
+    about: str | None,
+    now: datetime,
+) -> None:
+    """Tell the office who is being transferred (spec J5 step 2, AC5.3), before the transfer.
+
+    Records a dashboard pop-up (`detail` holds its text; `seen_at` set = dismissed) and texts
+    the on-duty Coordinator the same words. Once per call: a repeated call does nothing.
+    `job_id` names the Job only when it is an active Job; else the Job is quoted as said.
+    """
+    call = session.execute(select(Call).where(Call.id == call_id).with_for_update()).scalar_one()
+    already = session.scalar(
+        select(Alert.id).where(Alert.call_id == call_id, Alert.kind == "transfer").limit(1)
+    )
+    if already is not None or call.foreman is None:
+        session.rollback()
+        return
+    job = None
+    if job_id is not None:
+        job = session.scalar(select(Job.name).where(Job.id == job_id, Job.active))
+    foreman = call.foreman
+    text = transfer_text(
+        foreman=f"{foreman.first_name} {foreman.last_name}",
+        job=job,
+        job_spoken=job_spoken,
+        about=about,
+    )
+    staff, reason = on_duty_coordinator(session, now)
+    if staff is not None and not staff.phone_e164:
+        reason = f"{staff.name} has no phone number"
+    can_send = staff is not None and staff.phone_e164 is not None
+    session.add(
+        Alert(
+            call_id=call_id,
+            kind="transfer",
+            channel="popup",
+            sent_at=now,
+            status="sent",
+            detail=text,
+        )
+    )
+    texted = Alert(
+        call_id=call_id,
+        kind="transfer",
+        channel="sms",
+        to_staff_id=None if staff is None else staff.id,
+        sent_at=now,
+        status="pending" if can_send else "failed",
+        detail=None if can_send else reason,
+    )
+    session.add(texted)
+    session.commit()
+    if not can_send:
+        return
+    assert staff is not None and staff.phone_e164 is not None
+    try:
+        texted.provider_id = sms.send(staff.phone_e164, text)
+        texted.status = "sent"
+    except SmsNotSent as exc:
+        texted.status = "failed"
+        texted.detail = f"SMS not sent: {exc}"
+    session.commit()
+
+
+@dataclass(frozen=True)
+class Popup:
+    id: int
+    kind: str
+    text: str
+    at: datetime
+
+
+def open_popups(session: Session, since: datetime | None = None) -> list[Popup]:
+    """Dashboard pop-ups nobody has dismissed (after `since`, if given); newest first."""
+    query = select(Alert).where(Alert.channel == "popup", Alert.seen_at.is_(None))
+    if since is not None:
+        query = query.where(Alert.sent_at > since)
+    rows = session.scalars(query.order_by(Alert.sent_at.desc(), Alert.id.desc()))
+    return [Popup(id=a.id, kind=a.kind, text=a.detail or "", at=a.sent_at) for a in rows]
+
+
+class PopupNotFound(Exception):
+    pass
+
+
+def dismiss_popup(session: Session, popup_id: int, *, now: datetime) -> None:
+    """Hide the pop-up for everybody; dismissing it again keeps the first time."""
+    alert = session.get(Alert, popup_id, with_for_update=True)
+    if alert is None or alert.channel != "popup":
+        raise PopupNotFound(popup_id)
+    if alert.seen_at is None:
+        alert.seen_at = now
+    session.commit()
 
 
 @dataclass(frozen=True)

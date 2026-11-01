@@ -9,7 +9,9 @@
           "rejected": false,
           "foreman_first_name": "",
           "jobs": "",
-          "now_local": ""
+          "now_local": "",
+          "office_line_e164": "",
+          "open_requests": ""
         }
       },
       "prompt": {
@@ -22,6 +24,8 @@
           "${tool_find_open_requests}",
           "${tool_create_callback_request}",
           "${tool_add_note}",
+          "${tool_transfer_to_office}",
+          "${tool_find_duplicates}",
           "${tool_amend_request}"
         ],
         "built_in_tools": {
@@ -30,6 +34,24 @@
             "name": "end_call",
             "description": "End the call. Use it right after the rejection line when the caller is not on the Roster, and when the foreman is done.",
             "params": { "system_tool_type": "end_call" }
+          },
+          "transfer_to_number": {
+            "type": "system",
+            "name": "transfer_to_number",
+            "description": "Put the Foreman through to the Office Line. Use it only after transfer_to_office and after saying \"Connecting you to the office now.\"",
+            "params": {
+              "system_tool_type": "transfer_to_number",
+              "transfers": [
+                {
+                  "transfer_destination": {
+                    "type": "phone_dynamic_variable",
+                    "phone_number": "office_line_e164"
+                  },
+                  "condition": "The Foreman asks to talk to the office or to a person (for example \"let me talk to someone\", \"get me the office\", \"put me through\"), or accepts your offer to put him through to the office.",
+                  "transfer_type": "conference"
+                }
+              ]
+            }
           }
         }
       }

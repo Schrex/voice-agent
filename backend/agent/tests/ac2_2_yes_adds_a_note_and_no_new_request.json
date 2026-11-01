@@ -1,0 +1,92 @@
+{
+  "name": "AC2.2 yes, it is about that request: a note on it and no new request",
+  "type": "simulation",
+  "dynamic_variables": {
+    "rejected": false,
+    "foreman_first_name": "Dale",
+    "jobs": "Penfield Sewer Replacement; Route 104 Widening",
+    "now_local": "Sunday, November 1, 2026, 3:04 PM",
+    "office_line_e164": "+15855550150",
+    "open_requests": "R-1042: Trucking at Route 104 Widening, 3 trucks tri-axle dump trucks, needed by Monday, November 2 at 7:00 AM, recorded Saturday, October 31 at 6:45 AM"
+  },
+  "simulation_scenario": "You are Dale, a foreman on the Roster. When the assistant asks what you need, say: \"I need a truck at the 104 job Monday at nine.\" When it asks whether this is about your existing tri-axle dump trucks request, say: \"Yeah, that's the one.\" After it answers, say thanks, goodbye.",
+  "simulation_max_turns": 10,
+  "success_conditions": [
+    "Before any read-back or submit, the agent calls find_duplicates with job_id 14 and category Trucking, then asks whether this is about the existing tri-axle dump trucks request from Saturday, October 31 at 6:45 AM, as one question.",
+    "After the Foreman says yes, the agent calls add_note once with ref R-1042 and a text that carries the new need in the Foreman's words: a truck, Monday at nine.",
+    "The agent never calls submit_requests and does not give a new reference number.",
+    "After add_note returns ok, the agent says it was added to the request for the office (R-1042), and does not say anyone has seen it, been told or will act on it.",
+    "The agent never says whether trucks or anything else is available, never gives a time when anything will arrive, be done or be decided, and never says the existing request is confirmed."
+  ],
+  "tool_mock_config": {
+    "mocking_strategy": "selected",
+    "mocked_tool_ids": [
+      "${tool_find_jobs}",
+      "${tool_resolve_needed_by}",
+      "${tool_submit_requests}",
+      "${tool_find_open_requests}",
+      "${tool_create_callback_request}",
+      "${tool_add_note}",
+      "${tool_transfer_to_office}",
+      "${tool_find_duplicates}",
+      "${tool_amend_request}"
+    ],
+    "fallback_strategy": "raise_error"
+  },
+  "tool_mock_overrides": {
+    "${tool_find_jobs}": [
+      {
+        "mock_result": "[{\"job_id\": 14, \"name\": \"Route 104 Widening\", \"score\": 95}]",
+        "is_error": false
+      }
+    ],
+    "${tool_resolve_needed_by}": [
+      {
+        "mock_result": "{\"needed_by_resolved\": \"Monday, November 2 at 9:00 AM\", \"urgency\": \"Planned\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_submit_requests}": [
+      {
+        "mock_result": "{\"error\": \"The request could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_find_open_requests}": [
+      {
+        "mock_result": "[]",
+        "is_error": false
+      }
+    ],
+    "${tool_create_callback_request}": [
+      {
+        "mock_result": "{\"error\": \"The callback request could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_add_note}": [
+      {
+        "mock_result": "{\"ok\": true}",
+        "is_error": false
+      }
+    ],
+    "${tool_transfer_to_office}": [
+      {
+        "mock_result": "{\"ok\": true}",
+        "is_error": false
+      }
+    ],
+    "${tool_find_duplicates}": [
+      {
+        "mock_result": "[{\"ref\": \"R-1042\", \"job\": \"Route 104 Widening\", \"category\": \"Trucking\", \"need\": \"tri-axle dump trucks\", \"quantity\": 3, \"unit\": \"trucks\", \"needed_by\": \"Monday, November 2 at 7:00 AM\", \"recorded_at\": \"Saturday, October 31 at 6:45 AM\"}]",
+        "is_error": false
+      }
+    ],
+    "${tool_amend_request}": [
+      {
+        "mock_result": "{\"error\": \"The change could not be saved.\"}",
+        "is_error": false
+      }
+    ]
+  }
+}

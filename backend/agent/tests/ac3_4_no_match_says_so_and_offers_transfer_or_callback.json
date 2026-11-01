@@ -26,6 +26,8 @@
       "${tool_find_open_requests}",
       "${tool_create_callback_request}",
       "${tool_add_note}",
+      "${tool_transfer_to_office}",
+      "${tool_find_duplicates}",
       "${tool_amend_request}"
     ],
     "fallback_strategy": "raise_error"
@@ -64,6 +66,18 @@
     "${tool_add_note}": [
       {
         "mock_result": "{\"ok\": true}",
+        "is_error": false
+      }
+    ],
+    "${tool_transfer_to_office}": [
+      {
+        "mock_result": "{\"ok\": true}",
+        "is_error": false
+      }
+    ],
+    "${tool_find_duplicates}": [
+      {
+        "mock_result": "[]",
         "is_error": false
       }
     ],
