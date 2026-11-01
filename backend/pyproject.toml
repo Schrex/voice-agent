@@ -4,7 +4,10 @@ version = "0.1.0"
 description = "Voice agent backend: captures foremen's phoned-in Requests and tracks each to a resolution."
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "alembic>=1.13",
     "fastapi>=0.115",
+    "psycopg[binary]>=3.2",
+    "sqlalchemy>=2.0",
     "uvicorn[standard]>=0.30",
 ]
 
@@ -20,7 +23,7 @@ dev = [
 package = false
 
 [tool.pytest.ini_options]
-testpaths = ["../tests/unit"]
+testpaths = ["../tests/unit", "../tests/integration"]
 pythonpath = ["."]
 
 [tool.ruff]
