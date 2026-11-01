@@ -1,5 +1,9 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
+from app import jobs
 from app.config import frontend_dist
 from app.http import (
     api,
@@ -19,7 +23,17 @@ from app.observability import init_from_env
 
 init_from_env()
 
-app = FastAPI(title="Voice Agent")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    jobs.start_scheduler()  # scheduled jobs, architecture §6 (end-of-day summary, #23)
+    try:
+        yield
+    finally:
+        jobs.stop_scheduler()
+
+
+app = FastAPI(title="Voice Agent", lifespan=lifespan)
 app.include_router(health.router)
 app.include_router(hooks.router)
 app.include_router(tools.router)
