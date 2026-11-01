@@ -43,6 +43,16 @@ def today_request_text(facts: TodayRequestFacts) -> str:
     return f"Today request {request_line(facts)}"
 
 
+def overdue_request_text(facts: TodayRequestFacts, *, urgency: str, recorded_at: datetime) -> str:
+    """E.g. "Overdue: Today request R-1000 from Dale Kramer, Route 104 Widening: tri-axle dump
+    trucks, 3 trucks, needed by Sun, Nov 1, 5:00 PM. Recorded Sun, Nov 1, 3:04 PM, not
+    Acknowledged" (ticket #22)."""
+    return (
+        f"Overdue: {urgency} request {request_line(facts)}. "
+        f"Recorded {short_time(recorded_at)}, not Acknowledged"
+    )
+
+
 def request_line(facts: TodayRequestFacts) -> str:
     """E.g. "R-1000 from Dale Kramer, Route 104 Widening: tri-axle dump trucks, 3 trucks,
     needed by Sun, Nov 1, 5:00 PM" (also used by the end-of-day summary email, #23)."""
@@ -62,3 +72,12 @@ def callback_request_text(*, ref: str, foreman: str, caller_e164: str | None, re
     (ticket #24). No reason given → "about: not stated", as in the spec J5 transfer text."""
     who = f"{foreman} ({caller_e164})" if caller_e164 else foreman
     return f"Callback request {ref} from {who}, about: {reason or 'not stated'}"
+
+
+def overdue_callback_text(*, ref: str, foreman: str, reason: str, recorded_at: datetime) -> str:
+    """E.g. "Overdue: Callback request R-1042 from Dale Kramer, about: the pump. Recorded Sun,
+    Nov 1, 3:04 PM, not Acknowledged" (ticket #22, in #24's Callback wording)."""
+    return (
+        f"Overdue: Callback request {ref} from {foreman}, about: {reason or 'not stated'}. "
+        f"Recorded {short_time(recorded_at)}, not Acknowledged"
+    )

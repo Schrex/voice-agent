@@ -24,6 +24,7 @@ from app.domain.lifecycle import (
     transition,
 )
 from app.domain.timeparse import NeededBy, parse_needed_by, speakable, urgency_for
+from app.services.ack_window import set_ack_due_at
 from app.services.calls import Caller
 
 
@@ -92,6 +93,8 @@ def submit_requests(
         )
         for item, needed_by in zip(items, resolved, strict=True)
     ]
+    for request in requests:
+        set_ack_due_at(session, request)
     session.add_all(requests)
     session.flush()
     for request in requests:
@@ -141,6 +144,7 @@ def _recorded_fields(request: Request) -> dict[str, object]:
         "urgency": request.urgency,
         "status": request.status,
         "source": request.source,
+        "ack_due_at": _iso(request.ack_due_at),
     }
 
 
@@ -377,6 +381,7 @@ def log_request(
         source="coordinator",
         recorded_at=now,
     )
+    set_ack_due_at(session, request)
     session.add(request)
     session.flush()
     session.add(

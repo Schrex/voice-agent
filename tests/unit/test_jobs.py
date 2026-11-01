@@ -23,12 +23,26 @@ def test_the_app_runs_the_end_of_day_summary_every_minute_while_up(
     assert jobs.running_scheduler() is None
 
 
+def test_the_app_runs_the_overdue_sweep_every_minute_while_up(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Ticket #22."""
+    monkeypatch.delenv("SCHEDULER_ENABLED", raising=False)
+    with TestClient(app):
+        scheduler = jobs.running_scheduler()
+        assert scheduler is not None
+        job = scheduler.get_job("overdue_sweep")
+        assert job is not None
+        assert job.trigger.interval == timedelta(minutes=1)
+    assert jobs.running_scheduler() is None
+
+
 def test_scheduler_enabled_false_keeps_the_jobs_off_while_up(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("SCHEDULER_ENABLED", "false")
     with TestClient(app):  # lifespan has run: the app is up
-        assert jobs.running_scheduler() is None
+        assert jobs.running_scheduler() is None  # neither the summary nor the Overdue sweep
 
 
 @pytest.mark.parametrize(

@@ -26,7 +26,7 @@ init_from_env()
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     if scheduler_enabled():
-        jobs.start_scheduler()  # scheduled jobs, architecture §6 (end-of-day summary, #23)
+        jobs.start_scheduler()  # architecture §6: end-of-day summary (#23), Overdue sweep (#22)
     try:
         yield
     finally:

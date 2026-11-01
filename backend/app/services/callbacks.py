@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.db.models import CallRequest, Request, RequestEvent
 from app.domain.lifecycle import Status, transition
 from app.domain.urgency import Urgency
+from app.services.ack_window import set_ack_due_at
 from app.services.calls import Caller
 from app.services.requests import _recorded_fields
 
@@ -39,6 +40,7 @@ def create_callback_request(
         source="ai_call",
         recorded_at=now,
     )
+    set_ack_due_at(session, request)  # Today: the 15-min window (spec J5, ticket #22)
     session.add(request)
     session.flush()
     session.add(
