@@ -23,6 +23,7 @@ TOOL_IDS = {
     "create_callback_request": "tool_callback",
     "add_note": "tool_note",
     "transfer_to_office": "tool_transfer",
+    "find_duplicates": "tool_duplicates",
     "start_emergency": "tool_emergency",
 }
 
@@ -44,7 +45,8 @@ def test_first_message_is_automated_recorded_and_names_the_foreman() -> None:
 def test_tools_are_the_system_tools_and_the_backend_tools() -> None:
     """end_call and transfer_to_number (#25) are built in; find_jobs (#13), resolve_needed_by
     (#14), submit_requests (#7), find_open_requests (#16), create_callback_request (#24),
-    add_note (#17) and transfer_to_office (#25) are attached by their workspace ids."""
+    add_note (#17), transfer_to_office (#25) and find_duplicates (#18) are attached by their
+    workspace ids."""
     prompt = _agent()["prompt"]
 
     assert set(prompt["built_in_tools"]) == {"end_call", "transfer_to_number"}
@@ -57,6 +59,7 @@ def test_tools_are_the_system_tools_and_the_backend_tools() -> None:
         "tool_callback",
         "tool_note",
         "tool_transfer",
+        "tool_duplicates",
         "tool_emergency",
     ]
     assert not prompt.get("tools")
@@ -248,6 +251,35 @@ def test_callback_tool_takes_only_the_optional_reason() -> None:
 
     assert list(body["properties"]) == ["reason"]
     assert not body.get("required")
+
+
+def test_prompt_checks_each_need_for_a_duplicate_before_the_read_back() -> None:
+    """Ticket #18 / spec J2, AC2.1/AC2.2: the backend decides what is a duplicate
+    (`find_duplicates`); the agent asks "Is this about your <need> request from <time>?";
+    yes → `add_note` on that Request and no new Request, no → submitted as usual."""
+    prompt = _agent()["prompt"]["prompt"]
+
+    assert "# J2: Duplicate check" in prompt
+    assert "`find_duplicates`" in prompt
+    assert "Is this about your" in prompt
+    assert "{{open_requests}}" in prompt
+    section = prompt.split("# J2: Duplicate check", 1)[1].split("\n# ", 1)[0]
+    assert "`add_note`" in section
+    assert "`submit_requests`" in section
+
+
+def test_find_duplicates_tool_takes_the_job_id_and_the_category() -> None:
+    [tool] = [
+        t["tool_config"]
+        for t in desired_tools(ENV)
+        if t["tool_config"]["name"] == "find_duplicates"
+    ]
+    schema = tool["api_schema"]["request_body_schema"]
+
+    assert set(schema["properties"]) == {"job_id", "category"}
+    assert schema["properties"]["job_id"]["type"] == "integer"
+    assert schema["properties"]["category"]["enum"] == list(CATEGORIES)
+    assert sorted(schema["required"]) == ["category", "job_id"]
 
 
 # --- Emergency (ticket #26, spec J6) ---

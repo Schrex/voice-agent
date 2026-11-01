@@ -22,6 +22,7 @@ from app.domain.draft import DraftItem
 from app.domain.local_time import speakable_local_time
 from app.domain.urgency import Urgency
 from app.services.drafts import save_draft
+from app.services.duplicates import open_requests_for_call_start
 from app.services.settings import office_line
 
 
@@ -36,6 +37,8 @@ class CallStart:
     now_local: str = ""
     office_line_e164: str = ""
     """The Office Line a Transfer dials (`settings`); empty if not set (ticket #25)."""
+    open_requests: str = ""
+    """The Foreman's open Requests, one per line (ticket #18, spec J2)."""
 
 
 def rejection_line(main_number: str) -> str:
@@ -101,6 +104,7 @@ def start_call(
         jobs=list(jobs),
         now_local=speakable_local_time(now),
         office_line_e164=office_line(session) or "",
+        open_requests=open_requests_for_call_start(session, call.foreman.id),
     )
 
 

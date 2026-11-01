@@ -10,7 +10,8 @@
           "foreman_first_name": "",
           "jobs": "",
           "now_local": "",
-          "office_line_e164": ""
+          "office_line_e164": "",
+          "open_requests": ""
         }
       },
       "prompt": {
@@ -24,6 +25,7 @@
           "${tool_create_callback_request}",
           "${tool_add_note}",
           "${tool_transfer_to_office}",
+          "${tool_find_duplicates}",
           "${tool_start_emergency}"
         ],
         "built_in_tools": {

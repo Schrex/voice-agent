@@ -2,7 +2,7 @@
   "tool_config": {
     "type": "webhook",
     "name": "add_note",
-    "description": "Append the Foreman's note to one of their own Requests that find_open_requests returned, for example \"need an answer today\". Never creates a Request and never changes the Request's fields. Returns {\"ok\": true} when the note is added, or {\"error\": \"...\"} if it could not be added.",
+    "description": "Append the Foreman's note to one of their own Requests that find_open_requests or find_duplicates returned, for example \"need an answer today\". Never creates a Request and never changes the Request's fields. Returns {\"ok\": true} when the note is added, or {\"error\": \"...\"} if it could not be added.",
     "api_schema": {
       "url": "${backend_url}/tools/add_note",
       "method": "POST",
@@ -16,7 +16,7 @@
         "properties": {
           "ref": {
             "type": "string",
-            "description": "The ref of the Request as find_open_requests returned it, for example R-1042."
+            "description": "The ref of the Request as find_open_requests or find_duplicates returned it, for example R-1042."
           },
           "text": {
             "type": "string",

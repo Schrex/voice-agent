@@ -25,7 +25,8 @@
       "${tool_create_callback_request}",
       "${tool_add_note}",
       "${tool_transfer_to_office}",
-      "${tool_start_emergency}"
+      "${tool_start_emergency}",
+      "${tool_find_duplicates}"
     ],
     "fallback_strategy": "raise_error"
   },
@@ -75,6 +76,12 @@
     "${tool_start_emergency}": [
       {
         "mock_result": "{\"error\": \"The emergency could not be recorded.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_find_duplicates}": [
+      {
+        "mock_result": "[]",
         "is_error": false
       }
     ]
