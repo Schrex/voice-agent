@@ -21,11 +21,15 @@
             "items": {
               "type": "object",
               "description": "One confirmed need.",
-              "required": ["job_id", "category", "need"],
+              "required": ["job_spoken", "category", "need"],
               "properties": {
                 "job_id": {
                   "type": "integer",
-                  "description": "The job_id of the Job from the Active Jobs list. Never spoken."
+                  "description": "The job_id that find_jobs returned for the Job the Foreman confirmed. Leave it out when find_jobs found no Job (Unmatched). Never spoken."
+                },
+                "job_spoken": {
+                  "type": "string",
+                  "description": "The Job exactly as the Foreman said it, for example 'the 104 job'. Always sent, matched or not."
                 },
                 "category": {
                   "type": "string",

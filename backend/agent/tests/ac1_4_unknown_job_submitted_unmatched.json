@@ -1,0 +1,72 @@
+{
+  "name": "AC1.4 an unknown Job is submitted as Unmatched without a job_id",
+  "type": "tool",
+  "dynamic_variables": {
+    "rejected": false,
+    "foreman_first_name": "Dale",
+    "jobs": "Penfield Sewer Replacement; Route 104 Widening",
+    "now_local": "Sunday, November 1, 2026, 3:04 PM"
+  },
+  "chat_history": [
+    {
+      "role": "agent",
+      "message": "Hi Dale, this is the Schreiber Excavating automated assistant. This call is recorded. What do you need?",
+      "time_in_call_secs": 0
+    },
+    {
+      "role": "user",
+      "message": "I need one excavator operator at the Smith pit tomorrow at 6:30 AM.",
+      "time_in_call_secs": 6
+    },
+    {
+      "role": "agent",
+      "message": null,
+      "time_in_call_secs": 8,
+      "tool_calls": [
+        {
+          "type": "webhook",
+          "request_id": "find_jobs_0001",
+          "tool_name": "find_jobs",
+          "tool_id": "${tool_find_jobs}",
+          "params_as_json": "{\"query\": \"the Smith pit\"}",
+          "tool_has_been_called": true
+        }
+      ],
+      "tool_results": [
+        {
+          "type": "webhook",
+          "request_id": "find_jobs_0001",
+          "tool_name": "find_jobs",
+          "result_value": "[]",
+          "is_error": false,
+          "tool_has_been_called": true
+        }
+      ]
+    },
+    {
+      "role": "agent",
+      "message": "I couldn't match the Smith pit to a Job, so I'll record it as you said it. One excavator operator at the Smith pit, tomorrow at 6:30 AM. Should I submit it?",
+      "time_in_call_secs": 12
+    },
+    {
+      "role": "user",
+      "message": "Yes.",
+      "time_in_call_secs": 16
+    }
+  ],
+  "tool_call_parameters": {
+    "referenced_tool": {
+      "id": "${tool_submit_requests}",
+      "type": "webhook"
+    },
+    "parameters": [
+      {
+        "path": "items",
+        "eval": {
+          "type": "llm",
+          "description": "Exactly one item, with no job_id at all (not 12, not 14, not any number), job_spoken naming the Smith pit, category Labor, quantity 1, and needed_by_spoken saying tomorrow at 6:30 AM."
+        }
+      }
+    ]
+  }
+}
