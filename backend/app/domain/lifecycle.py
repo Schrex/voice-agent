@@ -10,8 +10,10 @@ Statuses and Outcomes are the glossary words, stored verbatim. Each move has one
 - `edit`: not a move; a coordinator may edit fields or fix the Job of any non-Resolved Request.
 - `may_amend`: not a move; a Foreman's change by phone applies only before In Progress (spec J4,
   ticket #19); from In Progress on it becomes a note and a Change requested flag instead.
-Any other move raises `TransitionNotAllowed`. The agent's narrower right (only Recorded or
-Acknowledged → Resolved/Withdrawn) is left to the ticket that builds the agent's withdrawal.
+- `withdraw`: the agent's narrower right (§5; ticket #20): only Recorded or Acknowledged →
+  Resolved with Outcome Withdrawn and the explanation "Withdrawn by foreman". From In Progress on
+  the Foreman's withdrawal is a Change requested flag instead (`may_withdraw` is False).
+Any other move raises `TransitionNotAllowed`.
 `mark_informed` (Foreman Informed, not a status) is allowed on a Resolved request, once.
 """
 
@@ -156,6 +158,22 @@ def may_amend(current: Status) -> bool:
     """Whether the Foreman's change is applied (Recorded or Acknowledged); else it is only
     flagged Change requested for the office."""
     return current in AMENDABLE_STATUSES
+
+
+# The explanation the agent records when the Foreman withdraws a Request (ticket #20).
+WITHDRAWN_BY_FOREMAN = "Withdrawn by foreman"
+
+
+def may_withdraw(current: Status) -> bool:
+    """Whether the agent may resolve the Request as Withdrawn (Recorded or Acknowledged, §5)."""
+    return current in AMENDABLE_STATUSES
+
+
+def withdraw(current: Status) -> tuple[Status, Outcome, str]:
+    """Recorded/Acknowledged → Resolved, Outcome Withdrawn, "Withdrawn by foreman"; else raises."""
+    if not may_withdraw(current):
+        raise TransitionNotAllowed(current, Status.RESOLVED)
+    return Status.RESOLVED, Outcome.WITHDRAWN, WITHDRAWN_BY_FOREMAN
 
 
 class NotResolved(ValueError):

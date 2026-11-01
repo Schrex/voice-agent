@@ -174,12 +174,13 @@ def _tool_id(el: FakeElevenLabs, name: str) -> str:
         "start_emergency",
         "submit_requests",
         "transfer_to_office",
+        "withdraw_request",
     ],
 )
 def test_push_creates_each_tool_pointing_at_the_env_backend(el: FakeElevenLabs, name: str) -> None:
     push(ENV, el.client())
 
-    assert len(el.tools) == 10
+    assert len(el.tools) == 11
     config = el.tools[_tool_id(el, name)]["tool_config"]
     assert config["type"] == "webhook"
     assert config["api_schema"]["url"] == f"https://backend.example.test/tools/{name}"
@@ -205,6 +206,7 @@ def test_pushed_agent_uses_the_created_tools_by_id(el: FakeElevenLabs) -> None:
         _tool_id(el, "find_duplicates"),
         _tool_id(el, "amend_request"),
         _tool_id(el, "start_emergency"),
+        _tool_id(el, "withdraw_request"),
     ]
 
 
@@ -269,6 +271,7 @@ def test_push_creates_each_repo_test_by_name(el: FakeElevenLabs) -> None:
         "AC3.4 accepting the Callback offer after no match records a Callback Request",
         "AC3.4 no matching request: says it cannot find one and offers Transfer or Callback",
         'AC3.5 "need an answer today" is an urgent note on the existing request, not a new one',
+        "AC4.1 cancelling a Recorded request withdraws it after a yes and says so",
         "AC4.2 a new time for an In Progress request is flagged for the office, not changed",
         "AC5.1 mid-intake get me the office: transfers at once without asking why",
         "AC5.4 Callback Request recorded after a yes, with no callback time promised",
@@ -286,6 +289,7 @@ def test_push_creates_each_repo_test_by_name(el: FakeElevenLabs) -> None:
         "J1 quantity corrected during read-back is the value submitted",
         "J2 no, it is a new one: a new request is submitted",
         "J3 step 2: several matching requests, asks which one by need and Job",
+        "J4 withdrawing an In Progress request is flagged for the office, not withdrawn",
         "J5 transfers even when the office could not be told",
         "J6 transfers even when the Emergency could not be recorded",
     ]
@@ -382,7 +386,7 @@ def test_cli_prints_one_line_per_object_and_exits_0(
     assert main(["--env", "staging"], client=el.client(), agent_dir=agent_dir) == 0
 
     out = capsys.readouterr().out.splitlines()
-    assert out[:11] == [
+    assert out[:12] == [
         "tool 'add_note': created (tool_0001)",
         "tool 'amend_request': created (tool_0002)",
         "tool 'create_callback_request': created (tool_0003)",
@@ -393,10 +397,11 @@ def test_cli_prints_one_line_per_object_and_exits_0(
         "tool 'start_emergency': created (tool_0008)",
         "tool 'submit_requests': created (tool_0009)",
         "tool 'transfer_to_office': created (tool_0010)",
+        "tool 'withdraw_request': created (tool_0011)",
         "agent 'Field Request Assistant (test)': created (agent_0001)",
     ]
     second = out[len(out) // 2 :]
-    assert second[:11] == [
+    assert second[:12] == [
         "tool 'add_note': unchanged",
         "tool 'amend_request': unchanged",
         "tool 'create_callback_request': unchanged",
@@ -407,11 +412,12 @@ def test_cli_prints_one_line_per_object_and_exits_0(
         "tool 'start_emergency': unchanged",
         "tool 'submit_requests': unchanged",
         "tool 'transfer_to_office': unchanged",
+        "tool 'withdraw_request': unchanged",
         "agent 'Field Request Assistant (test)': unchanged",
     ]
-    assert len(second) == 11 + len(list((agent_dir / "tests").glob("*.json"))) + 1
+    assert len(second) == 12 + len(list((agent_dir / "tests").glob("*.json"))) + 1
     assert all(
-        line.startswith("test '") and line.endswith("': unchanged") for line in second[11:-1]
+        line.startswith("test '") and line.endswith("': unchanged") for line in second[12:-1]
     )
     assert second[-1] == "No changes."
 

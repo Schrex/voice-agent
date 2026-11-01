@@ -31,6 +31,7 @@ from app.services.jobs import find_jobs
 from app.services.notes import NoteRequestNotFound, add_note_for_caller
 from app.services.requests import NewItem, resolve_needed_by, submit_requests
 from app.services.status_lookup import find_open_requests
+from app.services.withdraw import WithdrawRequestNotFound, withdraw_request
 
 log = logging.getLogger(__name__)
 
@@ -591,3 +592,48 @@ def start_emergency_tool(
         return {"error": EMERGENCY_NOT_RECORDED}
     log.info("start_emergency", extra={**log_ctx, "ref": ref})
     return {"ref": ref}
+
+
+# --- withdraw_request (ticket #20, spec J4) ---
+
+NOT_WITHDRAWN = "The request could not be withdrawn."
+WITHDRAW_REQUEST_NOT_FOUND = "I couldn't find that request."
+
+
+class WithdrawBody(BaseModel):
+    """Unknown fields (such as a foreman id) are ignored."""
+
+    ref: str = Field(min_length=1)
+    """As `find_open_requests` returned it ("R-1042")."""
+
+
+@router.post("/withdraw_request")
+def withdraw_request_tool(
+    body: Annotated[Any, Body()],
+    caller: Annotated[Caller, Depends(get_caller)],
+    session: Annotated[Session, Depends(get_session)],
+    clock: Annotated[Clock, Depends(get_clock)],
+    x_conversation_id: Annotated[str | None, Header()] = None,
+) -> Any:
+    """Before In Progress the Request is Resolved/Withdrawn: `{"applied": true}`. At or after In
+    Progress nothing changes; the Request gets a note and the Change requested flag:
+    `{"applied": false}`.
+    """
+    log_ctx = {"conversation_id": x_conversation_id}
+    try:
+        parsed = WithdrawBody.model_validate(body, strict=True)
+    except ValidationError:
+        log.warning("withdraw_request_invalid", extra=log_ctx)
+        return {"error": NOT_WITHDRAWN}
+    try:
+        applied = withdraw_request(session, caller=caller, ref=parsed.ref, now=clock())
+    except WithdrawRequestNotFound:
+        session.rollback()
+        log.info("withdraw_request_not_found", extra=log_ctx)
+        return {"error": WITHDRAW_REQUEST_NOT_FOUND}
+    except Exception:
+        session.rollback()
+        log.exception("withdraw_request_failed", extra=log_ctx)
+        return {"error": NOT_WITHDRAWN}
+    log.info("withdraw_request", extra={**log_ctx, "ref": parsed.ref, "applied": applied})
+    return {"applied": applied}

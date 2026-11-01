@@ -42,6 +42,7 @@ TOOL_IDS = {
     "find_duplicates": "tool_duplicates",
     "amend_request": "tool_amend",
     "start_emergency": "tool_emergency",
+    "withdraw_request": "tool_withdraw",
 }
 
 

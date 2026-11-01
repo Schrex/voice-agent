@@ -28,7 +28,8 @@
       "${tool_transfer_to_office}",
       "${tool_find_duplicates}",
       "${tool_amend_request}",
-      "${tool_start_emergency}"
+      "${tool_start_emergency}",
+      "${tool_withdraw_request}"
     ],
     "fallback_strategy": "raise_error"
   },
@@ -90,6 +91,12 @@
     "${tool_start_emergency}": [
       {
         "mock_result": "{\"ref\": \"R-1099\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_withdraw_request}": [
+      {
+        "mock_result": "{\"error\": \"The request could not be withdrawn.\"}",
         "is_error": false
       }
     ]

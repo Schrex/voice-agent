@@ -27,7 +27,8 @@
       "${tool_transfer_to_office}",
       "${tool_start_emergency}",
       "${tool_find_duplicates}",
-      "${tool_amend_request}"
+      "${tool_amend_request}",
+      "${tool_withdraw_request}"
     ],
     "fallback_strategy": "raise_error"
   },
@@ -89,6 +90,12 @@
     "${tool_amend_request}": [
       {
         "mock_result": "{\"error\": \"The change could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_withdraw_request}": [
+      {
+        "mock_result": "{\"error\": \"The request could not be withdrawn.\"}",
         "is_error": false
       }
     ]
