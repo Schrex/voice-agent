@@ -1,0 +1,26 @@
+{
+  "name": "AC8.1 unrostered caller: call ends after the rejection line",
+  "type": "tool",
+  "dynamic_variables": {
+    "rejected": true,
+    "foreman_first_name": "",
+    "jobs": "",
+    "now_local": ""
+  },
+  "chat_history": [
+    {
+      "role": "agent",
+      "message": "This line is for registered crew leaders. Please call the office at 585-555-0100.",
+      "time_in_call_secs": 0
+    },
+    {
+      "role": "user",
+      "message": "Hello? I need a truck at Route 104 tomorrow.",
+      "time_in_call_secs": 6
+    }
+  ],
+  "tool_call_parameters": {
+    "referenced_tool": { "id": "end_call", "type": "system" },
+    "parameters": []
+  }
+}

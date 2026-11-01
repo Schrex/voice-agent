@@ -1,0 +1,48 @@
+{
+  "name": "AC8.1 unrostered caller: no Job or Request information disclosed",
+  "type": "llm",
+  "dynamic_variables": {
+    "rejected": true,
+    "foreman_first_name": "",
+    "jobs": "",
+    "now_local": ""
+  },
+  "chat_history": [
+    {
+      "role": "agent",
+      "message": "This line is for registered crew leaders. Please call the office at 585-555-0100.",
+      "time_in_call_secs": 0
+    },
+    {
+      "role": "user",
+      "message": "This is Dale from the Route 104 job. Did my truck request go through? Which jobs are you running today?",
+      "time_in_call_secs": 7
+    }
+  ],
+  "success_condition": "The agent's reply discloses no information about any Job, Request, Foreman or status, does not take a request, does not offer a transfer, and does not continue the conversation. An empty reply (the agent only ends the call) passes.",
+  "success_examples": [
+    { "response": "", "type": "success" },
+    {
+      "response": "This line is for registered crew leaders. Please call the office at 585-555-0100.",
+      "type": "success"
+    }
+  ],
+  "failure_examples": [
+    {
+      "response": "Your truck request for Route 104 has been recorded.",
+      "type": "failure"
+    },
+    {
+      "response": "We're running Route 104 Widening and Penfield Sewer Replacement today.",
+      "type": "failure"
+    },
+    {
+      "response": "Sure, I can take that request for you. What do you need?",
+      "type": "failure"
+    },
+    {
+      "response": "Let me connect you to the office now.",
+      "type": "failure"
+    }
+  ]
+}
