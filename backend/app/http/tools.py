@@ -24,6 +24,7 @@ from app.integrations.twilio_sms import SmsSender
 from app.services.alerts import alert_callback, alert_new_today, alert_transfer
 from app.services.callbacks import create_callback_request
 from app.services.calls import Caller, caller_for_conversation
+from app.services.duplicates import find_duplicates
 from app.services.jobs import find_jobs
 from app.services.notes import NoteRequestNotFound, add_note_for_caller
 from app.services.requests import NewItem, resolve_needed_by, submit_requests
@@ -353,6 +354,61 @@ def add_note_tool(
         return {"error": NOTE_NOT_SAVED}
     log.info("add_note", extra={**log_ctx, "ref": parsed.ref, "urgent": parsed.urgent})
     return {"ok": True}
+
+
+# --- find_duplicates (ticket #18, spec J2) ---
+
+NOT_CHECKED = "Your open Requests could not be checked."
+
+
+class FindDuplicatesBody(BaseModel):
+    """The new need's Job and Category. Unknown fields (such as a foreman id) are ignored."""
+
+    job_id: int
+    """From `find_jobs`. An Unmatched need has none and is never checked."""
+    category: Category
+
+
+@router.post("/find_duplicates")
+def find_duplicates_tool(
+    body: Annotated[Any, Body()],
+    caller: Annotated[Caller, Depends(get_caller)],
+    session: Annotated[Session, Depends(get_session)],
+    x_conversation_id: Annotated[str | None, Header()] = None,
+) -> Any:
+    """The caller's open Requests a new need on this Job and Category duplicates; `[]` if none.
+
+    Writes nothing. The agent asks whether the need is about one of them: yes → `add_note`
+    on it, no → `submit_requests`.
+    """
+    log_ctx = {"conversation_id": x_conversation_id}
+    try:
+        parsed = FindDuplicatesBody.model_validate(body, strict=True)
+    except ValidationError:
+        log.warning("find_duplicates_invalid", extra=log_ctx)
+        return {"error": NOT_CHECKED}
+    try:
+        found = find_duplicates(
+            session, foreman_id=caller.foreman_id, job_id=parsed.job_id, category=parsed.category
+        )
+    except Exception:
+        session.rollback()
+        log.exception("find_duplicates_failed", extra=log_ctx)
+        return {"error": NOT_CHECKED}
+    log.info("find_duplicates", extra={**log_ctx, "ref": [d.ref for d in found]})
+    return [
+        {
+            "ref": d.ref,
+            "job": d.job,
+            "category": d.category,
+            "need": d.need,
+            "quantity": _number(d.quantity),
+            "unit": d.unit,
+            "needed_by": d.needed_by,
+            "recorded_at": d.recorded_at,
+        }
+        for d in found
+    ]
 
 
 # --- transfer_to_office (ticket #25, spec J5) ---
