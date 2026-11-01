@@ -271,6 +271,28 @@ class RequestEvent(Base):
     after: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
 
+class RequestNote(Base):
+    """A note on a Request (ticket #17), optionally urgent; appended, never edited.
+
+    `author_type` uses the audit actor types; `author_id` is null for the agent (the Foreman is
+    on the Request) and the staff id for a coordinator. Adding one also writes a `note_added`
+    event in the same transaction.
+    """
+
+    __tablename__ = "request_notes"
+    __table_args__ = (
+        CheckConstraint(_one_of("author_type", ACTOR_TYPES), name="author_type_values"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    request_id: Mapped[int] = mapped_column(ForeignKey("requests.id"), index=True)
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    author_type: Mapped[str] = mapped_column(String(10))
+    author_id: Mapped[str | None] = mapped_column(String(64))
+    text: Mapped[str] = mapped_column(Text)
+    urgent: Mapped[bool] = mapped_column(default=False, server_default="false")
+
+
 CALL_REQUEST_RELATIONS = ("created", "looked_up", "amended")
 
 

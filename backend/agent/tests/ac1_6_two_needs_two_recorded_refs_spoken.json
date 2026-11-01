@@ -22,7 +22,8 @@
       "${tool_find_jobs}",
       "${tool_resolve_needed_by}",
       "${tool_submit_requests}",
-      "${tool_find_open_requests}"
+      "${tool_find_open_requests}",
+      "${tool_add_note}"
     ],
     "fallback_strategy": "raise_error"
   },
@@ -48,6 +49,12 @@
     "${tool_find_open_requests}": [
       {
         "mock_result": "[]",
+        "is_error": false
+      }
+    ],
+    "${tool_add_note}": [
+      {
+        "mock_result": "{\"ok\": true}",
         "is_error": false
       }
     ]

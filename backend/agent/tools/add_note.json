@@ -1,0 +1,34 @@
+{
+  "tool_config": {
+    "type": "webhook",
+    "name": "add_note",
+    "description": "Append the Foreman's note to one of their own Requests that find_open_requests returned, for example \"need an answer today\". Never creates a Request and never changes the Request's fields. Returns {\"ok\": true} when the note is added, or {\"error\": \"...\"} if it could not be added.",
+    "api_schema": {
+      "url": "${backend_url}/tools/add_note",
+      "method": "POST",
+      "request_headers": {
+        "X-Tool-Secret": { "secret_id": "${tool_secret_id}" },
+        "X-Conversation-Id": { "variable_name": "system__conversation_id" }
+      },
+      "request_body_schema": {
+        "type": "object",
+        "description": "The Request and the note, after it is clear which Request the note is for.",
+        "properties": {
+          "ref": {
+            "type": "string",
+            "description": "The ref of the Request as find_open_requests returned it, for example R-1042."
+          },
+          "text": {
+            "type": "string",
+            "description": "The note in the Foreman's own words, for example \"need an answer today\"."
+          },
+          "urgent": {
+            "type": "boolean",
+            "description": "true when the Foreman says they need it sooner or need an answer today; leave it out otherwise."
+          }
+        },
+        "required": ["ref", "text"]
+      }
+    }
+  }
+}

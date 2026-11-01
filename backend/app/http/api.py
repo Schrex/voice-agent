@@ -158,6 +158,14 @@ class OwnerOut(BaseModel):
     name: str
 
 
+class NoteOut(BaseModel):
+    at: str  # UTC, ISO 8601 with "Z"
+    author_type: str  # agent | staff | system
+    author: str | None  # the staff member's name; null for the agent
+    text: str
+    urgent: bool
+
+
 class RequestDetailOut(BaseModel):
     ref: str
     foreman: str
@@ -185,6 +193,7 @@ class RequestDetailOut(BaseModel):
     default_owner_id: int | None  # the category's default Owner, offered when acknowledging
     events: list[EventOut]  # oldest first
     calls: list[LinkedCallOut]  # oldest first
+    notes: list[NoteOut]  # oldest first (ticket #17)
 
 
 @router.get("/requests/{ref}")
@@ -401,6 +410,16 @@ def _detail_out(found: RequestDetail, now: datetime, after: timedelta) -> Reques
         calls=[
             LinkedCallOut(id=c.id, started_at=_utc(c.started_at), relation=c.relation)
             for c in found.calls
+        ],
+        notes=[
+            NoteOut(
+                at=_utc(n.at),
+                author_type=n.author_type,
+                author=n.author,
+                text=n.text,
+                urgent=n.urgent,
+            )
+            for n in found.notes
         ],
     )
 

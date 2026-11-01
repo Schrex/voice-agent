@@ -19,7 +19,8 @@
           "${tool_find_jobs}",
           "${tool_resolve_needed_by}",
           "${tool_submit_requests}",
-          "${tool_find_open_requests}"
+          "${tool_find_open_requests}",
+          "${tool_add_note}"
         ],
         "built_in_tools": {
           "end_call": {
