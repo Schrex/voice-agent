@@ -222,3 +222,37 @@ form.action {
   gap: 0.75rem;
   margin: 1rem 0 2rem;
 }
+
+/* Incoming-transfer pop-ups (#25): fixed, so they show over any page. */
+.popups {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: min(24rem, calc(100vw - 2rem));
+}
+
+.popup {
+  padding: 0.75rem 1rem;
+  border: 1px solid #8fb3e0;
+  border-radius: 0.25rem;
+  background: #eaf2fb;
+  color: #12355e;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+}
+
+.popup h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+
+.popup p {
+  margin: 0 0 0.5rem;
+}
+
+.popup-time {
+  font-size: 0.875rem;
+}

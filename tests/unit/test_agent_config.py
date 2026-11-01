@@ -21,6 +21,7 @@ TOOL_IDS = {
     "find_open_requests": "tool_status",
     "create_callback_request": "tool_callback",
     "add_note": "tool_note",
+    "transfer_to_office": "tool_transfer",
 }
 
 
@@ -38,13 +39,13 @@ def test_first_message_is_automated_recorded_and_names_the_foreman() -> None:
     assert "{{foreman_first_name}}" in first
 
 
-def test_tools_are_end_call_and_the_backend_tools() -> None:
-    """end_call (built-in) hangs up; find_jobs (#13), resolve_needed_by (#14),
-    submit_requests (#7), find_open_requests (#16), create_callback_request (#24) and
-    add_note (#17) are attached by their workspace ids."""
+def test_tools_are_the_system_tools_and_the_backend_tools() -> None:
+    """end_call and transfer_to_number (#25) are built in; find_jobs (#13), resolve_needed_by
+    (#14), submit_requests (#7), find_open_requests (#16), create_callback_request (#24),
+    add_note (#17) and transfer_to_office (#25) are attached by their workspace ids."""
     prompt = _agent()["prompt"]
 
-    assert set(prompt["built_in_tools"]) == {"end_call"}
+    assert set(prompt["built_in_tools"]) == {"end_call", "transfer_to_number"}
     assert prompt["built_in_tools"]["end_call"]["params"] == {"system_tool_type": "end_call"}
     assert prompt["tool_ids"] == [
         "tool_find",
@@ -53,8 +54,54 @@ def test_tools_are_end_call_and_the_backend_tools() -> None:
         "tool_status",
         "tool_callback",
         "tool_note",
+        "tool_transfer",
     ]
     assert not prompt.get("tools")
+
+
+def test_transfer_is_a_conference_to_the_office_line_from_settings() -> None:
+    """Architecture §3.3: `transfer_to_number` (conference) to the Office Line. The number is
+    the call-start `office_line_e164` variable (`settings`), so the Admin's number is the one
+    dialled and there is no second copy in the agent config."""
+    agent = _agent()
+    params = agent["prompt"]["built_in_tools"]["transfer_to_number"]["params"]
+
+    assert params["system_tool_type"] == "transfer_to_number"
+    [transfer] = params["transfers"]
+    assert transfer["transfer_type"] == "conference"
+    assert transfer["transfer_destination"] == {
+        "type": "phone_dynamic_variable",
+        "phone_number": "office_line_e164",
+    }
+    assert transfer["condition"]
+    placeholders = agent["dynamic_variables"]["dynamic_variable_placeholders"]
+    assert placeholders["office_line_e164"] == ""
+
+
+def test_prompt_transfers_on_request_after_telling_the_office() -> None:
+    """Spec J5 / AC5.1: no reason asked; the office is told (`transfer_to_office`) first, then
+    the spec sentence verbatim, then `transfer_to_number`. The S test checks the spoken
+    behavior."""
+    prompt = _agent()["prompt"]["prompt"]
+    j5 = prompt[prompt.index("# J5") :]
+
+    assert '"Connecting you to the office now."' in j5
+    told, said, transferred = (
+        j5.index("`transfer_to_office`"),
+        j5.index('"Connecting you to the office now."'),
+        j5.index("`transfer_to_number`"),
+    )
+    assert told < said < transferred
+    assert "Never ask why" in j5
+
+
+def test_prompt_offers_a_transfer_when_a_request_could_not_be_saved() -> None:
+    """Spec §8 (tool error: offer Transfer) and AC3.4 (no match: offer Transfer): accepting the
+    offer transfers the call as in J5 (open questions on #7 and #16)."""
+    prompt = _agent()["prompt"]["prompt"]
+
+    assert "could not be saved, and offer to put them through to the office" in prompt
+    assert "If they accept the offer to be put through to the office, transfer them" in prompt
 
 
 def test_prompt_gives_the_spec_after_submit_sentence_verbatim() -> None:

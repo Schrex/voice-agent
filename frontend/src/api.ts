@@ -94,6 +94,33 @@ export async function fetchFailedAlerts(accessToken: string): Promise<FailedAler
   return ((await response.json()) as { alerts: FailedAlert[] }).alerts;
 }
 
+/** A dashboard pop-up nobody has dismissed yet (ticket #25: incoming transfer). */
+export type Popup = {
+  id: number;
+  kind: "transfer" | "emergency";
+  /** E.g. "Incoming transfer: Dale Kramer, Route 104 Widening, about: not stated". */
+  text: string;
+  /** When it was raised; UTC, ISO 8601. */
+  at: string;
+};
+
+export async function fetchPopups(accessToken: string): Promise<Popup[]> {
+  const response = await fetch("/api/popups", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(`GET /api/popups failed: ${response.status}`);
+  return ((await response.json()) as { popups: Popup[] }).popups;
+}
+
+/** Hide the pop-up for every Coordinator. */
+export async function dismissPopup(accessToken: string, id: number): Promise<void> {
+  const response = await fetch(`/api/popups/${id}/dismiss`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(`POST /api/popups/${id}/dismiss failed: ${response.status}`);
+}
+
 /** Who made a change: the agent, a staff member (with their name) or the system. */
 export type Actor = { type: "agent" | "staff" | "system"; id: string | null; name: string | null };
 

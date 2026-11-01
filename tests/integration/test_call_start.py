@@ -18,7 +18,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.clock import get_clock
-from app.db.models import Call
+from app.db.models import Call, Settings
 from app.main import app
 from app.services.roster import load_roster_file, seed_roster
 
@@ -73,6 +73,7 @@ def test_rostered_caller_gets_first_name_active_jobs_and_local_time(
             # only: the Job id comes from find_jobs (ticket #13), never from this list.
             "jobs": "Penfield Sewer Replacement; Route 104 Widening",
             "now_local": "Sunday, November 1, 2026, 3:04 PM",
+            "office_line_e164": "",
         },
     }
 
@@ -103,6 +104,7 @@ def test_unrostered_caller_gets_the_rejection_line_and_rejected_flag(hook: TestC
             "foreman_first_name": "",
             "jobs": "",
             "now_local": "",
+            "office_line_e164": "",
         },
         "conversation_config_override": {
             "agent": {
@@ -216,6 +218,28 @@ def test_response_time_p95_under_500ms_over_50_calls(hook: TestClient) -> None:
     assert p95 < 500
 
 
+def test_rostered_caller_gets_the_office_line_from_settings(
+    hook: TestClient, db_session: Session
+) -> None:
+    """Ticket #25: the Transfer dials `settings.office_line_e164`, the number the Admin keeps."""
+    settings = db_session.get_one(Settings, 1)
+    settings.office_line_e164 = "+15855550150"
+    db_session.flush()
+
+    rostered = _post(hook, _fixture("call_start_rostered.json")).json()
+    rejected = _post(hook, _fixture("call_start_unrostered.json")).json()
+
+    assert rostered["dynamic_variables"]["office_line_e164"] == "+15855550150"
+    # A caller not on the Roster gets no Transfer (spec J8), so no office line.
+    assert rejected["dynamic_variables"]["office_line_e164"] == ""
+
+
+def test_office_line_not_set_is_sent_empty(hook: TestClient) -> None:
+    body = _post(hook, _fixture("call_start_rostered.json")).json()
+
+    assert body["dynamic_variables"]["office_line_e164"] == ""
+
+
 def test_deactivated_foremans_number_is_rejected_at_call_start(
     hook: TestClient, db_session: Session
 ) -> None:
@@ -229,6 +253,7 @@ def test_deactivated_foremans_number_is_rejected_at_call_start(
         "foreman_first_name": "",
         "jobs": "",
         "now_local": "",
+        "office_line_e164": "",
     }
     assert body["conversation_config_override"]["agent"]["first_message"] == (
         "This line is for registered crew leaders. Please call the office at 585-555-0100."

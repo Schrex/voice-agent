@@ -1,0 +1,33 @@
+{
+  "tool_config": {
+    "type": "webhook",
+    "name": "transfer_to_office",
+    "description": "Tell the office that the Foreman is being put through, just before you transfer the call with transfer_to_number. The office gets a dashboard pop-up and the on-duty Coordinator gets a text naming the Foreman, the Job and what it is about. Returns {\"ok\": true}, or {\"error\": \"...\"} if the office could not be told; transfer the call either way.",
+    "api_schema": {
+      "url": "${backend_url}/tools/transfer_to_office",
+      "method": "POST",
+      "request_headers": {
+        "X-Tool-Secret": { "secret_id": "${tool_secret_id}" },
+        "X-Conversation-Id": { "variable_name": "system__conversation_id" }
+      },
+      "request_body_schema": {
+        "type": "object",
+        "description": "Only what the Foreman already said on this call. Never ask for any of it; send none of them if he said nothing yet.",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "What the Foreman wants to talk to the office about, or the need he was giving you, in his words. Leave it out if he has not said."
+          },
+          "job_id": {
+            "type": "integer",
+            "description": "The job_id find_jobs returned for the Job the Foreman named. Leave it out unless find_jobs returned exactly one Job."
+          },
+          "job_spoken": {
+            "type": "string",
+            "description": "The Job in the Foreman's own words, if he named one. Leave it out if he did not."
+          }
+        }
+      }
+    }
+  }
+}

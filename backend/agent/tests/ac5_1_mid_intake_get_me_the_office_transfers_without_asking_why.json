@@ -1,0 +1,76 @@
+{
+  "name": "AC5.1 mid-intake get me the office: transfers at once without asking why",
+  "type": "simulation",
+  "dynamic_variables": {
+    "rejected": false,
+    "foreman_first_name": "Dale",
+    "jobs": "Penfield Sewer Replacement; Route 104 Widening",
+    "now_local": "Sunday, November 1, 2026, 3:04 PM",
+    "office_line_e164": "+15855550150"
+  },
+  "simulation_scenario": "You are Dale, a foreman on the Roster. When the assistant asks what you need, say you need two tri-axle dump trucks at the Route 104 job. As soon as the assistant asks you any question about it, do not answer; say only: \"Actually, just get me the office.\" Do not give any reason. If the assistant asks why or asks anything else, say only \"Just put me through.\"",
+  "simulation_max_turns": 6,
+  "success_conditions": [
+    "Right after the caller says \"get me the office\", the agent's next turn calls transfer_to_office and says \"Connecting you to the office now.\", then calls transfer_to_number.",
+    "The agent does not ask why the caller wants the office, does not ask any more questions about the trucks, does not read the request back and does not call submit_requests.",
+    "transfer_to_office is sent only what the caller already said (the need and the Job), never a value the caller did not say.",
+    "The agent never says who will answer, that anyone has been reached, or that the office will call back."
+  ],
+  "tool_mock_config": {
+    "mocking_strategy": "selected",
+    "mocked_tool_ids": [
+      "${tool_find_jobs}",
+      "${tool_resolve_needed_by}",
+      "${tool_submit_requests}",
+      "${tool_find_open_requests}",
+      "${tool_create_callback_request}",
+      "${tool_add_note}",
+      "${tool_transfer_to_office}"
+    ],
+    "fallback_strategy": "raise_error"
+  },
+  "tool_mock_overrides": {
+    "${tool_find_jobs}": [
+      {
+        "mock_result": "[{\"job_id\": 14, \"name\": \"Route 104 Widening\", \"score\": 95}]",
+        "is_error": false
+      }
+    ],
+    "${tool_resolve_needed_by}": [
+      {
+        "mock_result": "{\"needed_by_resolved\": \"Monday, November 2 at 7:00 AM\", \"urgency\": \"Planned\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_submit_requests}": [
+      {
+        "mock_result": "{\"error\": \"The request could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_find_open_requests}": [
+      {
+        "mock_result": "[]",
+        "is_error": false
+      }
+    ],
+    "${tool_create_callback_request}": [
+      {
+        "mock_result": "{\"error\": \"The callback request could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_add_note}": [
+      {
+        "mock_result": "{\"ok\": true}",
+        "is_error": false
+      }
+    ],
+    "${tool_transfer_to_office}": [
+      {
+        "mock_result": "{\"ok\": true}",
+        "is_error": false
+      }
+    ]
+  }
+}
