@@ -1,9 +1,23 @@
 """SQLAlchemy models (architecture §5). Schema changes go through an Alembic migration."""
 
 from datetime import datetime
+from decimal import Decimal
+from typing import Any
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, MetaData, String
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    MetaData,
+    Numeric,
+    Sequence,
+    String,
+    Text,
+)
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+from app.domain.lifecycle import Status
 
 # Stable constraint names so migrations can reference them.
 NAMING_CONVENTION = {
@@ -98,3 +112,97 @@ class Call(Base):
     outcome: Mapped[str | None] = mapped_column(String(20))
 
     foreman: Mapped[Foreman | None] = relationship()
+
+
+def _one_of(column: str, values: tuple[str, ...]) -> str:
+    return f"{column} IN (" + ", ".join(f"'{v}'" for v in values) + ")"
+
+
+# GLOSSARY "Category", verbatim.
+CATEGORIES = (
+    "Trucking",
+    "Equipment",
+    "Equipment Repair",
+    "Material",
+    "Labor",
+    "Information",
+    "Callback",
+    "Other",
+)
+REQUEST_STATUSES = tuple(s.value for s in Status)
+REQUEST_SOURCES = ("ai_call", "coordinator")
+
+# References start at 1000 and are rendered "R-1000" (architecture §5).
+request_ref_seq = Sequence("request_ref_seq", start=1000, metadata=Base.metadata)
+
+
+class Request(Base):
+    """One actionable need from a Foreman, tied to one Job. Never hard-deleted."""
+
+    __tablename__ = "requests"
+    __table_args__ = (
+        CheckConstraint(_one_of("category", CATEGORIES), name="category_values"),
+        CheckConstraint(_one_of("status", REQUEST_STATUSES), name="status_values"),
+        CheckConstraint(_one_of("source", REQUEST_SOURCES), name="source_values"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ref: Mapped[int] = mapped_column(
+        request_ref_seq, server_default=request_ref_seq.next_value(), unique=True
+    )
+    foreman_id: Mapped[int] = mapped_column(ForeignKey("foremen.id"), index=True)
+    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"), index=True)
+    category: Mapped[str] = mapped_column(String(32))
+    need: Mapped[str] = mapped_column(Text)
+    quantity: Mapped[Decimal | None] = mapped_column(Numeric)
+    unit: Mapped[str | None] = mapped_column(String(64))
+    # Needed-by as the Foreman said it; parsing into a time comes later (ticket #14).
+    needed_by_spoken: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20))
+    source: Mapped[str] = mapped_column(String(20))
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    @property
+    def ref_display(self) -> str:
+        return f"R-{self.ref}"
+
+
+ACTOR_TYPES = ("agent", "staff", "system")
+
+
+class RequestEvent(Base):
+    """Audit log row, written in the same transaction as every Request change.
+
+    `before`/`after` hold only the changed fields; `before` is null when the Request is created.
+    `actor_id` is null for the agent (the Foreman is on the Request) and for the system.
+    """
+
+    __tablename__ = "request_events"
+    __table_args__ = (
+        CheckConstraint(_one_of("actor_type", ACTOR_TYPES), name="actor_type_values"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    request_id: Mapped[int] = mapped_column(ForeignKey("requests.id"), index=True)
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    actor_type: Mapped[str] = mapped_column(String(10))
+    actor_id: Mapped[str | None] = mapped_column(String(64))
+    kind: Mapped[str] = mapped_column(String(40))
+    before: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    after: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+
+
+CALL_REQUEST_RELATIONS = ("created", "looked_up", "amended")
+
+
+class CallRequest(Base):
+    """Links a Call to a Request it created, looked up or amended."""
+
+    __tablename__ = "call_requests"
+    __table_args__ = (
+        CheckConstraint(_one_of("relation", CALL_REQUEST_RELATIONS), name="relation_values"),
+    )
+
+    call_id: Mapped[int] = mapped_column(ForeignKey("calls.id"), primary_key=True)
+    request_id: Mapped[int] = mapped_column(ForeignKey("requests.id"), primary_key=True, index=True)
+    relation: Mapped[str] = mapped_column(String(16), primary_key=True)
