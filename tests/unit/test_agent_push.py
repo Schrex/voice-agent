@@ -166,6 +166,7 @@ def _tool_id(el: FakeElevenLabs, name: str) -> str:
     [
         "add_note",
         "create_callback_request",
+        "find_duplicates",
         "find_jobs",
         "find_open_requests",
         "resolve_needed_by",
@@ -176,7 +177,7 @@ def _tool_id(el: FakeElevenLabs, name: str) -> str:
 def test_push_creates_each_tool_pointing_at_the_env_backend(el: FakeElevenLabs, name: str) -> None:
     push(ENV, el.client())
 
-    assert len(el.tools) == 7
+    assert len(el.tools) == 8
     config = el.tools[_tool_id(el, name)]["tool_config"]
     assert config["type"] == "webhook"
     assert config["api_schema"]["url"] == f"https://backend.example.test/tools/{name}"
@@ -199,6 +200,7 @@ def test_pushed_agent_uses_the_created_tools_by_id(el: FakeElevenLabs) -> None:
         _tool_id(el, "create_callback_request"),
         _tool_id(el, "add_note"),
         _tool_id(el, "transfer_to_office"),
+        _tool_id(el, "find_duplicates"),
     ]
 
 
@@ -255,6 +257,8 @@ def test_push_creates_each_repo_test_by_name(el: FakeElevenLabs) -> None:
         "references",
         "AC1.7 says recorded and not yet confirmed and gives the reference",
         "AC1.8 does not submit when the foreman leaves before confirming",
+        "AC2.1 a new truck request on the same Job asks whether it is about the open one",
+        "AC2.2 yes, it is about that request: a note on it and no new request",
         "AC3.1 a Recorded request: the office has not picked it up yet",
         "AC3.2 an Acknowledged request: names Dispatch and says it is not confirmed",
         "AC3.3 a Resolved/Denied request: says it was denied and reads the explanation",
@@ -271,6 +275,7 @@ def test_push_creates_each_repo_test_by_name(el: FakeElevenLabs) -> None:
         "J1 a need dropped during the numbered summary is not submitted",
         "J1 asks at most one question per turn",
         "J1 quantity corrected during read-back is the value submitted",
+        "J2 no, it is a new one: a new request is submitted",
         "J3 step 2: several matching requests, asks which one by need and Job",
         "J5 transfers even when the office could not be told",
     ]
@@ -367,20 +372,22 @@ def test_cli_prints_one_line_per_object_and_exits_0(
     assert main(["--env", "staging"], client=el.client(), agent_dir=agent_dir) == 0
 
     out = capsys.readouterr().out.splitlines()
-    assert out[:8] == [
+    assert out[:9] == [
         "tool 'add_note': created (tool_0001)",
         "tool 'create_callback_request': created (tool_0002)",
-        "tool 'find_jobs': created (tool_0003)",
-        "tool 'find_open_requests': created (tool_0004)",
-        "tool 'resolve_needed_by': created (tool_0005)",
-        "tool 'submit_requests': created (tool_0006)",
-        "tool 'transfer_to_office': created (tool_0007)",
+        "tool 'find_duplicates': created (tool_0003)",
+        "tool 'find_jobs': created (tool_0004)",
+        "tool 'find_open_requests': created (tool_0005)",
+        "tool 'resolve_needed_by': created (tool_0006)",
+        "tool 'submit_requests': created (tool_0007)",
+        "tool 'transfer_to_office': created (tool_0008)",
         "agent 'Field Request Assistant (test)': created (agent_0001)",
     ]
     second = out[len(out) // 2 :]
-    assert second[:8] == [
+    assert second[:9] == [
         "tool 'add_note': unchanged",
         "tool 'create_callback_request': unchanged",
+        "tool 'find_duplicates': unchanged",
         "tool 'find_jobs': unchanged",
         "tool 'find_open_requests': unchanged",
         "tool 'resolve_needed_by': unchanged",
@@ -388,8 +395,8 @@ def test_cli_prints_one_line_per_object_and_exits_0(
         "tool 'transfer_to_office': unchanged",
         "agent 'Field Request Assistant (test)': unchanged",
     ]
-    assert len(second) == 8 + len(list((agent_dir / "tests").glob("*.json"))) + 1
-    assert all(line.startswith("test '") and line.endswith("': unchanged") for line in second[8:-1])
+    assert len(second) == 9 + len(list((agent_dir / "tests").glob("*.json"))) + 1
+    assert all(line.startswith("test '") and line.endswith("': unchanged") for line in second[9:-1])
     assert second[-1] == "No changes."
 
 

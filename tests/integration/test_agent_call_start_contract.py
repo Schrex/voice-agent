@@ -39,6 +39,7 @@ TOOL_IDS = {
     "create_callback_request": "tool_callback",
     "add_note": "tool_note",
     "transfer_to_office": "tool_transfer",
+    "find_duplicates": "tool_duplicates",
 }
 
 
