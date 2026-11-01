@@ -234,10 +234,7 @@ def test_ac7_1_logged_request_is_returned_by_the_foremans_phone_status_lookup(
     headers: dict[str, str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """J3 status lookup is `find_open_requests` (architecture §4.2), built by ticket #16."""
-    # app.openapi(), not app.routes: this FastAPI version nests included routers in app.routes.
-    if FIND_OPEN_REQUESTS not in app.openapi()["paths"]:
-        pytest.skip("find_open_requests (ticket #16) is not built on this branch yet")
+    """J3 status lookup is `find_open_requests` (architecture §4.2, ticket #16)."""
     ref = client.post("/api/requests", headers=headers, json=_entry(db_session)).json()["ref"]
     monkeypatch.setenv("HOOK_SECRET", "test-hook-secret")
     monkeypatch.setenv("TOOL_SECRET", "test-tool-secret")
