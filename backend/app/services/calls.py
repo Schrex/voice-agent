@@ -66,3 +66,21 @@ def start_call(
         job_names=list(job_names),
         now_local=speakable_local_time(now),
     )
+
+
+@dataclass(frozen=True)
+class Caller:
+    """The verified Foreman on a call, as bound at call start."""
+
+    call_id: int
+    foreman_id: int
+
+
+def caller_for_conversation(session: Session, conversation_id: str) -> Caller | None:
+    """The rostered Foreman bound to this conversation; None if unknown or rejected."""
+    row = session.execute(
+        select(Call.id, Call.foreman_id).where(Call.conversation_id == conversation_id)
+    ).one_or_none()
+    if row is None or row.foreman_id is None:
+        return None
+    return Caller(call_id=row.id, foreman_id=row.foreman_id)
