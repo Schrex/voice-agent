@@ -20,3 +20,17 @@ Voice agent that captures foremen's phoned-in requests and tracks each to a reso
 - Agent prompt, tool schemas and EL tests live in `backend/agent/` and reach ElevenLabs only via `push.py`; edits made in the EL web UI get overwritten.
 - Every AC maps to a test layer in `tests/AC_MATRIX.md`; a change touching an AC updates its test.
 - Times: store UTC, parse and display America/New_York.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues on Schrex/voice-agent, via `gh`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-role vocabulary (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: root `GLOSSARY.md` + `docs/adr/`. See `docs/agents/domain.md`.
