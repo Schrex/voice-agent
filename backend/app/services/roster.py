@@ -2,10 +2,12 @@
 
 Matching keys: a Job by its name, a Foreman by any of their phone numbers (numbers are unique),
 a Staff member by their Supabase Auth user id, an Owner by their name.
+A duty day by its date; its staff must be listed in the same file.
 Rows are created or updated from the file; nothing absent from the file is removed. An Owner's
 `default_for` categories make them that category's default Owner (one Owner per category).
 """
 
+import datetime
 import json
 import uuid
 from pathlib import Path
@@ -18,6 +20,7 @@ from sqlalchemy.orm import Session
 from app.db.models import (
     CATEGORIES,
     CategoryOwnerDefault,
+    DutyRoster,
     Foreman,
     ForemanPhone,
     Job,
@@ -47,6 +50,16 @@ class StaffEntry(BaseModel):
     name: str = Field(min_length=1)
     email: str = Field(min_length=3)
     role: Literal["coordinator", "admin"]
+    phone_e164: str | None = Field(default=None, pattern=r"^\+[1-9][0-9]{1,14}$")
+    """Where alert SMS reach them; omitted = no texts."""
+
+
+class DutyEntry(BaseModel):
+    """The on-duty Coordinator (and backup) for one New York calendar date, by staff id."""
+
+    date: datetime.date
+    on_duty: uuid.UUID
+    backup: uuid.UUID | None = None
 
 
 class OwnerEntry(BaseModel):
@@ -68,6 +81,17 @@ class RosterFile(BaseModel):
     foremen: list[ForemanEntry] = []
     staff: list[StaffEntry] = []
     owners: list[OwnerEntry] = []
+    duty: list[DutyEntry] = []
+
+    @model_validator(mode="after")
+    def _duty_names_listed_staff(self) -> Self:
+        listed = {s.id for s in self.staff}
+        unknown = {
+            str(i) for d in self.duty for i in (d.on_duty, d.backup) if i and i not in listed
+        }
+        if unknown:
+            raise ValueError(f"Duty days name staff not in the file: {sorted(unknown)}")
+        return self
 
     @model_validator(mode="after")
     def _one_default_owner_per_category(self) -> Self:
@@ -92,7 +116,19 @@ def seed_roster(session: Session, roster: RosterFile) -> None:
         _upsert_staff(session, staff_entry)
     for owner_entry in roster.owners:
         _upsert_owner(session, owner_entry)
+    session.flush()
+    for duty_entry in roster.duty:
+        _upsert_duty(session, duty_entry)
     session.commit()
+
+
+def _upsert_duty(session: Session, entry: DutyEntry) -> None:
+    duty = session.get(DutyRoster, entry.date)
+    if duty is None:
+        duty = DutyRoster(day=entry.date, on_duty_staff_id=entry.on_duty)
+        session.add(duty)
+    duty.on_duty_staff_id = entry.on_duty
+    duty.backup_staff_id = entry.backup
 
 
 def _upsert_owner(session: Session, entry: OwnerEntry) -> None:
@@ -119,6 +155,7 @@ def _upsert_staff(session: Session, entry: StaffEntry) -> None:
     staff.name = entry.name
     staff.email = entry.email
     staff.role = entry.role
+    staff.phone_e164 = entry.phone_e164
 
 
 def _upsert_job(session: Session, entry: JobEntry) -> None:

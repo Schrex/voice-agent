@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.db.models import (
     Base,
     CategoryOwnerDefault,
+    DutyRoster,
     Foreman,
     ForemanPhone,
     Job,
@@ -61,6 +63,55 @@ def test_seed_upserts_staff_by_supabase_user_id(db_session: Session) -> None:
 
     staff = db_session.scalars(select(Staff)).all()
     assert [(s.id, s.name, s.role) for s in staff] == [(user_id, "Pat Lee", "coordinator")]
+
+
+def test_seed_loads_staff_phones_and_the_duty_roster(db_session: Session) -> None:
+    pat, sam = uuid.uuid4(), uuid.uuid4()
+    roster = RosterFile.model_validate(
+        {
+            "staff": [
+                {
+                    "id": str(pat),
+                    "name": "Pat Lee",
+                    "email": "pat@example.com",
+                    "role": "coordinator",
+                    "phone_e164": "+15855550199",
+                },
+                {"id": str(sam), "name": "Sam Ortiz", "email": "s@example.com", "role": "admin"},
+            ],
+            "duty": [
+                {"date": "2026-11-02", "on_duty": str(pat), "backup": str(sam)},
+                {"date": "2026-11-03", "on_duty": str(sam)},
+            ],
+        }
+    )
+    seed_roster(db_session, roster)
+    seed_roster(db_session, roster)
+
+    assert db_session.get_one(Staff, pat).phone_e164 == "+15855550199"
+    assert db_session.get_one(Staff, sam).phone_e164 is None
+    duty = db_session.scalars(select(DutyRoster).order_by(DutyRoster.day)).all()
+    assert [(d.day, d.on_duty_staff_id, d.backup_staff_id) for d in duty] == [
+        (date(2026, 11, 2), pat, sam),
+        (date(2026, 11, 3), sam, None),
+    ]
+
+
+def test_seed_rejects_a_duty_day_naming_unknown_staff() -> None:
+    with pytest.raises(ValidationError):
+        RosterFile.model_validate({"duty": [{"date": "2026-11-02", "on_duty": str(uuid.uuid4())}]})
+
+
+def test_seed_rejects_a_staff_phone_not_in_e164() -> None:
+    entry = {
+        "id": str(uuid.uuid4()),
+        "name": "X",
+        "email": "x@example.com",
+        "role": "coordinator",
+        "phone_e164": "585-555-0199",
+    }
+    with pytest.raises(ValidationError):
+        RosterFile.model_validate({"staff": [entry]})
 
 
 def test_seed_rejects_unknown_staff_role() -> None:

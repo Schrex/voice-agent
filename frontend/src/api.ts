@@ -73,6 +73,25 @@ export async function fetchQueue(accessToken: string): Promise<QueueRequest[]> {
   return ((await response.json()) as { requests: QueueRequest[] }).requests;
 }
 
+/** An alert that could not be sent, for a request still open (`GET /api/alerts/failed`). */
+export type FailedAlert = {
+  ref: string | null;
+  kind: "today_new" | "callback" | "emergency" | "overdue" | "transfer" | "eod_summary";
+  channel: "sms" | "email" | "popup";
+  /** When it was attempted; UTC, ISO 8601. */
+  at: string;
+  /** Why it was not sent. */
+  detail: string | null;
+};
+
+export async function fetchFailedAlerts(accessToken: string): Promise<FailedAlert[]> {
+  const response = await fetch("/api/alerts/failed", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(`GET /api/alerts/failed failed: ${response.status}`);
+  return ((await response.json()) as { alerts: FailedAlert[] }).alerts;
+}
+
 /** Who made a change: the agent, a staff member (with their name) or the system. */
 export type Actor = { type: "agent" | "staff" | "system"; id: string | null; name: string | null };
 

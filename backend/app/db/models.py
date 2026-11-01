@@ -1,20 +1,23 @@
 """SQLAlchemy models (architecture §5). Schema changes go through an Alembic migration."""
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
+    Index,
     MetaData,
     Numeric,
     Sequence,
     String,
     Text,
     Uuid,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -30,6 +33,9 @@ NAMING_CONVENTION = {
     "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
     "pk": "pk_%(table_name)s",
 }
+
+
+E164_MATCH = r"~ '^\+[1-9][0-9]{1,14}$'"
 
 
 class Base(DeclarativeBase):
@@ -272,9 +278,82 @@ class Staff(Base):
     """A dashboard user. `id` is the Supabase Auth user id (the access token's `sub`)."""
 
     __tablename__ = "staff"
-    __table_args__ = (CheckConstraint("role IN ('coordinator', 'admin')", name="role"),)
+    __table_args__ = (
+        CheckConstraint("role IN ('coordinator', 'admin')", name="role"),
+        CheckConstraint(rf"phone_e164 {E164_MATCH}", name="phone_e164_format"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
     email: Mapped[str] = mapped_column(String(320))
     role: Mapped[str] = mapped_column(String(20))
+    # Where alert SMS reach them (ticket #21); null = no texts possible.
+    phone_e164: Mapped[str | None] = mapped_column(String(16))
+
+
+class DutyRoster(Base):
+    """Who is the on-duty Coordinator (and backup) on a New York calendar date."""
+
+    __tablename__ = "duty_roster"
+
+    day: Mapped[date] = mapped_column("date", Date, primary_key=True)
+    on_duty_staff_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("staff.id"))
+    backup_staff_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("staff.id"))
+
+    on_duty: Mapped[Staff] = relationship(foreign_keys=[on_duty_staff_id])
+
+
+ALERT_KINDS = ("today_new", "callback", "emergency", "overdue", "transfer", "eod_summary")
+ALERT_CHANNELS = ("sms", "email", "popup")
+ALERT_STATUSES = ("pending", "sent", "failed")
+
+
+class Alert(Base):
+    """One alert sent (or attempted) to staff; the record that makes sending idempotent.
+
+    `status` pending (being sent), sent (provider accepted it; `provider_id` set) or failed
+    (`detail` says why, e.g. nobody on duty). `sent_at` is when it was attempted.
+    One `today_new` alert per Request at most (`uq_alerts_today_new`).
+    """
+
+    __tablename__ = "alerts"
+    __table_args__ = (
+        CheckConstraint(_one_of("kind", ALERT_KINDS), name="kind_values"),
+        CheckConstraint(_one_of("channel", ALERT_CHANNELS), name="channel_values"),
+        CheckConstraint(_one_of("status", ALERT_STATUSES), name="status_values"),
+        Index(
+            "uq_alerts_today_new",
+            "request_id",
+            unique=True,
+            postgresql_where=text("kind = 'today_new'"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    request_id: Mapped[int | None] = mapped_column(ForeignKey("requests.id"), index=True)
+    call_id: Mapped[int | None] = mapped_column(ForeignKey("calls.id"))
+    kind: Mapped[str] = mapped_column(String(20))
+    channel: Mapped[str] = mapped_column(String(10))
+    to_staff_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("staff.id"))
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    provider_id: Mapped[str | None] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(10))
+    detail: Mapped[str | None] = mapped_column(Text)
+    seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Settings(Base):
+    """Singleton (id = 1) of office-wide settings (architecture §5); defaults set by migration."""
+
+    __tablename__ = "settings"
+    __table_args__ = (
+        CheckConstraint("id = 1", name="singleton"),
+        CheckConstraint(rf"office_line_e164 {E164_MATCH}", name="office_line_e164_format"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, server_default="1")
+    office_line_e164: Mapped[str | None] = mapped_column(String(16))
+    ack_window_today_min: Mapped[int] = mapped_column(server_default="15")
+    ack_window_planned_min: Mapped[int] = mapped_column(server_default="120")
+    uninformed_after_min: Mapped[int] = mapped_column(server_default="120")
+    timezone: Mapped[str] = mapped_column(String(64), server_default="America/New_York")
