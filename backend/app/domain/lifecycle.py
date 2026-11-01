@@ -5,6 +5,8 @@ Statuses and Outcomes are the glossary words, stored verbatim. Each move has one
 - `acknowledge`: Recorded → Acknowledged, Owner required.
 - `start`: Acknowledged → In Progress.
 - `resolve`: any non-Resolved status → Resolved, Outcome and explanation required.
+- `merge`: Request A merged into Request B (ticket #33): A is resolved as `resolve` requires;
+  B must be another Request that is not Resolved.
 Any other move raises `TransitionNotAllowed`. The agent's narrower right (only Recorded or
 Acknowledged → Resolved/Withdrawn) is left to the ticket that builds the agent's withdrawal.
 """
@@ -57,6 +59,13 @@ class ExplanationRequired(ValueError):
         super().__init__("An explanation is required to resolve a request")
 
 
+class MergeIntoItself(ValueError):
+    """A Request cannot be merged into itself (ticket #33)."""
+
+    def __init__(self) -> None:
+        super().__init__("A request cannot be merged into itself")
+
+
 # Statuses of a Request still in the queue: confirmed by the Foreman, not yet Resolved.
 OPEN_STATUSES: frozenset[Status] = frozenset(
     {Status.RECORDED, Status.ACKNOWLEDGED, Status.IN_PROGRESS}
@@ -97,3 +106,23 @@ def resolve(current: Status, outcome: Outcome | None, explanation: str | None) -
     if explanation is None or not explanation.strip():
         raise ExplanationRequired()
     return Status.RESOLVED
+
+
+def merge(
+    source: Status,
+    target: Status,
+    *,
+    same: bool,
+    outcome: Outcome | None,
+    explanation: str | None,
+) -> Status:
+    """Merge a Request (`source`) into another (`target`); returns the source's new status.
+
+    Not into itself, not into a Resolved Request; the source is resolved exactly as `resolve`
+    requires (not already Resolved, Outcome and explanation given).
+    """
+    if same:
+        raise MergeIntoItself()
+    if target is Status.RESOLVED:
+        raise TransitionNotAllowed(target, Status.RESOLVED)
+    return resolve(source, outcome, explanation)

@@ -14,6 +14,7 @@ import {
 import { AcknowledgeAction } from "./AcknowledgeAction";
 import { useAuth } from "./App";
 import { CallRecordings } from "./CallRecordings";
+import { MergeAction } from "./MergeAction";
 import { ResolveAction } from "./ResolveAction";
 import { StartAction } from "./StartAction";
 
@@ -30,6 +31,8 @@ const KINDS: Record<string, string> = {
   acknowledged: "Acknowledged",
   in_progress: "In Progress",
   resolved: "Resolved",
+  merged: "Merged",
+  merged_in: "Merged in",
 };
 
 /** One request's fields and its full audit history: who, when, what changed. */
@@ -93,10 +96,19 @@ function Detail({ request }: { request: RequestDetail }) {
             <dd>{value}</dd>
           </div>
         ))}
+        {request.merged_into && (
+          <div>
+            <dt>Merged into</dt>
+            <dd>
+              <Link to={`/requests/${request.merged_into}`}>{request.merged_into}</Link>
+            </dd>
+          </div>
+        )}
       </dl>
       <AcknowledgeAction request={request} />
       <StartAction request={request} />
       <ResolveAction request={request} />
+      <MergeAction request={request} />
       <h2 id="history">History</h2>
       <table className="history" aria-labelledby="history">
         <thead>

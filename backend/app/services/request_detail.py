@@ -81,6 +81,7 @@ class RequestDetail:
     outcome: str | None  # set with explanation and resolved_at when Resolved
     explanation: str | None
     resolved_at: datetime | None
+    merged_into: str | None  # ref of the Request this one was merged into (ticket #33)
     # The category's default Owner, offered first when acknowledging (null if none is set).
     default_owner_id: int | None
     events: list[Event]
@@ -121,6 +122,7 @@ def request_detail(session: Session, ref: str) -> RequestDetail | None:
         outcome=request.outcome,
         explanation=request.explanation,
         resolved_at=request.resolved_at,
+        merged_into=_ref_of(session, request.merged_into_id),
         default_owner_id=session.scalar(
             select(CategoryOwnerDefault.owner_id).where(
                 CategoryOwnerDefault.category == request.category
@@ -129,6 +131,11 @@ def request_detail(session: Session, ref: str) -> RequestDetail | None:
         events=_events(session, request.id),
         calls=_linked_calls(session, request.id),
     )
+
+
+def _ref_of(session: Session, request_id: int | None) -> str | None:
+    other = session.get(Request, request_id) if request_id is not None else None
+    return other.ref_display if other else None
 
 
 def _linked_calls(session: Session, request_id: int) -> list[LinkedCall]:
