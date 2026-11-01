@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-quer
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
+import { AdminPage } from "./AdminPage";
 import { fetchMe, type Staff } from "./api";
 import type { AuthClient, AuthSession } from "./auth";
 import { LoginPage } from "./LoginPage";
@@ -46,6 +47,12 @@ export function App({ auth }: { auth: AuthClient }) {
               path="/"
               element={
                 <RequireStaff>{(staff) => <QueuePage staff={staff} />}</RequireStaff>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <RequireStaff>{(staff) => <AdminPage staff={staff} />}</RequireStaff>
               }
             />
             <Route path="*" element={<Navigate to="/" replace />} />

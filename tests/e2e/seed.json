@@ -9,6 +9,12 @@
       "name": "Casey Coordinator",
       "email": "casey@example.com",
       "role": "coordinator"
+    },
+    {
+      "id": "7c1d4e2a-3b5f-4a6c-9d8e-0f1a2b3c4d02",
+      "name": "Avery Admin",
+      "email": "avery@example.com",
+      "role": "admin"
     }
   ]
 }
