@@ -1,0 +1,98 @@
+{
+  "name": "AC4.1 cancelling a Recorded request withdraws it after a yes and says so",
+  "type": "simulation",
+  "dynamic_variables": {
+    "rejected": false,
+    "foreman_first_name": "Dale",
+    "jobs": "Penfield Sewer Replacement; Route 104 Widening",
+    "now_local": "Sunday, November 1, 2026, 3:04 PM"
+  },
+  "simulation_scenario": "You are Dale, a foreman on the Roster. When the assistant asks what you need, say: \"Cancel those trucks for the 104 job, I don't need them anymore.\" If it asks which request, say the trucks. If it asks whether to withdraw or cancel it, say yes. After it answers, ask: \"So it's cancelled?\" After it answers, say thanks, goodbye.",
+  "simulation_max_turns": 10,
+  "success_conditions": [
+    "The agent asks whether to withdraw the tri-axle dump trucks at Route 104 Widening before calling withdraw_request.",
+    "The agent calls withdraw_request once, only after the Foreman said yes, with ref R-1042.",
+    "The agent does not take a new request and calls neither submit_requests nor amend_request.",
+    "After withdraw_request returns applied true, the agent says it has withdrawn it.",
+    "The agent never says the office, a coordinator or anyone else has seen it, been told or will act on it.",
+    "The agent never says whether trucks or anything else is available, never gives a time when anything will arrive, be done or be decided, and never states a decision other than what the tools returned."
+  ],
+  "tool_mock_config": {
+    "mocking_strategy": "selected",
+    "mocked_tool_ids": [
+      "${tool_find_jobs}",
+      "${tool_resolve_needed_by}",
+      "${tool_submit_requests}",
+      "${tool_find_open_requests}",
+      "${tool_create_callback_request}",
+      "${tool_add_note}",
+      "${tool_transfer_to_office}",
+      "${tool_find_duplicates}",
+      "${tool_amend_request}",
+      "${tool_withdraw_request}"
+    ],
+    "fallback_strategy": "raise_error"
+  },
+  "tool_mock_overrides": {
+    "${tool_find_jobs}": [
+      {
+        "mock_result": "[{\"job_id\": 14, \"name\": \"Route 104 Widening\", \"score\": 95}]",
+        "is_error": false
+      }
+    ],
+    "${tool_resolve_needed_by}": [
+      {
+        "mock_result": "{\"needed_by_resolved\": \"Thursday, November 5 at 7:00 AM\", \"urgency\": \"Planned\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_submit_requests}": [
+      {
+        "mock_result": "{\"error\": \"The request could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_find_open_requests}": [
+      {
+        "mock_result": "[{\"ref\": \"R-1042\", \"job\": \"Route 104 Widening\", \"category\": \"Trucking\", \"need\": \"tri-axle dump trucks\", \"quantity\": 3, \"unit\": \"trucks\", \"needed_by\": \"Monday, November 2 at 7:00 AM\", \"status\": \"Recorded\", \"owner\": null, \"outcome\": null, \"explanation\": null}]",
+        "is_error": false
+      }
+    ],
+    "${tool_create_callback_request}": [
+      {
+        "mock_result": "{\"error\": \"The callback request could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_add_note}": [
+      {
+        "mock_result": "{\"error\": \"The note could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_transfer_to_office}": [
+      {
+        "mock_result": "{\"ok\": true}",
+        "is_error": false
+      }
+    ],
+    "${tool_find_duplicates}": [
+      {
+        "mock_result": "[]",
+        "is_error": false
+      }
+    ],
+    "${tool_amend_request}": [
+      {
+        "mock_result": "{\"error\": \"The change could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_withdraw_request}": [
+      {
+        "mock_result": "{\"applied\": true}",
+        "is_error": false
+      }
+    ]
+  }
+}

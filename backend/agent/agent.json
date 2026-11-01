@@ -26,7 +26,8 @@
           "${tool_add_note}",
           "${tool_transfer_to_office}",
           "${tool_find_duplicates}",
-          "${tool_amend_request}"
+          "${tool_amend_request}",
+          "${tool_withdraw_request}"
         ],
         "built_in_tools": {
           "end_call": {

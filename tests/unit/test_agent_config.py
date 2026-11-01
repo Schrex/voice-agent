@@ -24,6 +24,7 @@ TOOL_IDS = {
     "transfer_to_office": "tool_transfer",
     "find_duplicates": "tool_duplicates",
     "amend_request": "tool_amend",
+    "withdraw_request": "tool_withdraw",
 }
 
 
@@ -44,8 +45,8 @@ def test_first_message_is_automated_recorded_and_names_the_foreman() -> None:
 def test_tools_are_the_system_tools_and_the_backend_tools() -> None:
     """end_call and transfer_to_number (#25) are built in; find_jobs (#13), resolve_needed_by
     (#14), submit_requests (#7), find_open_requests (#16), create_callback_request (#24),
-    add_note (#17), transfer_to_office (#25), find_duplicates (#18) and amend_request (#19)
-    are attached by their workspace ids."""
+    add_note (#17), transfer_to_office (#25), find_duplicates (#18), amend_request (#19)
+    and withdraw_request (#20) are attached by their workspace ids."""
     prompt = _agent()["prompt"]
 
     assert set(prompt["built_in_tools"]) == {"end_call", "transfer_to_number"}
@@ -60,6 +61,7 @@ def test_tools_are_the_system_tools_and_the_backend_tools() -> None:
         "tool_transfer",
         "tool_duplicates",
         "tool_amend",
+        "tool_withdraw",
     ]
     assert not prompt.get("tools")
 
@@ -245,6 +247,32 @@ def test_amend_tool_takes_the_ref_and_only_the_changeable_details() -> None:
         "unit",
         "needed_by_spoken",
     }
+
+
+def test_prompt_withdraws_with_withdraw_request_after_a_yes() -> None:
+    """Ticket #20 / spec J4, AC4.1: the withdrawal goes through `withdraw_request` after a yes;
+    when the backend did not apply it (In Progress or later) the agent says the J4 sentence
+    verbatim. The S test checks the spoken behavior."""
+    prompt = _agent()["prompt"]["prompt"]
+    section = prompt[prompt.index("# J4: Withdrawing a Request") :]
+    section = section[: section.index("\n# ", 1)]
+
+    assert "`withdraw_request`" in section
+    assert "only after they clearly say yes" in section
+    assert "I've flagged that for the office; it isn't changed yet." in section
+
+
+def test_withdraw_tool_takes_only_the_ref() -> None:
+    """Architecture §4.2: `withdraw_request(ref)` → `{applied}`."""
+    [tool] = [
+        t["tool_config"]
+        for t in desired_tools(ENV)
+        if t["tool_config"]["name"] == "withdraw_request"
+    ]
+    schema = tool["api_schema"]["request_body_schema"]
+
+    assert set(schema["properties"]) == {"ref"}
+    assert schema["required"] == ["ref"]
 
 
 def test_prompt_takes_a_callback_request_asking_one_optional_question() -> None:

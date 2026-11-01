@@ -73,7 +73,7 @@ def amend_request(
     if applied:
         needed_by_resolved = _apply(session, request, changes, now)
     else:
-        _flag(session, request, changes, now)
+        flag_change_requested(session, request, change_note(changes), now)
         needed_by_resolved = None
     session.execute(
         insert(CallRequest)
@@ -129,14 +129,15 @@ def _apply(
     return readback
 
 
-def _flag(session: Session, request: Request, changes: Mapping[str, object], now: datetime) -> None:
-    """Leave the Request as it is: note what was asked and flag it Change requested."""
+def flag_change_requested(session: Session, request: Request, note: str, now: datetime) -> None:
+    """Leave the Request as it is: note what was asked and flag it Change requested (the
+    `change_requested` event only the first time). The caller commits. #20 reuses it."""
     add_note(
         session,
         request=request,
         author_type="agent",
         author_id=None,
-        text=change_note(changes),
+        text=note,
         urgent=False,
         now=now,
     )
