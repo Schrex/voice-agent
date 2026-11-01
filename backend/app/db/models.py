@@ -19,7 +19,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from app.domain.lifecycle import Status
+from app.domain.lifecycle import Outcome, Status
 from app.domain.urgency import Urgency
 
 # Stable constraint names so migrations can reference them.
@@ -166,6 +166,7 @@ class CategoryOwnerDefault(Base):
 
 REQUEST_SOURCES = ("ai_call", "coordinator")
 URGENCIES = tuple(u.value for u in Urgency)
+OUTCOMES = tuple(o.value for o in Outcome)
 
 # References start at 1000 and are rendered "R-1000" (architecture §5).
 request_ref_seq = Sequence("request_ref_seq", start=1000, metadata=Base.metadata)
@@ -180,6 +181,12 @@ class Request(Base):
         CheckConstraint(_one_of("status", REQUEST_STATUSES), name="status_values"),
         CheckConstraint(_one_of("source", REQUEST_SOURCES), name="source_values"),
         CheckConstraint(_one_of("urgency", URGENCIES), name="urgency_values"),
+        CheckConstraint(_one_of("outcome", OUTCOMES), name="outcome_values"),
+        CheckConstraint(
+            "status <> 'Resolved' OR (outcome IS NOT NULL AND explanation IS NOT NULL"
+            " AND resolved_at IS NOT NULL)",
+            name="resolved_has_outcome",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -210,6 +217,10 @@ class Request(Base):
     # Set together when a coordinator acknowledges (ticket #11); null while Recorded.
     owner_id: Mapped[int | None] = mapped_column(ForeignKey("owners.id"), index=True)
     acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set together when a coordinator resolves (ticket #12); null until Resolved.
+    outcome: Mapped[str | None] = mapped_column(String(32))
+    explanation: Mapped[str | None] = mapped_column(Text)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     @property
     def ref_display(self) -> str:

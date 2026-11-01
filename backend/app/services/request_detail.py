@@ -78,6 +78,9 @@ class RequestDetail:
     recorded_at: datetime | None  # null while the Request is a Draft
     owner: OwnerRef | None
     acknowledged_at: datetime | None
+    outcome: str | None  # set with explanation and resolved_at when Resolved
+    explanation: str | None
+    resolved_at: datetime | None
     # The category's default Owner, offered first when acknowledging (null if none is set).
     default_owner_id: int | None
     events: list[Event]
@@ -115,6 +118,9 @@ def request_detail(session: Session, ref: str) -> RequestDetail | None:
         recorded_at=request.recorded_at,
         owner=_owner(session, request.owner_id),
         acknowledged_at=request.acknowledged_at,
+        outcome=request.outcome,
+        explanation=request.explanation,
+        resolved_at=request.resolved_at,
         default_owner_id=session.scalar(
             select(CategoryOwnerDefault.owner_id).where(
                 CategoryOwnerDefault.category == request.category
