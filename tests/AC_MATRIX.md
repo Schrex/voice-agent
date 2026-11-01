@@ -43,6 +43,7 @@ Status: **done** = test exists and passes in CI · **defined** = test written in
 | AC9.5 | Every field change audited; no hard delete | I | #12 | planned | |
 | J9 (no numbered AC) | Queue: open requests sorted urgency then age, refresh 10 s, times in America/New_York | I, P, U (Vitest) | #9 | done | I `tests/integration/test_queue.py`; P `tests/e2e/queue.spec.ts`; Vitest `frontend/src/QueuePage.test.tsx` |
 | J9 detail (no numbered AC; supports AC9.5) | Request detail: all fields and audit history (who, when, before/after), oldest first, times in America/New_York | I, P, U (Vitest) | #10 | done | I `tests/integration/test_request_detail.py`; P `tests/e2e/request-detail.spec.ts`; Vitest `frontend/src/RequestDetailPage.test.tsx` |
+| J9 detail: linked calls (no numbered AC; spec §4 "Recording access: Coordinators, Admin", §5 "linked call recording + transcript") | Detail shows linked call(s) with transcript and plays the recording, streamed through the backend; audio refused to non-staff | I, P, U (Vitest) | #29 | I/Vitest done; P done with ElevenLabs stubbed; P on staging deferred | I `tests/integration/test_call_recording.py` (`test_audio_endpoint_refuses_non_staff`, streaming, 404/502, transcript, linked calls); P `tests/e2e/request-call-recording.spec.ts`; Vitest `frontend/src/CallRecordings.test.tsx` |
 | ACX.1 | Never states availability, ETA or unrecorded decision | S | #16, #36 | planned | |
 | ACX.2 | Never asks about mood, day or productivity | S | #36 | planned | |
 

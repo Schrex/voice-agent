@@ -36,6 +36,19 @@ def elevenlabs_webhook_secret() -> str | None:
     return os.environ.get("ELEVENLABS_WEBHOOK_SECRET") or None
 
 
+def elevenlabs_api_key() -> str | None:
+    """ElevenLabs API key; the backend uses it to stream call recordings to the dashboard.
+
+    None when unset; recordings then cannot be played (502). Nothing else depends on it.
+    """
+    return os.environ.get("ELEVENLABS_API_KEY") or None
+
+
+def elevenlabs_api_base() -> str:
+    """ElevenLabs API base URL; `ELEVENLABS_API_BASE` overrides it (e2e stub)."""
+    return os.environ.get("ELEVENLABS_API_BASE") or "https://api.elevenlabs.io"
+
+
 def office_main_number() -> str:
     """Main office number spoken to unrostered callers (spec J8), inserted as written."""
     number = os.environ.get("OFFICE_MAIN_NUMBER")

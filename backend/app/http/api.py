@@ -80,6 +80,12 @@ class EventOut(BaseModel):
     after: dict[str, Any] | None
 
 
+class LinkedCallOut(BaseModel):
+    id: int  # transcript at GET /api/calls/{id}, recording at GET /api/calls/{id}/audio
+    started_at: str  # UTC, ISO 8601 with "Z"
+    relation: str  # created | looked_up | amended
+
+
 class RequestDetailOut(BaseModel):
     ref: str
     foreman: str
@@ -94,6 +100,7 @@ class RequestDetailOut(BaseModel):
     source: str
     recorded_at: str
     events: list[EventOut]  # oldest first
+    calls: list[LinkedCallOut]  # oldest first
 
 
 @router.get("/requests/{ref}")
@@ -126,6 +133,10 @@ def detail(
                 after=e.after,
             )
             for e in found.events
+        ],
+        calls=[
+            LinkedCallOut(id=c.id, started_at=_utc(c.started_at), relation=c.relation)
+            for c in found.calls
         ],
     )
 
