@@ -11,7 +11,9 @@ from sqlalchemy.orm import Session
 
 from app.clock import Clock, get_clock
 from app.config import elevenlabs_webhook_secret, hook_secret, office_main_number
+from app.db.models import CATEGORIES
 from app.db.session import get_session
+from app.domain.draft import draft_from_data_collection
 from app.http.signature import signature_is_valid
 from app.services.calls import (
     PostCall,
@@ -113,6 +115,7 @@ class _Metadata(BaseModel):
 
 class _Analysis(BaseModel):
     transcript_summary: str | None = None
+    data_collection_results: dict[str, Any] | None = None
 
 
 class _Transcription(BaseModel):
@@ -141,6 +144,7 @@ class _Event(BaseModel):
 def post_call(
     body: Annotated[bytes, Depends(verified_body)],
     session: Annotated[Session, Depends(get_session)],
+    clock: Annotated[Clock, Depends(get_clock)],
 ) -> dict[str, str]:
     try:
         event = _Event.model_validate_json(body)
@@ -150,6 +154,7 @@ def post_call(
     except ValidationError as error:
         raise HTTPException(status_code=422, detail="invalid post-call payload") from error
     phone_call = data.metadata.phone_call
+    collected = data.analysis.data_collection_results if data.analysis else None
     result = record_post_call(
         session,
         PostCall(
@@ -162,7 +167,9 @@ def post_call(
             tools_called=_tools_called(data.transcript),
             caller_e164=phone_call.external_number if phone_call else None,
             call_sid=phone_call.call_sid if phone_call else None,
+            draft=draft_from_data_collection(collected or {}, categories=CATEGORIES),
         ),
+        now=clock(),
     )
     if result is PostCallResult.UNKNOWN_CALL:
         log.warning("post_call_unknown_call", extra={"conversation_id": data.conversation_id})

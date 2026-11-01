@@ -1,0 +1,109 @@
+{
+  "type": "post_call_transcription",
+  "event_timestamp": 1793564300,
+  "data": {
+    "agent_id": "agent_synthetic_0001",
+    "conversation_id": "conv_synthetic_transfer_mid_intake_0001",
+    "status": "done",
+    "transcript": [
+      {
+        "role": "agent",
+        "message": "Hi Dale, this is the Schreiber Excavating automated assistant. This call is recorded. What do you need?",
+        "time_in_call_secs": 0
+      },
+      {
+        "role": "user",
+        "message": "I need an excavator moved over to the Penfield sewer job.",
+        "time_in_call_secs": 5
+      },
+      {
+        "role": "agent",
+        "message": "When do you need it there?",
+        "time_in_call_secs": 9
+      },
+      {
+        "role": "user",
+        "message": "Actually, just get me the office.",
+        "time_in_call_secs": 13
+      },
+      {
+        "role": "agent",
+        "message": "Connecting you to the office now.",
+        "time_in_call_secs": 15
+      },
+      {
+        "role": "agent",
+        "message": null,
+        "time_in_call_secs": 16,
+        "tool_calls": [
+          {
+            "type": "system",
+            "request_id": "transfer_0002",
+            "tool_name": "transfer_to_number",
+            "params_as_json": "{}",
+            "tool_has_been_called": true,
+            "tool_details": null
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "start_time_unix_secs": 1793564200,
+      "call_duration_secs": 18,
+      "termination_reason": "Call transferred",
+      "phone_call": {
+        "type": "twilio",
+        "direction": "inbound",
+        "phone_number_id": "phnum_synthetic_0001",
+        "agent_number": "+15855550199",
+        "external_number": "+15855550102",
+        "call_sid": "CA00000000000000000000000000000005",
+        "stream_sid": "MZ00000000000000000000000000000005"
+      }
+    },
+    "analysis": {
+      "call_successful": "success",
+      "transcript_summary": "Dale asked to move an excavator to Penfield Sewer Replacement, then asked for the office and was transferred.",
+      "call_summary_title": "Excavator move, transferred",
+      "data_collection_results": {
+        "need": {
+          "data_collection_id": "need",
+          "value": "move an excavator",
+          "rationale": "synthetic"
+        },
+        "job_spoken": {
+          "data_collection_id": "job_spoken",
+          "value": "Penfield sewer",
+          "rationale": "synthetic"
+        },
+        "category": {
+          "data_collection_id": "category",
+          "value": "Equipment",
+          "rationale": "synthetic"
+        },
+        "quantity": {
+          "data_collection_id": "quantity",
+          "value": 1,
+          "rationale": "synthetic"
+        },
+        "unit": {
+          "data_collection_id": "unit",
+          "value": "excavator",
+          "rationale": "synthetic"
+        },
+        "needed_by_spoken": {
+          "data_collection_id": "needed_by_spoken",
+          "value": null,
+          "rationale": "synthetic"
+        }
+      },
+      "evaluation_criteria_results": {}
+    },
+    "conversation_initiation_client_data": {
+      "dynamic_variables": {
+        "rejected": false,
+        "foreman_first_name": "Dale"
+      }
+    }
+  }
+}

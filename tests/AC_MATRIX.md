@@ -15,7 +15,7 @@ Status: **done** = test exists and passes in CI · **defined** = test written in
 | AC1.5 | Needed-by asked once, then recorded unknown | U, S | #14 | planned | |
 | AC1.6 | Two needs → two Recorded requests, both refs read | I, S | #15 | planned | |
 | AC1.7 | Says recorded, not yet confirmed, gives ref | U, I, S, L | #6, #7 | U/I done; S defined, deferred; L deferred | U `tests/unit/test_agent_config.py::test_prompt_gives_the_spec_after_submit_sentence_verbatim`; I `tests/integration/test_submit_requests.py::test_valid_call_records_a_request_with_a_reference_and_an_agent_event`, `::test_references_are_sequential`, `tests/integration/test_agent_submit_tool_contract.py` (tool config reaches the endpoint, Recorded request with its ref); S `backend/agent/tests/ac1_7_recorded_not_yet_confirmed_with_reference.json` |
-| AC1.8 | Hang-up before confirm → Draft, no Recorded | I, S | #28 | planned | |
+| AC1.8 | Hang-up before confirm → Draft, no Recorded | U, I, S, P | #28 | U/I/P done; S defined, deferred | I `tests/integration/test_drafts.py::test_hang_up_before_confirm_creates_a_draft_and_no_recorded_request`, `::test_draft_is_linked_to_its_call_and_has_an_audit_event`, `::test_a_call_that_submitted_a_request_creates_no_draft`, `::test_no_need_found_creates_no_draft`, `::test_repeat_delivery_creates_no_second_draft`; U `tests/unit/test_draft.py`, `tests/unit/test_call_outcome.py::test_call_with_a_draft`, `tests/unit/test_agent_config.py::test_data_collection_fields_are_the_ones_the_post_call_drafts_read`; S `backend/agent/tests/ac1_8_no_submit_when_foreman_leaves_before_confirming.json` (tool, verify absence); P (coordinator promotes the Draft) `tests/e2e/promote-draft.spec.ts`, I `tests/integration/test_drafts.py::test_coordinator_promotes_a_draft_to_recorded_with_an_audit_event` |
 | AC1.9 | Today request → on-duty SMS within 60 s | I, L | #21 | planned | |
 | AC2.1 | Same job + category → asks if it's the existing request | U, S | #18 | planned | |
 | AC2.2 | "Yes" → no new request, note added | I, S | #18 | planned | |
@@ -27,7 +27,7 @@ Status: **done** = test exists and passes in CI · **defined** = test written in
 | AC4.1 | Cancel Recorded → Resolved/Withdrawn, coordinator notified | I, S | #20 | planned | |
 | AC4.2 | Change In Progress → unchanged, Change requested, "not yet changed" | I, S | #19 | planned | |
 | AC5.1 | "Get me the office" → transfer next utterance, no reason asked | S, L | #25 | planned | |
-| AC5.2 | Interrupted intake → Draft linked to call | I | #28 | planned | |
+| AC5.2 | Interrupted intake → Draft linked to call | I | #28 | done | `tests/integration/test_drafts.py::test_transfer_mid_intake_creates_a_draft_linked_to_the_call` |
 | AC5.3 | Transfer → pop-up + SMS naming Foreman and Job before ring | I, P, L | #25 | planned | |
 | AC5.4 | Callback Request → SMS on-duty + backup within 60 s, no time promised | I, S | #24 | planned | |
 | AC6.1 | "We hit a gas line" → safety script first | S | #26 | planned | |

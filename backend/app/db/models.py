@@ -161,7 +161,10 @@ class Request(Base):
         request_ref_seq, server_default=request_ref_seq.next_value(), unique=True
     )
     foreman_id: Mapped[int] = mapped_column(ForeignKey("foremen.id"), index=True)
-    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"), index=True)
+    # Null while the Job is not known: a Draft whose spoken Job matched no active Job.
+    job_id: Mapped[int | None] = mapped_column(ForeignKey("jobs.id"), index=True)
+    # The Job as the Foreman said it, when the agent did not resolve it to a Job id.
+    job_spoken: Mapped[str | None] = mapped_column(Text)
     category: Mapped[str] = mapped_column(String(32))
     need: Mapped[str] = mapped_column(Text)
     quantity: Mapped[Decimal | None] = mapped_column(Numeric)
@@ -170,7 +173,8 @@ class Request(Base):
     needed_by_spoken: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20))
     source: Mapped[str] = mapped_column(String(20))
-    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # When the Request became Recorded; null while it is a Draft.
+    recorded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     @property
     def ref_display(self) -> str:

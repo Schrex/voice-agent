@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 import type { Staff } from "./api";
 import { useAuth } from "./App";
 
@@ -7,6 +9,9 @@ export function QueuePage({ staff }: { staff: Staff }) {
   return (
     <>
       <header className="topbar">
+        <nav>
+          <Link to="/drafts">Drafts</Link>
+        </nav>
         <span>{staff.name}</span>
         <button type="button" onClick={() => void auth.signOut()}>
           Log out

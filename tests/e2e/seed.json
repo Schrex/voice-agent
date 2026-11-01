@@ -6,5 +6,11 @@
       "email": "casey@example.com",
       "role": "coordinator"
     }
+  ],
+  "jobs": [
+    { "name": "Route 104 Widening", "active": true, "aliases": ["Route 104"] }
+  ],
+  "foremen": [
+    { "first_name": "Dale", "last_name": "Kramer", "active": true, "phones": ["+15855550102"] }
   ]
 }

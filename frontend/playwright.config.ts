@@ -1,5 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
+import { E2E_HOOK_SECRET, E2E_WEBHOOK_SECRET } from "../tests/e2e/elevenlabs";
 import { E2E_JWT_SECRET, E2E_SUPABASE_URL } from "../tests/e2e/supabase-stub";
 
 // P-tests (architecture §9 layer 4). The real backend serves a real build; only Supabase Auth's
@@ -26,6 +27,8 @@ export default defineConfig({
     env: {
       E2E_PORT: port,
       SUPABASE_JWT_SECRET: E2E_JWT_SECRET,
+      HOOK_SECRET: E2E_HOOK_SECRET,
+      ELEVENLABS_WEBHOOK_SECRET: E2E_WEBHOOK_SECRET,
       VITE_SUPABASE_URL: E2E_SUPABASE_URL,
       VITE_SUPABASE_ANON_KEY: "e2e-anon-key",
     },

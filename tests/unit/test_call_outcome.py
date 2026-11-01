@@ -23,3 +23,20 @@ def test_call_outcome(
     assert call_outcome(rejected=rejected, submitted=submitted, tools_called=tools_called) == (
         expected
     )
+
+
+@pytest.mark.parametrize(
+    ("rejected", "tools_called", "expected"),
+    [
+        pytest.param(False, ["end_call"], "draft", id="hang-up with a Draft"),
+        pytest.param(False, [], "draft", id="dropped call with a Draft"),
+        pytest.param(False, ["transfer_to_number"], "transferred", id="transfer outranks Draft"),
+        pytest.param(True, [], "rejected", id="rejected outranks Draft"),
+    ],
+)
+def test_call_with_a_draft(rejected: bool, tools_called: list[str], expected: str) -> None:
+    outcome = call_outcome(
+        rejected=rejected, submitted=False, tools_called=tools_called, drafted=True
+    )
+
+    assert outcome == expected
