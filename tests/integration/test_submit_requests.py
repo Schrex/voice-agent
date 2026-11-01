@@ -1,4 +1,4 @@
-"""POST /tools/submit_requests: one confirmed item → a Recorded Request (ticket #6).
+"""POST /tools/submit_requests: confirmed items → Recorded Requests, all or none (#6, #15).
 
 Identity comes from the call: the backend resolves the Foreman from `X-Conversation-Id`
 via the Call bound at call start (ADR 0004), never from the tool body.
@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.clock import get_clock
 from app.db.models import Call, CallRequest, Foreman, Job, Request, RequestEvent
 from app.main import app
+from app.services import requests as requests_service
 from app.services.roster import load_roster_file, seed_roster
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -264,11 +265,91 @@ def test_invalid_item_returns_a_speakable_error(
     assert _nothing_written(db_session)
 
 
-def test_more_than_one_item_is_not_accepted_yet(tools: TestClient, db_session: Session) -> None:
+def test_several_items_each_become_a_recorded_request_with_its_own_reference_in_order(
+    tools: TestClient, db_session: Session
+) -> None:
+    # AC1.6: two needs confirmed together → two Recorded Requests, distinct refs, both returned.
+    trucks = _item(db_session, needed_by_spoken="tomorrow at seven")
+    stone = _item(
+        db_session,
+        category="Material",
+        need="number 2 stone",
+        quantity=40,
+        unit="tons",
+        needed_by_spoken="this afternoon",
+    )
+
+    response = _submit(tools, {"items": [trucks, stone]})
+
+    assert response.status_code == 200
+    first, second = response.json()
+    assert first["ref"] != second["ref"]
+    assert (first["needed_by_resolved"], first["urgency"]) == (
+        "Monday, November 2 at 7:00 AM",
+        "Planned",
+    )
+    assert (second["needed_by_resolved"], second["urgency"]) == (
+        "Sunday, November 1 at 1:00 PM",
+        "Today",
+    )
+    by_ref = {f"R-{r.ref}": r for r in db_session.scalars(select(Request))}
+    assert set(by_ref) == {first["ref"], second["ref"]}
+    assert by_ref[first["ref"]].need == "tri-axle dump trucks"
+    assert by_ref[second["ref"]].need == "number 2 stone"
+    assert {r.status for r in by_ref.values()} == {"Recorded"}
+
+    events = db_session.scalars(select(RequestEvent)).all()
+    assert sorted(e.request_id for e in events) == sorted(r.id for r in by_ref.values())
+    assert {(e.actor_type, e.kind) for e in events} == {("agent", "recorded")}
+    links = db_session.scalars(select(CallRequest)).all()
+    assert sorted(link.request_id for link in links) == sorted(r.id for r in by_ref.values())
+    assert {link.relation for link in links} == {"created"}
+
+
+def test_several_items_with_one_invalid_record_none_of_them(
+    tools: TestClient, db_session: Session
+) -> None:
+    items = [_item(db_session), _item(db_session, category="Project")]
+
+    response = _submit(tools, {"items": items})
+
+    assert response.status_code == 200
+    assert response.json() == SPEAKABLE_ERROR
+    assert _nothing_written(db_session)
+
+
+def test_several_items_where_a_later_one_fails_in_the_database_record_none_of_them(
+    tools: TestClient, db_session: Session
+) -> None:
+    # The second item's job id fails the foreign key check after the first is written.
+    items = [_item(db_session), _item(db_session, need="lowboy", job_id=999_999)]
+
+    response = _submit(tools, {"items": items})
+
+    assert response.status_code == 200
+    assert response.json() == SPEAKABLE_ERROR
+    assert _nothing_written(db_session)
+
+
+def test_several_items_where_writing_the_last_event_fails_record_none_of_them(
+    tools: TestClient, db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    real = requests_service._recorded_fields
+    seen: list[object] = []
+
+    def fail_on_second(request: Request) -> dict[str, object]:
+        seen.append(request)
+        if len(seen) == 2:
+            raise RuntimeError("boom")
+        return real(request)
+
+    monkeypatch.setattr("app.services.requests._recorded_fields", fail_on_second)
+
     response = _submit(tools, {"items": [_item(db_session), _item(db_session, need="lowboy")]})
 
     assert response.status_code == 200
     assert response.json() == SPEAKABLE_ERROR
+    assert len(seen) == 2
     assert _nothing_written(db_session)
 
 
