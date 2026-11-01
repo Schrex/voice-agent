@@ -130,6 +130,7 @@ def _record(session: Session, call: Call) -> str:
         items=[
             NewItem(
                 job_id=job_id,
+                job_spoken="the 104 job",
                 category="Trucking",
                 need="dump trucks",
                 quantity=None,

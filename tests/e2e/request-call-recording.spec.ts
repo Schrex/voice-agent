@@ -19,6 +19,7 @@ test("a request's linked call shows its transcript and plays its recording", asy
   const need = `e2e loader ${Date.now()}`;
   const { ref, conversationId } = await recordRequestOnCall(api, DALE_PHONE, {
     job_id: jobId("Route 104 Widening"),
+    job_spoken: "the 104 job",
     category: "Equipment",
     need,
     quantity: 1,

@@ -21,6 +21,7 @@ const DETAIL: RequestDetail = {
   ref: "R-1000",
   foreman: "Dale Kramer",
   job: "Route 104 Widening",
+  job_spoken: "the 104 job",
   category: "Trucking",
   need: "dump trucks",
   quantity: null,
