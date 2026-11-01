@@ -207,6 +207,23 @@ def test_submitted_call_gets_outcome_submitted(hook: TestClient, db_session: Ses
     assert _call(db_session, "conv_synthetic_rostered_0001").outcome == "submitted"
 
 
+def test_call_that_only_looked_up_a_request_gets_outcome_status_only(
+    hook: TestClient, db_session: Session
+) -> None:
+    # Dale's Request from an earlier call, looked up on this one (ticket #16).
+    _submit_on(hook, db_session, "conv_synthetic_transferred_0001")
+    looked_up = hook.post(
+        "/tools/find_open_requests",
+        json={},
+        headers={"X-Tool-Secret": TOOL_SECRET, "X-Conversation-Id": "conv_synthetic_rostered_0001"},
+    )
+    assert len(looked_up.json()) == 1
+
+    _deliver(hook, SUBMITTED)
+
+    assert _call(db_session, "conv_synthetic_rostered_0001").outcome == "status_only"
+
+
 def test_rejected_call_keeps_outcome_rejected(hook: TestClient, db_session: Session) -> None:
     response = _deliver(hook, _fixture("post_call_rejected.json"))
 

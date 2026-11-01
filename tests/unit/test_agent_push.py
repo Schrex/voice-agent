@@ -161,11 +161,13 @@ def _tool_id(el: FakeElevenLabs, name: str) -> str:
     return tool_id
 
 
-@pytest.mark.parametrize("name", ["find_jobs", "resolve_needed_by", "submit_requests"])
+@pytest.mark.parametrize(
+    "name", ["find_jobs", "find_open_requests", "resolve_needed_by", "submit_requests"]
+)
 def test_push_creates_each_tool_pointing_at_the_env_backend(el: FakeElevenLabs, name: str) -> None:
     push(ENV, el.client())
 
-    assert len(el.tools) == 3
+    assert len(el.tools) == 4
     config = el.tools[_tool_id(el, name)]["tool_config"]
     assert config["type"] == "webhook"
     assert config["api_schema"]["url"] == f"https://backend.example.test/tools/{name}"
@@ -184,6 +186,7 @@ def test_pushed_agent_uses_the_created_tools_by_id(el: FakeElevenLabs) -> None:
         _tool_id(el, "find_jobs"),
         _tool_id(el, "resolve_needed_by"),
         _tool_id(el, "submit_requests"),
+        _tool_id(el, "find_open_requests"),
     ]
 
 
@@ -237,10 +240,16 @@ def test_push_creates_each_repo_test_by_name(el: FakeElevenLabs) -> None:
         "AC1.5 needed-by asked once, then recorded without it when the Foreman cannot say",
         "AC1.7 says recorded and not yet confirmed and gives the reference",
         "AC1.8 does not submit when the foreman leaves before confirming",
+        "AC3.1 a Recorded request: the office has not picked it up yet",
+        "AC3.2 an Acknowledged request: names Dispatch and says it is not confirmed",
+        "AC3.3 a Resolved/Denied request: says it was denied and reads the explanation",
+        "AC3.4 no matching request: says it cannot find one and offers Transfer or Callback",
         "AC8.1 unrostered caller: call ends after the rejection line",
         "AC8.1 unrostered caller: no Job or Request information disclosed",
+        "ACX.1 status lookup: never states availability, ETA or an unrecorded decision",
         "J1 asks at most one question per turn",
         "J1 quantity corrected during read-back is the value submitted",
+        "J3 step 2: several matching requests, asks which one by need and Job",
     ]
 
 
@@ -335,21 +344,23 @@ def test_cli_prints_one_line_per_object_and_exits_0(
     assert main(["--env", "staging"], client=el.client(), agent_dir=agent_dir) == 0
 
     out = capsys.readouterr().out.splitlines()
-    assert out[:4] == [
+    assert out[:5] == [
         "tool 'find_jobs': created (tool_0001)",
-        "tool 'resolve_needed_by': created (tool_0002)",
-        "tool 'submit_requests': created (tool_0003)",
+        "tool 'find_open_requests': created (tool_0002)",
+        "tool 'resolve_needed_by': created (tool_0003)",
+        "tool 'submit_requests': created (tool_0004)",
         "agent 'Field Request Assistant (test)': created (agent_0001)",
     ]
     second = out[len(out) // 2 :]
-    assert second[:4] == [
+    assert second[:5] == [
         "tool 'find_jobs': unchanged",
+        "tool 'find_open_requests': unchanged",
         "tool 'resolve_needed_by': unchanged",
         "tool 'submit_requests': unchanged",
         "agent 'Field Request Assistant (test)': unchanged",
     ]
-    assert len(second) == 4 + len(list((agent_dir / "tests").glob("*.json"))) + 1
-    assert all(line.startswith("test '") and line.endswith("': unchanged") for line in second[4:-1])
+    assert len(second) == 5 + len(list((agent_dir / "tests").glob("*.json"))) + 1
+    assert all(line.startswith("test '") and line.endswith("': unchanged") for line in second[5:-1])
     assert second[-1] == "No changes."
 
 

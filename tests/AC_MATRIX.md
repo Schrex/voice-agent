@@ -19,10 +19,10 @@ Status: **done** = test exists and passes in CI · **defined** = test written in
 | AC1.9 | Today request → on-duty SMS within 60 s | I, L | #21 | planned | |
 | AC2.1 | Same job + category → asks if it's the existing request | U, S | #18 | planned | |
 | AC2.2 | "Yes" → no new request, note added | I, S | #18 | planned | |
-| AC3.1 | Recorded → "office hasn't picked it up yet" | S | #16 | planned | |
-| AC3.2 | Acknowledged → names Owner, not confirmed | S | #16 | planned | |
-| AC3.3 | Resolved/Denied → denied + explanation | S | #16 | planned | |
-| AC3.4 | No match → says so, offers Transfer/Callback | S | #16 | planned | |
+| AC3.1 | Recorded → "office hasn't picked it up yet" | U, I, S | #16 | U/I done; S defined, deferred | U `tests/unit/test_agent_config.py::test_prompt_reports_status_in_the_spec_lifecycle_words`; I `tests/integration/test_find_open_requests.py::test_a_recorded_request_comes_back_with_the_facts_on_record`; S `backend/agent/tests/ac3_1_recorded_office_has_not_picked_it_up.json` |
+| AC3.2 | Acknowledged → names Owner, not confirmed | U, I, S | #16 | U/I done; S defined, deferred | U `tests/unit/test_agent_config.py::test_prompt_reports_status_in_the_spec_lifecycle_words`; I `tests/integration/test_find_open_requests.py::test_an_acknowledged_request_names_its_owner`, `::test_an_in_progress_request_names_its_owner`; S `backend/agent/tests/ac3_2_acknowledged_names_owner_not_confirmed.json` |
+| AC3.3 | Resolved/Denied → denied + explanation | U, I, S | #16 | U/I done; S defined, deferred | U `tests/unit/test_agent_config.py::test_prompt_reports_status_in_the_spec_lifecycle_words`; I `tests/integration/test_find_open_requests.py::test_a_denied_request_carries_its_outcome_and_explanation_as_written`; S `backend/agent/tests/ac3_3_resolved_denied_reads_explanation.json` |
+| AC3.4 | No match → says so, offers Transfer/Callback | U, I, S | #16 | U/I done; S defined, deferred | U `tests/unit/test_agent_config.py::test_prompt_reports_status_in_the_spec_lifecycle_words`; I `tests/integration/test_find_open_requests.py::test_no_requests_is_an_empty_list`, `::test_job_and_category_narrow_the_lookup`, `::test_another_foremans_requests_are_never_returned`; S `backend/agent/tests/ac3_4_no_match_says_so_and_offers_transfer_or_callback.json`; several matches `backend/agent/tests/j3_several_matches_asks_which_one.json` |
 | AC3.5 | "Need an answer today" → note + coordinator alerted, no new request | I, S | #17 | planned | |
 | AC4.1 | Cancel Recorded → Resolved/Withdrawn, coordinator notified | I, S | #20 | planned | |
 | AC4.2 | Change In Progress → unchanged, Change requested, "not yet changed" | I, S | #19 | planned | |
@@ -44,7 +44,7 @@ Status: **done** = test exists and passes in CI · **defined** = test written in
 | J9 (no numbered AC) | Queue: open requests sorted urgency then age, refresh 10 s, times in America/New_York | I, P, U (Vitest) | #9 | done | I `tests/integration/test_queue.py`; P `tests/e2e/queue.spec.ts`; Vitest `frontend/src/QueuePage.test.tsx` |
 | J9 detail (no numbered AC; supports AC9.5) | Request detail: all fields and audit history (who, when, before/after), oldest first, times in America/New_York | I, P, U (Vitest) | #10 | done | I `tests/integration/test_request_detail.py`; P `tests/e2e/request-detail.spec.ts`; Vitest `frontend/src/RequestDetailPage.test.tsx` |
 | J9 detail: linked calls (no numbered AC; spec §4 "Recording access: Coordinators, Admin", §5 "linked call recording + transcript") | Detail shows linked call(s) with transcript and plays the recording, streamed through the backend; audio refused to non-staff | I, P, U (Vitest) | #29 | I/Vitest done; P done with ElevenLabs stubbed; P on staging deferred | I `tests/integration/test_call_recording.py` (`test_audio_endpoint_refuses_non_staff`, streaming, 404/502, transcript, linked calls); P `tests/e2e/request-call-recording.spec.ts`; Vitest `frontend/src/CallRecordings.test.tsx` |
-| ACX.1 | Never states availability, ETA or unrecorded decision | S | #16, #36 | planned | |
+| ACX.1 | Never states availability, ETA or unrecorded decision | S | #16, #36 | status lookup (#16): S defined, deferred; rest planned (#36) | S `backend/agent/tests/acx_1_status_never_states_availability_or_eta.json`, plus the no-availability/ETA condition in every `ac3_*` and `j3_*` test |
 | ACX.2 | Never asks about mood, day or productivity | S | #36 | planned | |
 
 ## Other verified behaviour (not a §9 AC)

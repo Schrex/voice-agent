@@ -40,3 +40,29 @@ def test_call_with_a_draft(rejected: bool, tools_called: list[str], expected: st
     )
 
     assert outcome == expected
+
+
+@pytest.mark.parametrize(
+    ("rejected", "submitted", "drafted", "tools_called", "expected"),
+    [
+        pytest.param(False, False, False, ["end_call"], "status_only", id="only a lookup"),
+        pytest.param(False, True, False, [], "submitted", id="submitted outranks a lookup"),
+        pytest.param(False, False, True, [], "draft", id="Draft outranks a lookup"),
+        pytest.param(
+            False, False, False, ["transfer_to_number"], "transferred", id="transfer outranks"
+        ),
+        pytest.param(True, False, False, [], "rejected", id="rejected outranks a lookup"),
+    ],
+)
+def test_call_with_a_status_lookup(
+    rejected: bool, submitted: bool, drafted: bool, tools_called: list[str], expected: str
+) -> None:
+    outcome = call_outcome(
+        rejected=rejected,
+        submitted=submitted,
+        tools_called=tools_called,
+        drafted=drafted,
+        looked_up=True,
+    )
+
+    assert outcome == expected

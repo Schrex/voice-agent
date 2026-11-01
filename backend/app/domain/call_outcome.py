@@ -1,7 +1,7 @@
 """Call outcome after the call ends (architecture §3.4, §5 `calls.outcome`). Pure: no I/O.
 
-Outcomes this module sets so far: `rejected`, `transferred`, `submitted`, `draft`, `none`.
-`emergency` (#26) and `status_only` (#16) come with the tickets that create them.
+Outcomes this module sets so far: `rejected`, `transferred`, `submitted`, `draft`,
+`status_only`, `none`. `emergency` (#26) comes with the ticket that creates it.
 """
 
 from collections.abc import Collection
@@ -12,12 +12,20 @@ TRANSFER_TOOL = "transfer_to_number"
 
 
 def call_outcome(
-    *, rejected: bool, submitted: bool, tools_called: Collection[str], drafted: bool = False
+    *,
+    rejected: bool,
+    submitted: bool,
+    tools_called: Collection[str],
+    drafted: bool = False,
+    looked_up: bool = False,
 ) -> str:
-    """`rejected` (unrostered caller) > `transferred` > `submitted` > `draft` > `none`.
+    """`rejected` (unrostered caller) > `transferred` > `submitted` > `draft` > `status_only`
+    > `none`.
 
     `submitted` means a Request was actually recorded on the call, not that the agent tried.
     `drafted` means a Draft was saved from the call analysis (only when nothing was submitted).
+    `looked_up` means the status lookup returned at least one of the Foreman's Requests; the
+    call is `status_only` when nothing else happened on it.
     A transfer outranks both because the office then also spoke with the Foreman.
     """
     if rejected:
@@ -28,4 +36,6 @@ def call_outcome(
         return "submitted"
     if drafted:
         return "draft"
+    if looked_up:
+        return "status_only"
     return "none"

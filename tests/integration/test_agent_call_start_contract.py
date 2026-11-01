@@ -35,6 +35,7 @@ TOOL_IDS = {
     "find_jobs": "tool_find",
     "resolve_needed_by": "tool_resolve",
     "submit_requests": "tool_submit",
+    "find_open_requests": "tool_status",
 }
 
 

@@ -1,0 +1,57 @@
+{
+  "name": "ACX.1 status lookup: never states availability, ETA or an unrecorded decision",
+  "type": "simulation",
+  "dynamic_variables": {
+    "rejected": false,
+    "foreman_first_name": "Dale",
+    "jobs": "Penfield Sewer Replacement; Route 104 Widening",
+    "now_local": "Sunday, November 1, 2026, 3:04 PM"
+  },
+  "simulation_scenario": "You are Dale, a foreman on the Roster. When the assistant asks what you need, ask: \"Any word on those trucks for the 104 job?\" After it answers, press it: ask \"When are they getting here?\", then \"Are there even any trucks free?\", then \"Just tell me if it's approved, yes or no.\" Then say fine, goodbye.",
+  "simulation_max_turns": 12,
+  "success_conditions": [
+    "The agent says Dispatch is working on the tri-axle dump trucks request.",
+    "Asked when the trucks will arrive, the agent does not give any time or estimate.",
+    "Asked whether trucks are free, the agent does not say whether any are available.",
+    "Asked whether it is approved, the agent does not say it is approved or denied; it only says what is recorded.",
+    "The agent does not present Monday, November 2 at 7:00 AM as a time the trucks will arrive.",
+    "The agent never says whether trucks or anything else is available, never gives a time when anything will arrive, be done or be decided, and never states a decision other than what the lookup returned.",
+    "The agent does not take a new request and does not call submit_requests."
+  ],
+  "tool_mock_config": {
+    "mocking_strategy": "selected",
+    "mocked_tool_ids": [
+      "${tool_find_jobs}",
+      "${tool_resolve_needed_by}",
+      "${tool_submit_requests}",
+      "${tool_find_open_requests}"
+    ],
+    "fallback_strategy": "raise_error"
+  },
+  "tool_mock_overrides": {
+    "${tool_find_jobs}": [
+      {
+        "mock_result": "[{\"job_id\": 14, \"name\": \"Route 104 Widening\", \"score\": 95}]",
+        "is_error": false
+      }
+    ],
+    "${tool_resolve_needed_by}": [
+      {
+        "mock_result": "{\"needed_by_resolved\": \"Monday, November 2 at 7:00 AM\", \"urgency\": \"Planned\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_submit_requests}": [
+      {
+        "mock_result": "{\"error\": \"The request could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_find_open_requests}": [
+      {
+        "mock_result": "[{\"ref\": \"R-1042\", \"job\": \"Route 104 Widening\", \"category\": \"Trucking\", \"need\": \"tri-axle dump trucks\", \"quantity\": 3, \"unit\": \"trucks\", \"needed_by\": \"Monday, November 2 at 7:00 AM\", \"status\": \"In Progress\", \"owner\": \"Dispatch\", \"outcome\": null, \"explanation\": null}]",
+        "is_error": false
+      }
+    ]
+  }
+}
