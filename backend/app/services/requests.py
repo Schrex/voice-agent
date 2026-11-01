@@ -13,7 +13,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import CallRequest, Owner, Request, RequestEvent
+from app.db.models import CallRequest, Foreman, Job, Owner, Request, RequestEvent
 from app.domain.lifecycle import Outcome, Status, acknowledge, resolve, start, transition
 from app.domain.timeparse import NeededBy, parse_needed_by, speakable, urgency_for
 from app.services.calls import Caller
@@ -275,3 +275,100 @@ def _staff_event(
 
 def _iso(at: datetime | None) -> str | None:
     return None if at is None else at.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
+
+@dataclass(frozen=True)
+class QuickEntry:
+    """A Request a coordinator logs from a call they answered (spec J7)."""
+
+    foreman_id: int
+    job_id: int
+    category: str
+    need: str
+    quantity: Decimal | None = None
+    unit: str | None = None
+    needed_by_spoken: str | None = None
+    """As the coordinator typed it; resolved like a spoken one. None = needed-by unknown."""
+    owner_id: int | None = None
+    """Given → the Request is logged straight to Acknowledged with this Owner."""
+
+
+class UnknownForeman(ValueError):
+    def __init__(self) -> None:
+        super().__init__("No such active Foreman")
+
+
+class UnknownJob(ValueError):
+    def __init__(self) -> None:
+        super().__init__("No such active Job")
+
+
+@dataclass(frozen=True)
+class Logged:
+    ref: str
+    status: str
+
+
+def log_request(
+    session: Session, *, entry: QuickEntry, staff_id: uuid.UUID, now: datetime
+) -> Logged:
+    """Record a coordinator-logged Request (source `coordinator`) for a rostered Foreman.
+
+    It enters the same queue as a called-in Request: Recorded, or directly Acknowledged when an
+    Owner is given (spec J7; `domain.lifecycle` guards both moves). The needed-by is resolved
+    and sets the Urgency exactly as on the agent's path. Writes a `recorded` event by the staff
+    member and, with an Owner, an `acknowledged` event, in one transaction. An unknown or
+    inactive Foreman or Job, or an unknown Owner, raises and writes nothing.
+    """
+    foreman = session.get(Foreman, entry.foreman_id)
+    if foreman is None or not foreman.active:
+        raise UnknownForeman()
+    job = session.get(Job, entry.job_id)
+    if job is None or not job.active:
+        raise UnknownJob()
+    if entry.owner_id is not None and session.get(Owner, entry.owner_id) is None:
+        raise UnknownOwner()
+    recorded = transition(Status.DRAFT, Status.RECORDED)
+    needed_by = _parse(entry.needed_by_spoken, now)
+    request = Request(
+        foreman_id=foreman.id,
+        job_id=job.id,
+        job_spoken=job.name,
+        category=entry.category,
+        need=entry.need,
+        quantity=entry.quantity,
+        unit=entry.unit,
+        needed_by_spoken=entry.needed_by_spoken,
+        needed_by=None if needed_by is None else needed_by.at,
+        urgency=None if needed_by is None else urgency_for(needed_by, now).value,
+        status=recorded.value,
+        source="coordinator",
+        recorded_at=now,
+    )
+    session.add(request)
+    session.flush()
+    session.add(
+        RequestEvent(
+            request_id=request.id,
+            at=now,
+            actor_type="staff",
+            actor_id=str(staff_id),
+            kind="recorded",
+            before=None,
+            after=_recorded_fields(request),
+        )
+    )
+    if entry.owner_id is not None:
+        acknowledged = acknowledge(recorded, entry.owner_id)
+        request.status = acknowledged.value
+        request.owner_id = entry.owner_id
+        request.acknowledged_at = now
+        before = {"status": recorded.value, "owner_id": None, "acknowledged_at": None}
+        after = {
+            "status": acknowledged.value,
+            "owner_id": entry.owner_id,
+            "acknowledged_at": _iso(now),
+        }
+        _staff_event(session, request, staff_id, now, "acknowledged", before, after)
+    session.commit()
+    return Logged(ref=request.ref_display, status=request.status)

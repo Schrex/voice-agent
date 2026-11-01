@@ -156,6 +156,7 @@ Tool contract: tools return short, speakable facts; errors return `{error: "<spe
 | `GET /api/requests?status&flag&job&q` | coordinator | Queue (sorted urgency, age) + counts |
 | `GET /api/requests/{ref}` | coordinator | Detail, events, notes, linked calls |
 | `POST /api/requests` | coordinator | Quick-entry (J7) |
+| `GET /api/quick-entry` | coordinator | Quick-entry choices: active Foremen and Jobs, Categories, Owners |
 | `PATCH /api/requests/{ref}` | coordinator | Edit fields / fix job |
 | `POST /api/requests/{ref}/acknowledge` | coordinator | Requires `owner_id` |
 | `POST /api/requests/{ref}/start` | coordinator | → In Progress |

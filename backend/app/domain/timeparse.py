@@ -162,6 +162,7 @@ def speakable(needed_by: NeededBy) -> str:
 def _words(spoken: str) -> list[str]:
     text = spoken.lower().replace("a.m.", "am").replace("p.m.", "pm").replace("'", "")
     text = re.sub(r"[^a-z0-9:]+", " ", text)
+    text = re.sub(r"(\d)(am|pm)\b", r"\1 \2", text)  # "7am", as typed in quick entry
     return text.split()
 
 
