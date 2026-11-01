@@ -83,8 +83,9 @@ class SubmitItem(BaseModel):
 
 
 class SubmitBody(BaseModel):
-    # One item per call until ticket #15 adds multiple items.
-    items: list[SubmitItem] = Field(min_length=1, max_length=1)
+    """Every need the Foreman confirmed together; recorded all or none (ticket #15)."""
+
+    items: list[SubmitItem] = Field(min_length=1)
 
 
 class FindJobsBody(BaseModel):

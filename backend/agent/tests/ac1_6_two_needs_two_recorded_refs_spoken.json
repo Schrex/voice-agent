@@ -1,0 +1,48 @@
+{
+  "name": "AC1.6 two needs in one utterance get a numbered summary, one confirmation and both references",
+  "type": "simulation",
+  "dynamic_variables": {
+    "rejected": false,
+    "foreman_first_name": "Dale",
+    "jobs": "Penfield Sewer Replacement; Route 104 Widening",
+    "now_local": "Sunday, November 1, 2026, 3:04 PM"
+  },
+  "simulation_scenario": "You are Dale, a foreman on the Roster. When the assistant asks what you need, say in one sentence: you need two tri-axle dump trucks and forty tons of number 2 stone at the 104 job tomorrow at 7 AM. If asked about anything, answer briefly with those same details. When the assistant reads back the requests and asks whether to submit, say yes. After it gives you the reference numbers, say that's all and goodbye.",
+  "simulation_max_turns": 10,
+  "success_conditions": [
+    "Before submitting, the agent reads back a numbered summary with two separate requests: the dump trucks (quantity 2) and the stone (40 tons), each with Route 104 Widening and Monday, November 2 at 7:00 AM.",
+    "The agent asks for confirmation once for the whole summary, not once per request, and submits only after the caller says yes.",
+    "The agent calls submit_requests once, with two items.",
+    "After submitting, the agent says the requests are recorded and sent to the office and not confirmed yet, and gives both reference numbers, R-1042 and R-1043.",
+    "The agent never says either request is confirmed, never states availability, and never gives an arrival time."
+  ],
+  "tool_mock_config": {
+    "mocking_strategy": "selected",
+    "mocked_tool_ids": [
+      "${tool_find_jobs}",
+      "${tool_resolve_needed_by}",
+      "${tool_submit_requests}"
+    ],
+    "fallback_strategy": "raise_error"
+  },
+  "tool_mock_overrides": {
+    "${tool_find_jobs}": [
+      {
+        "mock_result": "[{\"job_id\": 14, \"name\": \"Route 104 Widening\", \"score\": 95}]",
+        "is_error": false
+      }
+    ],
+    "${tool_resolve_needed_by}": [
+      {
+        "mock_result": "{\"needed_by_resolved\": \"Monday, November 2 at 7:00 AM\", \"urgency\": \"Planned\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_submit_requests}": [
+      {
+        "mock_result": "[{\"ref\": \"R-1042\", \"needed_by_resolved\": \"Monday, November 2 at 7:00 AM\", \"urgency\": \"Planned\"}, {\"ref\": \"R-1043\", \"needed_by_resolved\": \"Monday, November 2 at 7:00 AM\", \"urgency\": \"Planned\"}]",
+        "is_error": false
+      }
+    ]
+  }
+}
