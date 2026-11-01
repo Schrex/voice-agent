@@ -36,6 +36,7 @@ TOOL_IDS = {
     "resolve_needed_by": "tool_resolve",
     "submit_requests": "tool_submit",
     "find_open_requests": "tool_status",
+    "create_callback_request": "tool_callback",
     "transfer_to_office": "tool_transfer",
 }
 

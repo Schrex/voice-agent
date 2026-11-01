@@ -21,6 +21,7 @@
           "${tool_resolve_needed_by}",
           "${tool_submit_requests}",
           "${tool_find_open_requests}",
+          "${tool_create_callback_request}",
           "${tool_transfer_to_office}"
         ],
         "built_in_tools": {

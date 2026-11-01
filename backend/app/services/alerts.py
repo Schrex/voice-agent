@@ -13,10 +13,16 @@ from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from app.db.models import Alert, Call, DutyRoster, Foreman, Job, Request, Staff
+from app.db.models import Alert, Call, CallRequest, DutyRoster, Foreman, Job, Request, Staff
 from app.domain.lifecycle import OPEN_STATUSES
 from app.domain.local_time import LOCAL_TZ
-from app.domain.sms_text import TodayRequestFacts, short_date, today_request_text, transfer_text
+from app.domain.sms_text import (
+    TodayRequestFacts,
+    callback_request_text,
+    short_date,
+    today_request_text,
+    transfer_text,
+)
 from app.domain.urgency import Urgency
 from app.integrations.twilio_sms import SmsNotSent, SmsSender
 from app.services.queue import as_said
@@ -234,3 +240,89 @@ def failed_alerts(session: Session) -> list[FailedAlert]:
         )
         for alert, request in rows
     ]
+
+
+# --- Callback Request (ticket #24) ---
+
+
+def alert_callback(session: Session, sms: SmsSender, *, ref: str, now: datetime) -> None:
+    """Text the on-duty and the backup Coordinator that the Callback Request `ref` was Recorded
+    (spec J5 "Callback Request", AC5.4).
+
+    One `callback` alert per Coordinator of `now`'s New York date, recorded before sending and
+    committed together, so a retried trigger sends nothing more. One person who is both on duty
+    and backup is texted once. A missing Coordinator or phone is a failed alert with the reason.
+    Does nothing for a Request that is not a Recorded Callback Request.
+    """
+    match = _REF.match(ref)
+    if match is None:
+        return
+    request = session.scalars(
+        select(Request).where(Request.ref == int(match.group(1))).with_for_update()
+    ).one_or_none()
+    if request is None or request.category != "Callback" or request.recorded_at is None:
+        return
+    already = session.scalar(
+        select(Alert.id).where(Alert.request_id == request.id, Alert.kind == "callback").limit(1)
+    )
+    if already is not None:
+        session.commit()  # releases the lock; nothing was changed
+        return
+    foreman = session.get_one(Foreman, request.foreman_id)
+    call = session.execute(
+        select(Call.id, Call.caller_e164)
+        .join(CallRequest, CallRequest.call_id == Call.id)
+        .where(CallRequest.request_id == request.id, CallRequest.relation == "created")
+    ).first()
+    text_body = callback_request_text(
+        ref=request.ref_display,
+        foreman=f"{foreman.first_name} {foreman.last_name}",
+        caller_e164=None if call is None else call.caller_e164,
+        reason=request.need,
+    )
+    to_send: list[tuple[Alert, str]] = []
+    for staff, reason in _on_duty_and_backup(session, now):
+        phone = None if staff is None else staff.phone_e164
+        if staff is not None and phone is None:
+            reason = f"{staff.name} has no phone number"
+        alert = Alert(
+            request_id=request.id,
+            call_id=None if call is None else call.id,
+            kind="callback",
+            channel="sms",
+            to_staff_id=None if staff is None else staff.id,
+            sent_at=now,
+            status="pending" if phone else "failed",
+            detail=None if phone else reason,
+        )
+        session.add(alert)
+        if phone:
+            to_send.append((alert, phone))
+    session.commit()
+    for alert, phone in to_send:
+        try:
+            alert.provider_id = sms.send(phone, text_body)
+            alert.status = "sent"
+        except SmsNotSent as exc:
+            alert.status = "failed"
+            alert.detail = f"SMS not sent: {exc}"
+        session.commit()
+
+
+def _on_duty_and_backup(session: Session, now: datetime) -> list[tuple[Staff | None, str]]:
+    """The on-duty then the backup Coordinator for `now`'s New York date, each with why not
+    when missing; the same person once."""
+    day = now.astimezone(LOCAL_TZ).date()
+    duty = session.get(DutyRoster, day)
+    on_duty = None if duty is None else duty.on_duty
+    backup = (
+        None
+        if duty is None or duty.backup_staff_id is None
+        else session.get(Staff, duty.backup_staff_id)
+    )
+    found: list[tuple[Staff | None, str]] = [
+        (on_duty, f"No on-duty Coordinator for {short_date(day)}")
+    ]
+    if backup is None or on_duty is None or backup.id != on_duty.id:
+        found.append((backup, f"No backup Coordinator for {short_date(day)}"))
+    return found
