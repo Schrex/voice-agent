@@ -15,7 +15,7 @@ Run tickets in Anthropic-hosted sandboxes so work continues with the laptop off,
 1. **Repo**: connect GitHub app to `Schrex/voice-agent`.
 2. **Network access**: `Trusted` (package registries + GitHub), plus custom domains `*.supabase.co` and `api.supabase.com`. Add `api.elevenlabs.io` only for a session that runs `push.py` against a dev agent.
 3. **Environment variables**:
-   - No `GH_TOKEN`. The session proxy authenticates GitHub REST calls (`gh api repos/...`) as the account that connected GitHub to Claude. A PAT adds nothing: `gh issue` / `gh pr` use GraphQL, which cloud sessions block with or without a token. Delete any `GH_TOKEN` left in the environment.
+   - No `GH_TOKEN`. The session proxy authenticates GitHub REST calls (`gh api repos/...`) as the account that connected GitHub to Claude. A PAT adds nothing: `gh issue` / `gh pr` use GraphQL, which cloud sessions block with or without a token. Don't add one. Sessions may still show a platform-provided `GH_TOKEN` that `gh auth status` reports as invalid; that is expected and harmless, since `gh api` calls work.
    - `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_JWT_SECRET`: from a **dev** Supabase project only. Used for Auth/JWT work (dashboard login, `/api` JWT verification), not for tests' database.
    - `SUPABASE_ACCESS_TOKEN` (Management API): only if a session must create projects or run migrations remotely. It is account-wide (it can delete prod), so prefer leaving it out and doing T02-style project setup from the laptop.
    - No staging/prod secrets (Supabase service keys, Twilio, Postmark, EL prod keys). Cloud sessions build and test against local Postgres and mocks only.
