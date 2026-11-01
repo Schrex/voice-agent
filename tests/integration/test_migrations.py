@@ -12,6 +12,8 @@ ALL_TABLES = {
     "request_events",
     "call_requests",
     "staff",
+    "owners",
+    "category_owner_defaults",
 }
 
 

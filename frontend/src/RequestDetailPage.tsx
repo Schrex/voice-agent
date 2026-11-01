@@ -8,6 +8,7 @@ import {
   type RequestEvent,
   type Staff,
 } from "./api";
+import { AcknowledgeAction } from "./AcknowledgeAction";
 import { useAuth } from "./App";
 
 /** Every time on the dashboard is shown in the office's zone, whatever the browser's zone. */
@@ -27,7 +28,7 @@ const SOURCES: Record<RequestDetail["source"], string> = {
 };
 
 /** Event kinds shown as their glossary word; any other kind is shown as stored. */
-const KINDS: Record<string, string> = { recorded: "Recorded" };
+const KINDS: Record<string, string> = { recorded: "Recorded", acknowledged: "Acknowledged" };
 
 /** One request's fields and its full audit history: who, when, what changed. */
 export function RequestDetailPage({ staff }: { staff: Staff }) {
@@ -69,6 +70,7 @@ function Detail({ request }: { request: RequestDetail }) {
     ["Needed-by", request.needed_by ?? "—"],
     ["Urgency", request.urgency ?? "—"],
     ["Status", request.status],
+    ["Owner", request.owner?.name ?? "—"],
     ["Source", SOURCES[request.source]],
     ["Recorded", timeFormat.format(new Date(request.recorded_at))],
   ];
@@ -83,6 +85,7 @@ function Detail({ request }: { request: RequestDetail }) {
           </div>
         ))}
       </dl>
+      <AcknowledgeAction request={request} />
       <h2 id="history">History</h2>
       <table className="history" aria-labelledby="history">
         <thead>

@@ -30,6 +30,9 @@ const DETAIL: RequestDetail = {
   status: "Recorded",
   source: "ai_call",
   recorded_at: "2026-11-02T01:30:00Z",
+  owner: null,
+  acknowledged_at: null,
+  default_owner_id: null,
   events: [
     {
       at: "2026-11-02T01:30:00Z",
@@ -92,6 +95,7 @@ describe("request detail", () => {
       ["Needed-by", "tomorrow at seven"],
       ["Urgency", "—"],
       ["Status", "Recorded"],
+      ["Owner", "—"],
       ["Source", "AI call"],
       ["Recorded", "Sun, Nov 1, 8:30 PM"],
     ]);

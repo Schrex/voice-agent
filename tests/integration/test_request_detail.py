@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import Call, Foreman, Job, RequestEvent, Staff
+from app.db.models import Call, Foreman, Job, Owner, RequestEvent, Staff
 from app.services.calls import Caller
 from app.services.requests import NewItem, submit_requests
 from app.services.roster import load_roster_file, seed_roster
@@ -108,6 +108,9 @@ def test_detail_returns_the_request_fields(
         "status": "Recorded",
         "source": "ai_call",
         "recorded_at": "2026-11-01T12:00:00Z",
+        "owner": None,
+        "acknowledged_at": None,
+        "default_owner_id": db_session.scalar(select(Owner.id).where(Owner.name == "Dispatch")),
     }
 
 
