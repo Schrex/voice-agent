@@ -73,7 +73,14 @@ def _record(session: Session, category: str = "Trucking") -> str:
     [ref] = submit_requests(
         session,
         caller=Caller(call_id=call.id, foreman_id=dale.id),
-        items=[NewItem(job_id=job_id, category=category, need="tri-axle dump trucks")],
+        items=[
+            NewItem(
+                job_id=job_id,
+                job_spoken="Route 104",
+                category=category,
+                need="tri-axle dump trucks",
+            )
+        ],
         now=T0,
     )
     return ref

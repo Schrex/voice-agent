@@ -19,6 +19,7 @@ test("a coordinator acknowledges a recorded request with an Owner; the queue sho
   const need = `e2e lowboy ${Date.now()}`;
   const ref = await recordRequestByCall(api, DALE_PHONE, {
     job_id: jobId("Route 104 Widening"),
+    job_spoken: "the 104 job",
     category: "Trucking",
     need,
     needed_by_spoken: "this afternoon",

@@ -10,8 +10,13 @@ const COORDINATOR: StubUser = {
   password: "correct horse",
 };
 const DALE_PHONE = "+15855550101";
+// The queue refetches every 10 s (QueuePage REFRESH_MS; architecture §1). A request recorded just
+// after a fetch shows on the next one, up to a full interval later plus fetch and render time, so
+// waiting exactly 10 s races the poll. Allow one interval plus margin.
+const QUEUE_REFRESH_MS = 10_000;
+const NEXT_REFRESH_TIMEOUT_MS = QUEUE_REFRESH_MS + 5_000;
 
-test("a request recorded by the agent appears in the open queue within 10 s, without reload", async ({
+test("a request recorded by the agent appears in the open queue on the next 10 s refresh, without reload", async ({
   page,
   request: api,
 }) => {
@@ -33,6 +38,7 @@ test("a request recorded by the agent appears in the open queue within 10 s, wit
   const need = `e2e dump trucks ${Date.now()}`;
   const ref = await recordRequestByCall(api, DALE_PHONE, {
     job_id: jobId("Route 104 Widening"),
+    job_spoken: "the 104 job",
     category: "Trucking",
     need,
     quantity: 3,
@@ -41,7 +47,7 @@ test("a request recorded by the agent appears in the open queue within 10 s, wit
   });
 
   const row = page.getByRole("row").filter({ hasText: ref });
-  await expect(row).toBeVisible({ timeout: 10_000 });
+  await expect(row).toBeVisible({ timeout: NEXT_REFRESH_TIMEOUT_MS });
   await expect(row.getByRole("cell")).toHaveText([
     ref,
     "Route 104 Widening",

@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 
 import {
   fetchRequestDetail,
+  jobText,
   type Actor,
   type RequestDetail,
   type RequestEvent,
@@ -63,7 +64,7 @@ export function RequestDetailPage({ staff }: { staff: Staff }) {
 function Detail({ request }: { request: RequestDetail }) {
   const fields: [string, string][] = [
     ["Foreman", request.foreman],
-    ["Job", request.job],
+    ["Job", jobText(request)],
     ["Category", request.category],
     ["Need", request.need],
     ["Quantity", quantity(request)],

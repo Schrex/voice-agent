@@ -23,6 +23,7 @@ const RECORDED: RequestDetail = {
   ref: "R-1000",
   foreman: "Dale Kramer",
   job: "Route 104 Widening",
+  job_spoken: "Route 104",
   category: "Trucking",
   need: "tri-axle dump trucks",
   quantity: null,

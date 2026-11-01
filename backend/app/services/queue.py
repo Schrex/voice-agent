@@ -18,7 +18,9 @@ from app.domain.urgency import Urgency, rank
 @dataclass(frozen=True)
 class QueueRow:
     ref: str
-    job: str
+    job: str | None
+    """The Job's name; None when Unmatched."""
+    job_spoken: str
     need: str
     quantity: str | None
     unit: str | None
@@ -39,7 +41,7 @@ def open_requests(session: Session) -> list[QueueRow]:
     )
     rows = session.execute(
         select(Request, Job.name)
-        .join(Job, Request.job_id == Job.id)
+        .outerjoin(Job, Request.job_id == Job.id)
         .where(Request.status.in_([s.value for s in OPEN_STATUSES]))
         .order_by(urgency_rank, Request.recorded_at, Request.ref)
     ).all()
@@ -47,6 +49,7 @@ def open_requests(session: Session) -> list[QueueRow]:
         QueueRow(
             ref=request.ref_display,
             job=job_name,
+            job_spoken=request.job_spoken,
             need=request.need,
             quantity=as_said(request.quantity),
             unit=request.unit,

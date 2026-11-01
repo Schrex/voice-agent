@@ -15,7 +15,7 @@
       "prompt": {
         "llm": "claude-sonnet-5-5",
         "timezone": "America/New_York",
-        "tool_ids": ["${tool_submit_requests}"],
+        "tool_ids": ["${tool_find_jobs}", "${tool_submit_requests}"],
         "built_in_tools": {
           "end_call": {
             "type": "system",

@@ -43,7 +43,9 @@ class OwnerRef:
 class RequestDetail:
     ref: str
     foreman: str
-    job: str
+    job: str | None
+    """The Job's name; None when Unmatched."""
+    job_spoken: str
     category: str
     need: str
     quantity: str | None
@@ -68,7 +70,7 @@ def request_detail(session: Session, ref: str) -> RequestDetail | None:
     row = session.execute(
         select(Request, Foreman, Job.name)
         .join(Foreman, Request.foreman_id == Foreman.id)
-        .join(Job, Request.job_id == Job.id)
+        .outerjoin(Job, Request.job_id == Job.id)
         .where(Request.ref == int(match.group(1)))
     ).one_or_none()
     if row is None:
@@ -78,6 +80,7 @@ def request_detail(session: Session, ref: str) -> RequestDetail | None:
         ref=request.ref_display,
         foreman=f"{foreman.first_name} {foreman.last_name}",
         job=job_name,
+        job_spoken=request.job_spoken,
         category=request.category,
         need=request.need,
         quantity=as_said(request.quantity),

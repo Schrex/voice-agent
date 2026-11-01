@@ -21,7 +21,9 @@ from app.services.calls import Caller
 class NewItem:
     """One need the Foreman confirmed on the call, as the agent gathered it."""
 
-    job_id: int
+    job_id: int | None
+    """None when the spoken Job matched no active Job (Unmatched)."""
+    job_spoken: str
     category: str
     need: str
     quantity: Decimal | None = None
@@ -43,6 +45,7 @@ def submit_requests(
         Request(
             foreman_id=caller.foreman_id,
             job_id=item.job_id,
+            job_spoken=item.job_spoken,
             category=item.category,
             need=item.need,
             quantity=item.quantity,
@@ -78,6 +81,7 @@ def _recorded_fields(request: Request) -> dict[str, object]:
         "ref": request.ref_display,
         "foreman_id": request.foreman_id,
         "job_id": request.job_id,
+        "job_spoken": request.job_spoken,
         "category": request.category,
         "need": request.need,
         "quantity": None if request.quantity is None else str(request.quantity),
