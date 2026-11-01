@@ -7,18 +7,20 @@ shape) until real ElevenLabs payloads are recorded.
 import json
 import math
 import time
+import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import jwt
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.clock import get_clock
-from app.db.models import Call, Settings
+from app.db.models import Call, Settings, Staff
 from app.main import app
 from app.services.roster import load_roster_file, seed_roster
 
@@ -237,6 +239,32 @@ def test_rostered_caller_gets_the_office_line_from_settings(
 def test_office_line_not_set_is_sent_empty(hook: TestClient) -> None:
     body = _post(hook, _fixture("call_start_rostered.json")).json()
 
+    assert body["dynamic_variables"]["office_line_e164"] == ""
+
+
+def test_the_office_line_the_admin_sets_is_the_one_call_start_sends(
+    hook: TestClient, db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """#35 x #25: `PATCH /api/admin/settings` `office_line_e164` is the number the next call's
+    Transfer dials (one source, `settings.office_line_e164`); clearing it sends it empty."""
+    jwt_secret = "test-jwt-secret-at-least-32-bytes-long"
+    monkeypatch.setenv("SUPABASE_JWT_SECRET", jwt_secret)
+    admin = Staff(id=uuid.uuid4(), name="Avery Admin", email="avery@example.com", role="admin")
+    db_session.add(admin)
+    db_session.flush()
+    claims = {"sub": str(admin.id), "aud": "authenticated", "exp": int(time.time()) + 3600}
+    headers = {"Authorization": f"Bearer {jwt.encode(claims, jwt_secret, algorithm='HS256')}"}
+
+    changed = hook.patch(
+        "/api/admin/settings", json={"office_line_e164": "+15855550150"}, headers=headers
+    )
+    assert changed.status_code == 200
+    body = _post(hook, _fixture("call_start_rostered.json")).json()
+    assert body["dynamic_variables"]["office_line_e164"] == "+15855550150"
+
+    cleared = hook.patch("/api/admin/settings", json={"office_line_e164": None}, headers=headers)
+    assert cleared.status_code == 200
+    body = _post(hook, _fixture("call_start_rostered.json")).json()
     assert body["dynamic_variables"]["office_line_e164"] == ""
 
 
