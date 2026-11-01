@@ -4,6 +4,8 @@ import type { Page } from "@playwright/test";
 
 /** The backend under test verifies tokens with this secret (see frontend/playwright.config.ts). */
 export const E2E_JWT_SECRET = "e2e-only-jwt-secret-not-used-anywhere-else";
+/** The backend under test accepts call-start webhooks with this secret. */
+export const E2E_HOOK_SECRET = "e2e-only-hook-secret";
 /** Never resolved: every request to it is answered by `stubSupabaseAuth`. */
 export const E2E_SUPABASE_URL = "http://supabase.e2e.invalid";
 

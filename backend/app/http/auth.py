@@ -32,3 +32,10 @@ def current_staff(
 
 
 CurrentStaff = Annotated[Staff, Depends(current_staff)]
+
+
+def current_admin(staff: CurrentStaff) -> Staff:
+    """403 for any staff role other than admin (architecture §4.3 `/api/admin/*`)."""
+    if staff.role != "admin":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Admins only")
+    return staff

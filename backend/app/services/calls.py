@@ -1,8 +1,9 @@
 """Call start: roster check and the context the voice agent gets (spec J8, architecture §3.1).
 
 The first delivery for a conversation records a Call bound to the caller's Foreman (or to no
-Foreman, outcome `rejected`, for an unrostered number). Later deliveries for the same
-conversation reuse that row, so a conversation can never be rebound to another number.
+Foreman, outcome `rejected`, for an unrostered number or a deactivated Foreman's number).
+Later deliveries for the same conversation reuse that row, so a conversation can never be
+rebound to another number.
 """
 
 from dataclasses import dataclass, field
@@ -12,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from app.db.models import Call, ForemanPhone, Job
+from app.db.models import Call, Foreman, ForemanPhone, Job
 from app.domain.local_time import speakable_local_time
 
 
@@ -39,8 +40,11 @@ def start_call(
     call_sid: str | None,
     now: datetime,
 ) -> CallStart:
+    # A deactivated Foreman's numbers stay on file but are refused like unrostered ones.
     foreman_id = session.scalar(
-        select(ForemanPhone.foreman_id).where(ForemanPhone.e164 == caller_e164)
+        select(ForemanPhone.foreman_id)
+        .join(Foreman)
+        .where(ForemanPhone.e164 == caller_e164, Foreman.active)
     )
     session.execute(
         insert(Call)
