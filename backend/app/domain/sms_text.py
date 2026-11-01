@@ -49,3 +49,20 @@ def today_request_text(facts: TodayRequestFacts) -> str:
     if facts.needed_by_spoken:
         return f"{text}, needed by “{facts.needed_by_spoken}”"
     return text
+
+
+NOT_STATED = "not stated"
+
+
+def transfer_text(foreman: str, job: str | None, job_spoken: str | None, about: str | None) -> str:
+    """Spec J5 step 2, verbatim: "Incoming transfer: <foreman>, <job>, about: <need or 'not
+    stated'>". An Unmatched Job is quoted as said (as in the Today text); a Job not said at all
+    is "not stated" too (open question on #25)."""
+    if job is not None:
+        job_text = job
+    elif job_spoken and job_spoken.strip():
+        job_text = f"“{job_spoken.strip()}” (Unmatched)"
+    else:
+        job_text = NOT_STATED
+    need = about.strip() if about and about.strip() else NOT_STATED
+    return f"Incoming transfer: {foreman}, {job_text}, about: {need}"

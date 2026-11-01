@@ -21,7 +21,7 @@ from app.db.session import get_session
 from app.domain.urgency import Urgency
 from app.http.sms import get_sms_sender
 from app.integrations.twilio_sms import SmsSender
-from app.services.alerts import alert_new_today
+from app.services.alerts import alert_new_today, alert_transfer
 from app.services.calls import Caller, caller_for_conversation
 from app.services.jobs import find_jobs
 from app.services.requests import NewItem, resolve_needed_by, submit_requests
@@ -250,3 +250,57 @@ def _number(quantity: Decimal | None) -> int | float | None:
     if quantity is None:
         return None
     return int(quantity) if quantity == quantity.to_integral_value() else float(quantity)
+
+
+# --- transfer_to_office (ticket #25, spec J5) ---
+
+OFFICE_NOT_TOLD = "The office could not be told you are coming."
+
+
+class TransferToOfficeBody(BaseModel):
+    """All optional: the Foreman need not give a reason (AC5.1). Unknown fields are ignored."""
+
+    reason: str | None = None
+    """What the Foreman wants to talk about, in their words, if they said."""
+    job_id: int | None = None
+    """From `find_jobs`, when the Job is already known on this call."""
+    job_spoken: str | None = None
+    """The Job in the Foreman's words, if they named one."""
+
+
+@router.post("/transfer_to_office")
+def transfer_to_office_tool(
+    body: Annotated[Any, Body()],
+    caller: Annotated[Caller, Depends(get_caller)],
+    session: Annotated[Session, Depends(get_session)],
+    clock: Annotated[Clock, Depends(get_clock)],
+    sms: Annotated[SmsSender, Depends(get_sms_sender)],
+    x_conversation_id: Annotated[str | None, Header()] = None,
+) -> Any:
+    """Pop-up + SMS to the on-duty Coordinator, before the agent transfers (architecture §3.3).
+
+    `{"ok": true}` once the office notice is recorded, even if the SMS could not be sent (that
+    alert is recorded as failed). The agent transfers whatever this returns.
+    """
+    log_ctx = {"conversation_id": x_conversation_id}
+    try:
+        parsed = TransferToOfficeBody.model_validate(body, strict=True)
+    except ValidationError:
+        log.warning("transfer_to_office_invalid", extra=log_ctx)
+        return {"error": OFFICE_NOT_TOLD}
+    try:
+        alert_transfer(
+            session,
+            sms,
+            call_id=caller.call_id,
+            job_id=parsed.job_id,
+            job_spoken=parsed.job_spoken,
+            about=parsed.reason,
+            now=clock(),
+        )
+    except Exception:
+        session.rollback()
+        log.exception("transfer_to_office_failed", extra=log_ctx)
+        return {"error": OFFICE_NOT_TOLD}
+    log.info("transfer_to_office", extra=log_ctx)
+    return {"ok": True}

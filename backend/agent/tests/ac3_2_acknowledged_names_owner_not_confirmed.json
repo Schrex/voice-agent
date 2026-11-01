@@ -22,7 +22,8 @@
       "${tool_find_jobs}",
       "${tool_resolve_needed_by}",
       "${tool_submit_requests}",
-      "${tool_find_open_requests}"
+      "${tool_find_open_requests}",
+      "${tool_transfer_to_office}"
     ],
     "fallback_strategy": "raise_error"
   },
@@ -48,6 +49,12 @@
     "${tool_find_open_requests}": [
       {
         "mock_result": "[{\"ref\": \"R-1042\", \"job\": \"Route 104 Widening\", \"category\": \"Trucking\", \"need\": \"tri-axle dump trucks\", \"quantity\": 3, \"unit\": \"trucks\", \"needed_by\": \"Monday, November 2 at 7:00 AM\", \"status\": \"Acknowledged\", \"owner\": \"Dispatch\", \"outcome\": null, \"explanation\": null}]",
+        "is_error": false
+      }
+    ],
+    "${tool_transfer_to_office}": [
+      {
+        "mock_result": "{\"ok\": true}",
         "is_error": false
       }
     ]

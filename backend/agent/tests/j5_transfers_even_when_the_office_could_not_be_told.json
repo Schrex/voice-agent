@@ -1,0 +1,61 @@
+{
+  "name": "J5 transfers even when the office could not be told",
+  "type": "simulation",
+  "dynamic_variables": {
+    "rejected": false,
+    "foreman_first_name": "Dale",
+    "jobs": "Penfield Sewer Replacement; Route 104 Widening",
+    "now_local": "Sunday, November 1, 2026, 3:04 PM",
+    "office_line_e164": "+15855550150"
+  },
+  "simulation_scenario": "You are Dale, a foreman on the Roster. When the assistant asks what you need, say only: \"Let me talk to someone in the office.\" If the assistant asks anything, say only \"Just put me through.\"",
+  "simulation_max_turns": 6,
+  "success_conditions": [
+    "The agent calls transfer_to_office without asking for a reason, then says \"Connecting you to the office now.\" and calls transfer_to_number, even though transfer_to_office returned an error.",
+    "The agent does not tell the caller about the error, does not ask why he wants the office, and does not start taking a request.",
+    "The agent never says who will answer, that anyone has been reached, or that the office will call back."
+  ],
+  "tool_mock_config": {
+    "mocking_strategy": "selected",
+    "mocked_tool_ids": [
+      "${tool_find_jobs}",
+      "${tool_resolve_needed_by}",
+      "${tool_submit_requests}",
+      "${tool_find_open_requests}",
+      "${tool_transfer_to_office}"
+    ],
+    "fallback_strategy": "raise_error"
+  },
+  "tool_mock_overrides": {
+    "${tool_find_jobs}": [
+      {
+        "mock_result": "[]",
+        "is_error": false
+      }
+    ],
+    "${tool_resolve_needed_by}": [
+      {
+        "mock_result": "{\"needed_by_resolved\": null, \"urgency\": null}",
+        "is_error": false
+      }
+    ],
+    "${tool_submit_requests}": [
+      {
+        "mock_result": "{\"error\": \"The request could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_find_open_requests}": [
+      {
+        "mock_result": "[]",
+        "is_error": false
+      }
+    ],
+    "${tool_transfer_to_office}": [
+      {
+        "mock_result": "{\"error\": \"The office could not be told you are coming.\"}",
+        "is_error": false
+      }
+    ]
+  }
+}
