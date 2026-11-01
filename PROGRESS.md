@@ -1,32 +1,17 @@
 # Progress
 
-Status of tasks in [docs/task-dependencies.md](docs/task-dependencies.md). Statuses: `todo` · `in progress` · `done` · `blocked`.
+Work is tracked as GitHub issues #1–#37 on Schrex/voice-agent (thin vertical slices, native "blocked by" edges; issue number = ticket number).
+Frontier = open issues with no open blockers: `gh issue list --label ready-for-agent --state open`.
+docs/task-dependencies.md is the original layer-based plan, superseded by the issues for build order.
 
-| ID | Task | Status | Notes |
-|---|---|---|---|
-| T01 | Repo + tooling + CI skeleton | todo | |
-| T02 | Supabase projects + Alembic schema | todo | |
-| T03 | Domain: lifecycle, SLA, dedupe | todo | |
-| T04 | Domain: job matching + time parsing | todo | |
-| T05 | Services: requests + audit | todo | |
-| T06 | Seed/admin data | todo | |
-| T07 | Webhook: call-start | todo | |
-| T08 | Agent tool endpoints | todo | |
-| T09 | Webhook: post-call + Drafts | todo | |
-| T10 | Alerts: SMS, email, pop-ups | todo | |
-| T11 | Scheduler jobs | todo | |
-| T12 | Agent as code | todo | |
-| T13 | EL simulation tests per AC | todo | |
-| T14 | Dashboard API + JWT | todo | |
-| T15 | Dashboard UI: queue, detail, actions | todo | |
-| T16 | Dashboard UI: quick entry, pop-ups, admin | todo | |
-| T17 | Staging deploy | todo | |
-| T18 | Live call scripts + AC sign-off | todo | |
-| T19 | Prod deploy + launch gates | todo | |
+| Current | Status | Notes |
+|---|---|---|
+| #1 Backend skeleton with health check and CI | todo | Only unblocked ticket |
 
 ## Decisions log
 
 - 2026-11-01: Product spec, architecture, task plan, ADRs 0001–0005 written.
+- 2026-11-01: Spec broken into 37 thin-slice tickets (#1–#37) with per-ticket Definition of Done; #37 is ready-for-human.
 
 ## Open items
 
