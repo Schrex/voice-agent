@@ -1,10 +1,10 @@
 """Draft from an unfinished call (spec §5 "Draft", AC1.8, AC5.2; architecture §3.4 step 4).
 
 Pure: no I/O. Turns the post-call analysis (ElevenLabs data collection) into the fields of a
-Draft, and links the Job the Foreman named only on an exact name or alias match (never a guess).
+Draft. The spoken Job is matched later, by the same matcher as `find_jobs`.
 """
 
-from collections.abc import Collection, Iterable, Mapping
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -77,20 +77,3 @@ def draft_from_data_collection(
         unit=_text(_value(results, "unit")),
         needed_by_spoken=_text(_value(results, "needed_by_spoken")),
     )
-
-
-def _normalized(name: str) -> str:
-    return " ".join(name.casefold().split())
-
-
-def exact_job_match(spoken: str | None, jobs: Iterable[tuple[int, Iterable[str]]]) -> int | None:
-    """The id of the one Job whose name or an alias equals `spoken` (ignoring case and spacing).
-
-    `jobs` is `(job_id, names)` for active Jobs, names = the Job name plus its aliases. No match,
-    or a name shared by two Jobs, gives None: the Job stays as spoken.
-    """
-    if spoken is None:
-        return None
-    wanted = _normalized(spoken)
-    matches = {job_id for job_id, names in jobs if any(_normalized(n) == wanted for n in names)}
-    return matches.pop() if len(matches) == 1 else None

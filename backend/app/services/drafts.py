@@ -13,21 +13,20 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session, aliased
 
-from app.db.models import Call, CallRequest, Foreman, Job, JobAlias, Request
+from app.db.models import Call, CallRequest, Foreman, Job, Request
 from app.db.models import RequestEvent as Event
-from app.domain.draft import DraftItem, exact_job_match
+from app.domain.draft import DraftItem
 from app.domain.lifecycle import Status, transition
+from app.services.jobs import find_jobs
 
 
-def _active_job_names(session: Session) -> list[tuple[int, list[str]]]:
-    names: dict[int, list[str]] = {}
-    for job_id, name in session.execute(select(Job.id, Job.name).where(Job.active)):
-        names[job_id] = [name]
-    for job_id, alias in session.execute(
-        select(JobAlias.job_id, JobAlias.alias).join(Job).where(Job.active)
-    ):
-        names[job_id].append(alias)
-    return list(names.items())
+def _matched_job_id(session: Session, spoken: str | None) -> int | None:
+    """The Job only when `find_jobs` (#13) gives exactly one match; else None (Unmatched).
+
+    A Draft gets no read-back, so a spoken Job that fits several Jobs is never picked.
+    """
+    matches = find_jobs(session, spoken) if spoken else []
+    return matches[0].job_id if len(matches) == 1 else None
 
 
 def save_draft(
@@ -39,8 +38,8 @@ def save_draft(
     """
     draft = Request(
         foreman_id=foreman_id,
-        job_id=exact_job_match(item.job_spoken, _active_job_names(session)),
-        job_spoken=item.job_spoken,
+        job_id=_matched_job_id(session, item.job_spoken),
+        job_spoken=item.job_spoken or "",  # "" = no Job was said
         category=item.category,
         need=item.need,
         quantity=item.quantity,
@@ -84,7 +83,7 @@ class DraftRow:
     ref: str
     foreman: str
     job: str | None
-    job_spoken: str | None
+    job_spoken: str
     category: str
     need: str
     quantity: Decimal | None
@@ -128,10 +127,6 @@ class RequestNotFound(LookupError):
     pass
 
 
-class DraftWithoutJob(ValueError):
-    """The Draft's Job matched no active Job; it cannot be Recorded until a Job is set."""
-
-
 def parse_ref(ref: str) -> int | None:
     """ "R-1042" → 1042; anything else → None."""
     prefix, _, number = ref.partition("-")
@@ -143,8 +138,9 @@ def parse_ref(ref: str) -> int | None:
 def record_draft(session: Session, *, ref: str, staff_id: uuid.UUID, now: datetime) -> Request:
     """A coordinator promotes a Draft to Recorded (Draft → Recorded guard).
 
-    Raises RequestNotFound for an unknown ref, TransitionNotAllowed when the Request is not
-    a Draft, and DraftWithoutJob when no Job is linked; in each case nothing is written.
+    A Draft with no matched Job becomes an Unmatched Recorded Request (spec AC1.4).
+    Raises RequestNotFound for an unknown ref and TransitionNotAllowed when the Request is not
+    a Draft; either way nothing is written.
     """
     number = parse_ref(ref)
     request = (
@@ -157,8 +153,6 @@ def record_draft(session: Session, *, ref: str, staff_id: uuid.UUID, now: dateti
     if request is None:
         raise RequestNotFound(ref)
     status = transition(Status(request.status), Status.RECORDED)
-    if request.job_id is None:
-        raise DraftWithoutJob(ref)
     before = {
         "status": request.status,
         "recorded_at": None if request.recorded_at is None else request.recorded_at.isoformat(),

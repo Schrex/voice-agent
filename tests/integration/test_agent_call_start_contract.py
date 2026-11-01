@@ -31,7 +31,7 @@ ENV = {
     "hook_secret_id": "s",
     "tool_secret_id": "t",
 }
-TOOL_IDS = {"submit_requests": "tool_submit"}
+TOOL_IDS = {"find_jobs": "tool_find", "submit_requests": "tool_submit"}
 
 
 @pytest.fixture

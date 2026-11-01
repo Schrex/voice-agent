@@ -77,8 +77,8 @@ def call_start(
         "dynamic_variables": {
             "rejected": started.rejected,
             "foreman_first_name": started.foreman_first_name,
-            # The agent reads back the name and passes the id to submit_requests.
-            "jobs": "; ".join(f"{name} (job_id {job_id})" for job_id, name in started.jobs),
+            # Names only: the agent gets Job ids from find_jobs, which does the matching.
+            "jobs": "; ".join(started.jobs),
             "now_local": started.now_local,
         },
     }

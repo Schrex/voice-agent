@@ -64,6 +64,7 @@ def _foreman_id(session: Session, first_name: str) -> int:
 def _item(session: Session, **overrides: Any) -> dict[str, Any]:
     item: dict[str, Any] = {
         "job_id": _job_id(session, "Route 104 Widening"),
+        "job_spoken": "the 104 job",
         "category": "Trucking",
         "need": "tri-axle dump trucks",
         "quantity": 3,
@@ -250,8 +251,8 @@ def test_malformed_body_returns_a_speakable_error(
 
 @pytest.mark.parametrize(
     "override",
-    [{"category": "Project"}, {"need": ""}, {"job_id": "Route 104"}],
-    ids=["unknown-category", "empty-need", "job-not-an-id"],
+    [{"category": "Project"}, {"need": ""}, {"job_id": "Route 104"}, {"job_spoken": ""}],
+    ids=["unknown-category", "empty-need", "job-not-an-id", "empty-job-spoken"],
 )
 def test_invalid_item_returns_a_speakable_error(
     tools: TestClient, db_session: Session, override: dict[str, Any]
@@ -274,6 +275,7 @@ def test_more_than_one_item_is_not_accepted_yet(tools: TestClient, db_session: S
 def test_optional_fields_may_be_omitted(tools: TestClient, db_session: Session) -> None:
     item = {
         "job_id": _job_id(db_session, "Penfield Sewer Replacement"),
+        "job_spoken": "Penfield",
         "category": "Information",
         "need": "where the tie-in is on the drawings",
     }
@@ -283,3 +285,44 @@ def test_optional_fields_may_be_omitted(tools: TestClient, db_session: Session) 
     assert response.status_code == 200
     request = db_session.scalars(select(Request)).one()
     assert (request.quantity, request.unit, request.needed_by_spoken) == (None, None, None)
+
+
+def test_unmatched_job_is_recorded_without_a_job_and_keeps_what_the_foreman_said(
+    tools: TestClient, db_session: Session
+) -> None:
+    item = _item(db_session, job_spoken="the Smith pit")
+    del item["job_id"]
+
+    response = _submit(tools, {"items": [item]})
+
+    assert response.status_code == 200
+    request = db_session.scalars(select(Request)).one()
+    assert response.json() == [{"ref": f"R-{request.ref}"}]
+    assert (request.job_id, request.job_spoken, request.status) == (
+        None,
+        "the Smith pit",
+        "Recorded",
+    )
+    event = db_session.scalars(select(RequestEvent)).one()
+    assert event.after is not None
+    assert (event.after["job_id"], event.after["job_spoken"]) == (None, "the Smith pit")
+
+
+def test_matched_job_keeps_what_the_foreman_said_too(
+    tools: TestClient, db_session: Session
+) -> None:
+    _submit(tools, {"items": [_item(db_session)]})
+
+    request = db_session.scalars(select(Request)).one()
+    assert request.job_id == _job_id(db_session, "Route 104 Widening")
+    assert request.job_spoken == "the 104 job"
+
+
+def test_job_spoken_is_required(tools: TestClient, db_session: Session) -> None:
+    item = _item(db_session)
+    del item["job_spoken"]
+
+    response = _submit(tools, {"items": [item]})
+
+    assert response.json() == SPEAKABLE_ERROR
+    assert _nothing_written(db_session)

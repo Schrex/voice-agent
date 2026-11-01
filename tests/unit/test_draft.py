@@ -1,11 +1,11 @@
-"""Draft fields from the call analysis, and exact Job matching (ticket #28)."""
+"""Draft fields from the call analysis (ticket #28)."""
 
 from decimal import Decimal
 from typing import Any
 
 import pytest
 
-from app.domain.draft import DraftItem, draft_from_data_collection, exact_job_match
+from app.domain.draft import DraftItem, draft_from_data_collection
 
 CATEGORIES = ("Trucking", "Equipment", "Other")
 
@@ -81,28 +81,3 @@ def test_missing_optional_fields_stay_unknown() -> None:
     draft = draft_from_data_collection(_results(need="stone", unit=""), categories=CATEGORIES)
 
     assert draft == DraftItem(need="stone", category="Other")
-
-
-JOBS = [
-    (14, ["Route 104 Widening", "Route 104", "104 job"]),
-    (12, ["Penfield Sewer Replacement", "Penfield sewer"]),
-    (20, ["North Yard"]),
-    (21, ["North  yard annex", "north yard"]),
-]
-
-
-@pytest.mark.parametrize(
-    ("spoken", "expected"),
-    [
-        pytest.param("Route 104 Widening", 14, id="name"),
-        pytest.param("route 104", 14, id="alias any case"),
-        pytest.param("  Penfield   SEWER ", 12, id="spacing"),
-        pytest.param("104", None, id="partial is no match"),
-        pytest.param("the Penfield job", None, id="paraphrase is no match"),
-        pytest.param("R-104", None, id="ref-like is no match"),
-        pytest.param("north yard", None, id="ambiguous across Jobs"),
-        pytest.param(None, None, id="not said"),
-    ],
-)
-def test_exact_job_match(spoken: str | None, expected: int | None) -> None:
-    assert exact_job_match(spoken, JOBS) == expected

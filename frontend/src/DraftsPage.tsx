@@ -89,7 +89,14 @@ function DraftRow({ draft, busy, onRecord }: { draft: Draft; busy: boolean; onRe
     <tr>
       <td>{draft.ref}</td>
       <td>{draft.foreman}</td>
-      <td>{draft.job ?? (draft.job_spoken ? `“${draft.job_spoken}” (no Job matched)` : "")}</td>
+      <td>
+        {draft.job ?? (
+          <>
+            <span className="flag">Unmatched</span>:{" "}
+            {draft.job_spoken ? `“${draft.job_spoken}”` : "not said"}
+          </>
+        )}
+      </td>
       <td>{draft.category}</td>
       <td>{draft.need}</td>
       <td>{quantity}</td>
@@ -97,12 +104,7 @@ function DraftRow({ draft, busy, onRecord }: { draft: Draft; busy: boolean; onRe
       <td>{draft.call_started_at ? callFormat.format(new Date(draft.call_started_at)) : ""}</td>
       <td>{draft.call_summary ?? ""}</td>
       <td>
-        <button
-          type="button"
-          disabled={busy || draft.job === null}
-          title={draft.job === null ? "The Job is not known; it can be recorded once a Job is set." : undefined}
-          onClick={onRecord}
-        >
+        <button type="button" disabled={busy} onClick={onRecord}>
           Record
         </button>
       </td>

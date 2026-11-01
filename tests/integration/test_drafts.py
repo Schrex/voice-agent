@@ -207,7 +207,16 @@ def test_a_call_that_submitted_a_request_creates_no_draft(
     job_id = _job_id(db_session, "Route 104 Widening")
     submitted = hook.post(
         "/tools/submit_requests",
-        json={"items": [{"job_id": job_id, "category": "Trucking", "need": "dump trucks"}]},
+        json={
+            "items": [
+                {
+                    "job_id": job_id,
+                    "job_spoken": "Route 104",
+                    "category": "Trucking",
+                    "need": "dump trucks",
+                }
+            ]
+        },
         headers={"X-Tool-Secret": TOOL_SECRET, "X-Conversation-Id": HANG_UP},
     )
     assert "ref" in submitted.json()[0]
@@ -268,27 +277,44 @@ def test_unrostered_call_gets_no_draft(hook: TestClient, db_session: Session) ->
     assert _call(db_session, "conv_synthetic_unrostered_draft").outcome == "rejected"
 
 
-def test_job_not_matching_a_job_name_or_alias_is_kept_as_spoken_without_a_job(
-    hook: TestClient, db_session: Session
+@pytest.mark.parametrize(
+    ("spoken", "job", "stored_spoken"),
+    [
+        pytest.param("the 104 job", "Route 104 Widening", "the 104 job", id="find_jobs match"),
+        pytest.param("Brighton", None, "Brighton", id="no match is Unmatched"),
+        pytest.param("Lakeside", None, "Lakeside", id="inactive Job is Unmatched"),
+        pytest.param(None, None, "", id="no Job said"),
+    ],
+)
+def test_draft_job_is_linked_only_on_a_single_match(
+    hook: TestClient,
+    db_session: Session,
+    spoken: str | None,
+    job: str | None,
+    stored_spoken: str,
 ) -> None:
-    """No guessing: only an exact Job name or alias (any case) links the Draft to a Job."""
+    """The Job is matched like `find_jobs` does (#13); no single match → Unmatched, as said."""
     payload: dict[str, Any] = json.loads(json.dumps(HANG_UP_PAYLOAD))
-    payload["data"]["analysis"]["data_collection_results"]["job_spoken"]["value"] = "the 104"
+    payload["data"]["analysis"]["data_collection_results"]["job_spoken"]["value"] = spoken
 
     _deliver(hook, payload)
 
     [draft] = _requests_of(db_session, HANG_UP)
-    assert (draft.job_id, draft.job_spoken) == (None, "the 104")
+    expected = None if job is None else _job_id(db_session, job)
+    assert (draft.job_id, draft.job_spoken) == (expected, stored_spoken)
 
 
-def test_inactive_job_is_not_matched(hook: TestClient, db_session: Session) -> None:
+def test_draft_job_matching_two_jobs_is_unmatched(hook: TestClient, db_session: Session) -> None:
+    """No read-back on a Draft, so a spoken Job that fits two Jobs is not picked."""
+    db_session.add(Job(name="Route 104 Annex", active=True))
+    db_session.flush()
     payload: dict[str, Any] = json.loads(json.dumps(HANG_UP_PAYLOAD))
-    payload["data"]["analysis"]["data_collection_results"]["job_spoken"]["value"] = "Lakeside"
+    payload["data"]["analysis"]["data_collection_results"]["job_spoken"]["value"] = "104"
 
     _deliver(hook, payload)
 
     [draft] = _requests_of(db_session, HANG_UP)
-    assert (draft.job_id, draft.job_spoken) == (None, "Lakeside")
+    assert (draft.job_id, draft.job_spoken) == (None, "104")
 
 
 # --- Drafts list and promotion (dashboard API) -------------------------------------------------
@@ -403,22 +429,23 @@ def test_promoting_needs_a_staff_token(hook: TestClient, db_session: Session) ->
     assert draft.status == "Draft"
 
 
-def test_a_draft_without_a_job_is_not_recorded_and_nothing_is_written(
+def test_a_draft_without_a_job_is_recorded_as_unmatched_and_enters_the_queue(
     hook: TestClient, db_session: Session
 ) -> None:
-    """Until a Job can be set on a Request, a Draft whose Job matched nothing stays a Draft."""
+    """AC1.4: Unmatched is a Recorded state; the Job stays as the Foreman said it."""
     payload: dict[str, Any] = json.loads(json.dumps(HANG_UP_PAYLOAD))
-    payload["data"]["analysis"]["data_collection_results"]["job_spoken"]["value"] = "the 104"
+    payload["data"]["analysis"]["data_collection_results"]["job_spoken"]["value"] = "Brighton"
     _deliver(hook, payload)
     headers = _coordinator(db_session)
     [draft] = _requests_of(db_session, HANG_UP)
 
     response = hook.post(f"/api/requests/{draft.ref_display}/record", headers=headers)
 
-    assert response.status_code == 422
-    db_session.expire_all()
-    assert draft.status == "Draft"
-    assert len(_events(db_session, draft)) == 1
+    assert response.json() == {"ref": draft.ref_display, "status": "Recorded"}
+    queue = hook.get("/api/requests", headers=headers).json()["requests"]
+    assert [(r["ref"], r["job"], r["job_spoken"]) for r in queue] == [
+        (draft.ref_display, None, "Brighton")
+    ]
 
 
 def test_draft_detail_shows_it_is_not_recorded(hook: TestClient, db_session: Session) -> None:

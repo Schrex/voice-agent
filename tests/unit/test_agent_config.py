@@ -14,7 +14,7 @@ ENV = {
     "hook_secret_id": "s",
     "tool_secret_id": "t",
 }
-TOOL_IDS = {"submit_requests": "tool_submit"}
+TOOL_IDS = {"find_jobs": "tool_find", "submit_requests": "tool_submit"}
 
 
 def _agent() -> dict[str, Any]:
@@ -31,13 +31,14 @@ def test_first_message_is_automated_recorded_and_names_the_foreman() -> None:
     assert "{{foreman_first_name}}" in first
 
 
-def test_tools_are_end_call_and_submit_requests() -> None:
-    """end_call (built-in) hangs up; submit_requests (#7) is attached by its workspace id."""
+def test_tools_are_end_call_find_jobs_and_submit_requests() -> None:
+    """end_call (built-in) hangs up; find_jobs (#13) and submit_requests (#7) are attached by
+    their workspace ids."""
     prompt = _agent()["prompt"]
 
     assert set(prompt["built_in_tools"]) == {"end_call"}
     assert prompt["built_in_tools"]["end_call"]["params"] == {"system_tool_type": "end_call"}
-    assert prompt["tool_ids"] == ["tool_submit"]
+    assert prompt["tool_ids"] == ["tool_find", "tool_submit"]
     assert not prompt.get("tools")
 
 
@@ -64,3 +65,13 @@ def test_data_collection_fields_are_the_ones_the_post_call_drafts_read() -> None
     assert all(field.get("description") for field in fields.values())
     assert fields["quantity"]["type"] == "number"
     assert fields["category"]["enum"] == list(CATEGORIES)
+
+
+def test_prompt_has_the_job_matched_by_find_jobs_never_picked_by_the_agent() -> None:
+    """Spec J1 step 3 / AC1.3, AC1.4: the backend matches; no match is Unmatched, not a guess.
+    The S tests check the spoken behavior."""
+    prompt = _agent()["prompt"]["prompt"]
+
+    assert "`find_jobs`" in prompt
+    assert "job_spoken" in prompt
+    assert "job_id" in prompt and "(job_id" not in prompt

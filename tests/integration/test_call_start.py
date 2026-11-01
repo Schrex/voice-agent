@@ -18,7 +18,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.clock import get_clock
-from app.db.models import Call, Job
+from app.db.models import Call
 from app.main import app
 from app.services.roster import load_roster_file, seed_roster
 
@@ -62,7 +62,6 @@ def test_rostered_caller_gets_first_name_active_jobs_and_local_time(
     hook: TestClient, db_session: Session
 ) -> None:
     response = _post(hook, _fixture("call_start_rostered.json"))
-    job_id = dict(db_session.execute(select(Job.name, Job.id)).tuples().all())
 
     assert response.status_code == 200
     assert response.json() == {
@@ -70,10 +69,9 @@ def test_rostered_caller_gets_first_name_active_jobs_and_local_time(
         "dynamic_variables": {
             "rejected": False,
             "foreman_first_name": "Dale",
-            # Lakeside Plaza Site Work is inactive in the seed, so it is not offered. Each
-            # Job carries its id so the agent can pass it to submit_requests (ticket #7).
-            "jobs": f"Penfield Sewer Replacement (job_id {job_id['Penfield Sewer Replacement']}); "
-            f"Route 104 Widening (job_id {job_id['Route 104 Widening']})",
+            # Lakeside Plaza Site Work is inactive in the seed, so it is not offered. Names
+            # only: the Job id comes from find_jobs (ticket #13), never from this list.
+            "jobs": "Penfield Sewer Replacement; Route 104 Widening",
             "now_local": "Sunday, November 1, 2026, 3:04 PM",
         },
     }

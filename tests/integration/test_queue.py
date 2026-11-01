@@ -46,11 +46,15 @@ def _add(
     status: str = "Recorded",
     urgency: str | None = "Today",
     recorded_at: datetime = T0,
-    job: str = "Route 104 Widening",
+    job: str | None = "Route 104 Widening",
+    job_spoken: str | None = None,
 ) -> Request:
     request = Request(
         foreman_id=session.scalars(select(Foreman.id).where(Foreman.first_name == "Dale")).one(),
-        job_id=session.scalars(select(Job.id).where(Job.name == job)).one(),
+        job_id=None
+        if job is None
+        else session.scalars(select(Job.id).where(Job.name == job)).one(),
+        job_spoken=job_spoken or job,
         category="Trucking",
         need=need,
         quantity=Decimal("3"),
@@ -79,7 +83,9 @@ def test_queue_requires_a_staff_token(client: TestClient) -> None:
 def test_queue_lists_the_request_fields(
     client: TestClient, db_session: Session, headers: dict[str, str]
 ) -> None:
-    request = _add(db_session, "tri-axle dump trucks", job="Penfield Sewer Replacement")
+    request = _add(
+        db_session, "tri-axle dump trucks", job="Penfield Sewer Replacement", job_spoken="Penfield"
+    )
 
     response = client.get("/api/requests", headers=headers)
 
@@ -89,6 +95,7 @@ def test_queue_lists_the_request_fields(
             {
                 "ref": f"R-{request.ref}",
                 "job": "Penfield Sewer Replacement",
+                "job_spoken": "Penfield",
                 "need": "tri-axle dump trucks",
                 "quantity": "3",
                 "unit": "trucks",
@@ -149,4 +156,19 @@ def test_quantity_is_shown_as_said(
         ("3", "trucks"),
         ("2.5", "trucks"),
         (None, None),
+    ]
+
+
+def test_unmatched_request_is_listed_without_a_job_and_with_what_the_foreman_said(
+    client: TestClient, db_session: Session, headers: dict[str, str]
+) -> None:
+    """Spec J1 step 3 / §5 flags: a Request whose Job matched nothing shows as Unmatched."""
+    _add(db_session, "excavator operator", job=None, job_spoken="the Smith pit")
+    _add(db_session, "tri-axle dump trucks")
+
+    rows = client.get("/api/requests", headers=headers).json()["requests"]
+
+    assert [(r["need"], r["job"], r["job_spoken"]) for r in rows] == [
+        ("excavator operator", None, "the Smith pit"),
+        ("tri-axle dump trucks", "Route 104 Widening", "Route 104 Widening"),
     ]

@@ -19,7 +19,10 @@ export async function fetchMe(accessToken: string): Promise<MeResult> {
 /** One open request as the queue shows it (`GET /api/requests`). */
 export type QueueRequest = {
   ref: string;
-  job: string;
+  /** The Job's name; null when Unmatched (no confident match for what the Foreman said). */
+  job: string | null;
+  /** The Job as the Foreman said it. */
+  job_spoken: string;
   need: string;
   quantity: string | null;
   unit: string | null;
@@ -29,6 +32,11 @@ export type QueueRequest = {
   /** UTC, ISO 8601. */
   recorded_at: string;
 };
+
+/** "Unmatched: “<what the Foreman said>”" for a Job that matched nothing, else its name. */
+export function jobText(r: { job: string | null; job_spoken: string }): string {
+  return r.job ?? `Unmatched: “${r.job_spoken}”`;
+}
 
 /** Open requests, already sorted by the backend (urgency, then oldest first). */
 export async function fetchQueue(accessToken: string): Promise<QueueRequest[]> {
@@ -56,7 +64,9 @@ export type RequestEvent = {
 export type RequestDetail = {
   ref: string;
   foreman: string;
-  job: string;
+  /** Null when Unmatched. */
+  job: string | null;
+  job_spoken: string;
   category: string;
   need: string;
   quantity: string | null;
@@ -89,7 +99,7 @@ export type Draft = {
   ref: string;
   foreman: string;
   job: string | null;
-  job_spoken: string | null;
+  job_spoken: string; // "" when no Job was said
   category: string;
   need: string;
   quantity: string | null;

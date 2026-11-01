@@ -4,7 +4,7 @@
   "dynamic_variables": {
     "rejected": false,
     "foreman_first_name": "Dale",
-    "jobs": "Penfield Sewer Replacement (job_id 12); Route 104 Widening (job_id 14)",
+    "jobs": "Penfield Sewer Replacement; Route 104 Widening",
     "now_local": "Sunday, November 1, 2026, 3:04 PM"
   },
   "simulation_scenario": "You are Dale, a foreman on the Roster. When the assistant asks what you need, say in one sentence: you need two tri-axle dump trucks at the Route 104 job tomorrow at 7 AM. Answer any question briefly and truthfully with those facts. When the assistant reads the details back and asks whether to submit, say yes. After it gives you a reference number, say that's all and goodbye.",
@@ -17,11 +17,18 @@
   "tool_mock_config": {
     "mocking_strategy": "selected",
     "mocked_tool_ids": [
+      "${tool_find_jobs}",
       "${tool_submit_requests}"
     ],
     "fallback_strategy": "raise_error"
   },
   "tool_mock_overrides": {
+    "${tool_find_jobs}": [
+      {
+        "mock_result": "[{\"job_id\": 14, \"name\": \"Route 104 Widening\", \"score\": 95}]",
+        "is_error": false
+      }
+    ],
     "${tool_submit_requests}": [
       {
         "mock_result": "[{\"ref\": \"R-1042\"}]",

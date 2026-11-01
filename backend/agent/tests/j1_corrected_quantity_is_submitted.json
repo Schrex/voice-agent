@@ -4,7 +4,7 @@
   "dynamic_variables": {
     "rejected": false,
     "foreman_first_name": "Dale",
-    "jobs": "Penfield Sewer Replacement (job_id 12); Route 104 Widening (job_id 14)",
+    "jobs": "Penfield Sewer Replacement; Route 104 Widening",
     "now_local": "Sunday, November 1, 2026, 3:04 PM"
   },
   "chat_history": [
@@ -17,6 +17,31 @@
       "role": "user",
       "message": "I need three tri-axle dump trucks at Route 104 tomorrow at 7 AM.",
       "time_in_call_secs": 6
+    },
+    {
+      "role": "agent",
+      "message": null,
+      "time_in_call_secs": 8,
+      "tool_calls": [
+        {
+          "type": "webhook",
+          "request_id": "find_jobs_0001",
+          "tool_name": "find_jobs",
+          "tool_id": "${tool_find_jobs}",
+          "params_as_json": "{\"query\": \"Route 104\"}",
+          "tool_has_been_called": true
+        }
+      ],
+      "tool_results": [
+        {
+          "type": "webhook",
+          "request_id": "find_jobs_0001",
+          "tool_name": "find_jobs",
+          "result_value": "[{\"job_id\": 14, \"name\": \"Route 104 Widening\", \"score\": 95}]",
+          "is_error": false,
+          "tool_has_been_called": true
+        }
+      ]
     },
     {
       "role": "agent",
@@ -49,7 +74,7 @@
         "path": "items",
         "eval": {
           "type": "llm",
-          "description": "Exactly one item, with job_id 14, category Trucking, quantity 2 (not 3), a unit naming trucks, and needed_by_spoken saying tomorrow at 7 AM."
+          "description": "Exactly one item, with job_id 14 (from find_jobs), job_spoken naming Route 104, category Trucking, quantity 2 (not 3), a unit naming trucks, and needed_by_spoken saying tomorrow at 7 AM."
         }
       }
     ]

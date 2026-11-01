@@ -75,9 +75,18 @@ describe("Drafts page", () => {
     renderAt("/drafts");
 
     const row = await screen.findByRole("row", { name: /R-1000/ });
-    expect(within(row).getByText("“the 104” (no Job matched)")).toBeInTheDocument();
-    // It can't be recorded until a Job can be set.
-    expect(within(row).getByRole("button", { name: "Record" })).toBeDisabled();
+    expect(within(row).getByText("Unmatched")).toBeInTheDocument();
+    expect(row).toHaveTextContent("Unmatched: “the 104”");
+    // Recording it makes an Unmatched Recorded request (spec AC1.4).
+    expect(within(row).getByRole("button", { name: "Record" })).toBeEnabled();
+  });
+
+  it("shows Unmatched with nothing said when no Job was named", async () => {
+    backend([{ ...DRAFT, job: null, job_spoken: "" }]);
+    renderAt("/drafts");
+
+    const row = await screen.findByRole("row", { name: /R-1000/ });
+    expect(row).toHaveTextContent("Unmatched: not said");
   });
 
   it("says when there are no Drafts", async () => {
