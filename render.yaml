@@ -32,6 +32,8 @@ services:
         sync: false
       - key: ELEVENLABS_WEBHOOK_SECRET
         sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
       - key: OFFICE_MAIN_NUMBER
         sync: false
       - key: SUPABASE_JWT_SECRET

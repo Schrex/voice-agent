@@ -100,7 +100,7 @@ def test_detail_returns_the_request_fields(
 
     assert response.status_code == 200
     body = response.json()
-    assert {k: v for k, v in body.items() if k != "events"} == {
+    assert {k: v for k, v in body.items() if k not in ("events", "calls")} == {
         "ref": ref,
         "foreman": "Dale Kramer",
         "job": "Route 104 Widening",

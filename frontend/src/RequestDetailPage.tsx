@@ -10,6 +10,7 @@ import {
   type Staff,
 } from "./api";
 import { useAuth } from "./App";
+import { CallRecordings } from "./CallRecordings";
 
 /** Every time on the dashboard is shown in the office's zone, whatever the browser's zone. */
 const timeFormat = new Intl.DateTimeFormat("en-US", {
@@ -109,6 +110,7 @@ function Detail({ request }: { request: RequestDetail }) {
           ))}
         </tbody>
       </table>
+      <CallRecordings calls={request.calls} />
     </>
   );
 }

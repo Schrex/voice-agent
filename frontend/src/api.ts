@@ -79,7 +79,52 @@ export type RequestDetail = {
   recorded_at: string;
   /** Oldest first. */
   events: RequestEvent[];
+  /** Calls that created, looked up or amended the request; oldest first. */
+  calls: LinkedCall[];
 };
+
+/** A call linked to a request (`call_requests`). */
+export type LinkedCall = {
+  id: number;
+  /** UTC, ISO 8601. */
+  started_at: string;
+  relation: "created" | "looked_up" | "amended";
+};
+
+/** One turn of a call's transcript: what the Foreman ("user") or the agent said. */
+export type TranscriptTurn = { role: "agent" | "user"; message: string; at_s: number };
+
+/** A call's post-call record (`GET /api/calls/{id}`); empty transcript until it arrives. */
+export type CallRecord = {
+  id: number;
+  /** UTC, ISO 8601. */
+  started_at: string;
+  ended_at: string | null;
+  duration_s: number | null;
+  /** What was said, in order. */
+  transcript: TranscriptTurn[];
+};
+
+export async function fetchCall(accessToken: string, id: number): Promise<CallRecord> {
+  const response = await fetch(`/api/calls/${id}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(`GET /api/calls/${id} failed: ${response.status}`);
+  return (await response.json()) as CallRecord;
+}
+
+/**
+ * The call's recording, streamed by the backend from ElevenLabs. Fetched with the token (an
+ * <audio src> could not send it); null when there is no recording (any more).
+ */
+export async function fetchCallAudio(accessToken: string, id: number): Promise<Blob | null> {
+  const response = await fetch(`/api/calls/${id}/audio`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`GET /api/calls/${id}/audio failed: ${response.status}`);
+  return await response.blob();
+}
 
 /** The request rendered `ref` ("R-1000"), or null if there is none. */
 export async function fetchRequestDetail(
