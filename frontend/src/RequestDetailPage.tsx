@@ -29,7 +29,7 @@ const SOURCES: Record<RequestDetail["source"], string> = {
 };
 
 /** Event kinds shown as their glossary word; any other kind is shown as stored. */
-const KINDS: Record<string, string> = { recorded: "Recorded" };
+const KINDS: Record<string, string> = { recorded: "Recorded", drafted: "Draft" };
 
 /** One request's fields and its full audit history: who, when, what changed. */
 export function RequestDetailPage({ staff }: { staff: Staff }) {
@@ -72,7 +72,7 @@ function Detail({ request }: { request: RequestDetail }) {
     ["Urgency", request.urgency ?? "—"],
     ["Status", request.status],
     ["Source", SOURCES[request.source]],
-    ["Recorded", timeFormat.format(new Date(request.recorded_at))],
+    ["Recorded", request.recorded_at ? timeFormat.format(new Date(request.recorded_at)) : "—"],
   ];
   return (
     <>

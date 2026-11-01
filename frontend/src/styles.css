@@ -190,3 +190,7 @@ ol.transcript {
 ol.transcript li {
   margin: 0 0 0.35rem;
 }
+
+.topbar nav {
+  margin-right: auto;
+}

@@ -5,6 +5,8 @@ in backend/agent/tests/ (S layer); these check what is fixed in config before an
 from typing import Any
 
 from agent.push import desired_agent
+from app.db.models import CATEGORIES
+from app.domain.draft import DATA_COLLECTION_FIELDS
 
 ENV = {
     "agent_name": "x",
@@ -53,6 +55,16 @@ def test_llm_is_claude_sonnet_5_5_in_english() -> None:
 
     assert agent["prompt"]["llm"] == "claude-sonnet-5-5"
     assert agent["language"] == "en"
+
+
+def test_data_collection_fields_are_the_ones_the_post_call_drafts_read() -> None:
+    """#28: the post-call webhook builds a Draft from these fields (architecture §3.4)."""
+    fields = desired_agent(ENV, TOOL_IDS)["platform_settings"]["data_collection"]
+
+    assert tuple(fields) == DATA_COLLECTION_FIELDS
+    assert all(field.get("description") for field in fields.values())
+    assert fields["quantity"]["type"] == "number"
+    assert fields["category"]["enum"] == list(CATEGORIES)
 
 
 def test_prompt_has_the_job_matched_by_find_jobs_never_picked_by_the_agent() -> None:

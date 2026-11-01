@@ -178,7 +178,8 @@ class Request(Base):
     urgency: Mapped[str | None] = mapped_column(String(16))
     status: Mapped[str] = mapped_column(String(20))
     source: Mapped[str] = mapped_column(String(20))
-    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # When the Request became Recorded; null while it is a Draft.
+    recorded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     @property
     def ref_display(self) -> str:

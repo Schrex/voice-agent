@@ -57,7 +57,7 @@ class RequestDetail:
     urgency: str | None
     status: str
     source: str
-    recorded_at: datetime
+    recorded_at: datetime | None  # null while the Request is a Draft
     events: list[Event]
     calls: list[LinkedCall]  # oldest first
 

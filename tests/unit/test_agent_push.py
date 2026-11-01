@@ -232,6 +232,7 @@ def test_push_creates_each_repo_test_by_name(el: FakeElevenLabs) -> None:
         "AC1.4 an unknown Job is read back as said, never as a listed Job",
         "AC1.4 an unknown Job is submitted as Unmatched without a job_id",
         "AC1.7 says recorded and not yet confirmed and gives the reference",
+        "AC1.8 does not submit when the foreman leaves before confirming",
         "AC8.1 unrostered caller: call ends after the rejection line",
         "AC8.1 unrostered caller: no Job or Request information disclosed",
         "J1 asks at most one question per turn",
@@ -341,7 +342,7 @@ def test_cli_prints_one_line_per_object_and_exits_0(
         "tool 'submit_requests': unchanged",
         "agent 'Field Request Assistant (test)': unchanged",
     ]
-    assert len(second) == 3 + 11 + 1
+    assert len(second) == 3 + len(list((agent_dir / "tests").glob("*.json"))) + 1
     assert all(line.startswith("test '") and line.endswith("': unchanged") for line in second[3:-1])
     assert second[-1] == "No changes."
 

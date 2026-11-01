@@ -101,7 +101,7 @@ class RequestDetailOut(BaseModel):
     urgency: str | None
     status: str
     source: str
-    recorded_at: str
+    recorded_at: str | None  # null while the Request is a Draft
     events: list[EventOut]  # oldest first
     calls: list[LinkedCallOut]  # oldest first
 
@@ -127,7 +127,7 @@ def detail(
         urgency=found.urgency,
         status=found.status,
         source=found.source,
-        recorded_at=_utc(found.recorded_at),
+        recorded_at=None if found.recorded_at is None else _utc(found.recorded_at),
         events=[
             EventOut(
                 at=_utc(e.at),
