@@ -1,0 +1,17 @@
+{
+  "local": {
+    "agent_name": "Field Request Assistant (local)",
+    "backend_url": null,
+    "hook_secret_id": null
+  },
+  "staging": {
+    "agent_name": "Field Request Assistant (staging)",
+    "backend_url": null,
+    "hook_secret_id": null
+  },
+  "prod": {
+    "agent_name": "Field Request Assistant (prod)",
+    "backend_url": null,
+    "hook_secret_id": null
+  }
+}
