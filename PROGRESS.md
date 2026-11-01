@@ -8,6 +8,7 @@ docs/task-dependencies.md is the original layer-based plan, superseded by the is
 |---|---|---|
 | #1 Backend skeleton with health check and CI | done | PR #39; CI red-on-failing-test proven in run 41345092960 |
 | #2 Database baseline with roster and jobs | done | Migration `0001` (foremen, foreman_phones, jobs, job_aliases); seed command; `/healthz` checks DB |
+| #3 Staging environment, always on | code done; deploy deferred | `render.yaml`, `deploy-staging.yml`, Sentry init (`app/observability.py`), `.env.example`, `docs/staging.md`. Live deploy, uptime alert and Sentry screenshot need accounts (runbook) |
 
 ## Decisions log
 
@@ -20,6 +21,9 @@ docs/task-dependencies.md is the original layer-based plan, superseded by the is
 - 2026-11-01 (#2): Test DB pattern: I-tests live in `tests/integration/`; `conftest.py` wipes `public` in `TEST_DATABASE_URL` and runs `alembic upgrade head` once per run (fails if unset). `db_session` wraps each test in an outer transaction rolled back afterwards (`join_transaction_mode="create_savepoint"`, so code may commit); `client` is a TestClient with `get_session` overridden to `db_session`. CI runs a `postgres:16` service for them.
 - 2026-11-01 (#2): `/healthz` runs `SELECT 1`: 200 `{"status":"ok","db":"ok"}`, else 503 `{"status":"error","db":"unreachable"}`.
 - 2026-11-01 (#2): Seed: `uv run python -m app.seed [file]` loads JSON (default `backend/seed/sample_roster.json`, fictional 555 numbers). Upserts jobs by name and foremen by any of their phone numbers; adds missing aliases/phones; never deletes. `foreman_phones.e164` is unique and must match E.164 (`^\+[1-9][0-9]{1,14}$`); input normalization of other formats is not done.
+- 2026-11-01 (#3): Host = Render (architecture allowed Render or Railway): Blueprint `render.yaml`, Starter plan (always on), `autoDeploy: false`; build with uv (`uv sync --locked --no-dev`), pre-deploy `alembic upgrade head`, health check `/healthz`.
+- 2026-11-01 (#3): Deploy on merge = `deploy-staging.yml`, triggered by a successful CI `push` run on `main` (or manually); deploys that exact commit through the Render API and waits for `live`, then smoke-tests `/healthz`. GitHub environment `staging`: secret `RENDER_API_KEY`, vars `RENDER_STAGING_SERVICE_ID`, `STAGING_URL`.
+- 2026-11-01 (#3): Sentry: `app/observability.init_sentry` runs at import of `app.main`, only when `SENTRY_DSN` is set; `environment` = `APP_ENV` (default `local`); no tracing, no PII. `python -m app.observability` sends a test exception. Settings live in `app/config.py` as plain functions; every variable is listed in root `.env.example`.
 
 ## Open items
 
