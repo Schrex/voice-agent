@@ -143,7 +143,7 @@ Audio stays in ElevenLabs (retention set to 90 days); the dashboard streams it v
 | `add_note` | `ref`, `text`, `urgent?` | `{ok}` | Alerts coordinator when urgent |
 | `create_callback_request` | `reason?` | `{ref}` | Callback category, Today urgency, SMS on-duty + backup |
 | `transfer_to_office` | `reason?`, `job_id?`, `job_spoken?` | `{ok}` | Pop-up + SMS to on-duty coordinator, once per call; the agent transfers even on `error` |
-| `start_emergency` | `summary` | `{ref}` | Emergency request, SMS all coordinators, pop-up |
+| `start_emergency` | `summary`, `job_id?`, `job_spoken?` | `{ref}` | Emergency request, SMS all coordinators, pop-up, once per call; the agent transfers even on `error` |
 
 Plus ElevenLabs system tools: `transfer_to_number` (office line, conference), `end_call`.
 

@@ -1,0 +1,2 @@
+# PLACEHOLDER: the spec J6 placeholder, NOT yet approved by the safety lead (spec §11 launch gate; PROGRESS open item). Replace the line below with the approved wording, delete this comment line, and put the same words in prompt.md "J6: Emergency" (test_agent_config checks they match).
+Stop work in the affected area and follow site procedures. Call 911 if anyone's hurt.

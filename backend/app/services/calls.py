@@ -16,10 +16,11 @@ from sqlalchemy import exists, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from app.db.models import Call, CallRequest, Foreman, ForemanPhone, Job
+from app.db.models import Call, CallRequest, Foreman, ForemanPhone, Job, Request
 from app.domain.call_outcome import call_outcome
 from app.domain.draft import DraftItem
 from app.domain.local_time import speakable_local_time
+from app.domain.urgency import Urgency
 from app.services.drafts import save_draft
 from app.services.settings import office_line
 
@@ -195,6 +196,18 @@ def record_post_call(session: Session, post_call: PostCall, *, now: datetime) ->
                 select(
                     exists().where(
                         CallRequest.call_id == call.id, CallRequest.relation == "looked_up"
+                    )
+                )
+            )
+        ),
+        emergency=bool(
+            session.scalar(
+                select(
+                    exists().where(
+                        CallRequest.call_id == call.id,
+                        CallRequest.relation == "created",
+                        CallRequest.request_id == Request.id,
+                        Request.urgency == Urgency.EMERGENCY.value,
                     )
                 )
             )

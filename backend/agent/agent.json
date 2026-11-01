@@ -23,7 +23,8 @@
           "${tool_find_open_requests}",
           "${tool_create_callback_request}",
           "${tool_add_note}",
-          "${tool_transfer_to_office}"
+          "${tool_transfer_to_office}",
+          "${tool_start_emergency}"
         ],
         "built_in_tools": {
           "end_call": {
@@ -35,7 +36,7 @@
           "transfer_to_number": {
             "type": "system",
             "name": "transfer_to_number",
-            "description": "Put the Foreman through to the Office Line. Use it only after transfer_to_office and after saying \"Connecting you to the office now.\"",
+            "description": "Put the Foreman through to the Office Line. Use it only after transfer_to_office (or, in an Emergency, after the safety line and start_emergency) and after saying \"Connecting you to the office now.\"",
             "params": {
               "system_tool_type": "transfer_to_number",
               "transfers": [
@@ -44,7 +45,7 @@
                     "type": "phone_dynamic_variable",
                     "phone_number": "office_line_e164"
                   },
-                  "condition": "The Foreman asks to talk to the office or to a person (for example \"let me talk to someone\", \"get me the office\", \"put me through\"), or accepts your offer to put him through to the office.",
+                  "condition": "The Foreman asks to talk to the office or to a person (for example \"let me talk to someone\", \"get me the office\", \"put me through\"), or accepts your offer to put him through to the office; or an Emergency (danger reported), after the safety line and start_emergency.",
                   "transfer_type": "conference"
                 }
               ]

@@ -52,6 +52,13 @@ def load_env(name: str, agent_dir: Path = AGENT_DIR) -> dict[str, str]:
     return {key: str(values[key]) for key in ENV_KEYS}
 
 
+def safety_line(agent_dir: Path = AGENT_DIR) -> str:
+    """The Emergency safety line (spec J6 step 2): `safety_line.txt` without its `#` comment
+    lines. The prompt must say exactly this; the agent config tests check it does."""
+    lines = (agent_dir / "safety_line.txt").read_text().splitlines()
+    return "\n".join(line for line in lines if not line.startswith("#")).strip()
+
+
 def _fill(node: Any, values: dict[str, str]) -> Any:
     if isinstance(node, str):
         return Template(node).substitute(values)
