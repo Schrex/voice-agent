@@ -165,6 +165,7 @@ def _tool_id(el: FakeElevenLabs, name: str) -> str:
     "name",
     [
         "add_note",
+        "amend_request",
         "create_callback_request",
         "find_duplicates",
         "find_jobs",
@@ -177,7 +178,7 @@ def _tool_id(el: FakeElevenLabs, name: str) -> str:
 def test_push_creates_each_tool_pointing_at_the_env_backend(el: FakeElevenLabs, name: str) -> None:
     push(ENV, el.client())
 
-    assert len(el.tools) == 8
+    assert len(el.tools) == 9
     config = el.tools[_tool_id(el, name)]["tool_config"]
     assert config["type"] == "webhook"
     assert config["api_schema"]["url"] == f"https://backend.example.test/tools/{name}"
@@ -201,6 +202,7 @@ def test_pushed_agent_uses_the_created_tools_by_id(el: FakeElevenLabs) -> None:
         _tool_id(el, "add_note"),
         _tool_id(el, "transfer_to_office"),
         _tool_id(el, "find_duplicates"),
+        _tool_id(el, "amend_request"),
     ]
 
 
@@ -265,6 +267,7 @@ def test_push_creates_each_repo_test_by_name(el: FakeElevenLabs) -> None:
         "AC3.4 accepting the Callback offer after no match records a Callback Request",
         "AC3.4 no matching request: says it cannot find one and offers Transfer or Callback",
         'AC3.5 "need an answer today" is an urgent note on the existing request, not a new one',
+        "AC4.2 a new time for an In Progress request is flagged for the office, not changed",
         "AC5.1 mid-intake get me the office: transfers at once without asking why",
         "AC5.4 Callback Request recorded after a yes, with no callback time promised",
         "AC5.4 Callback Request without a reason: asked once, then recorded",
@@ -372,20 +375,22 @@ def test_cli_prints_one_line_per_object_and_exits_0(
     assert main(["--env", "staging"], client=el.client(), agent_dir=agent_dir) == 0
 
     out = capsys.readouterr().out.splitlines()
-    assert out[:9] == [
+    assert out[:10] == [
         "tool 'add_note': created (tool_0001)",
-        "tool 'create_callback_request': created (tool_0002)",
-        "tool 'find_duplicates': created (tool_0003)",
-        "tool 'find_jobs': created (tool_0004)",
-        "tool 'find_open_requests': created (tool_0005)",
-        "tool 'resolve_needed_by': created (tool_0006)",
-        "tool 'submit_requests': created (tool_0007)",
-        "tool 'transfer_to_office': created (tool_0008)",
+        "tool 'amend_request': created (tool_0002)",
+        "tool 'create_callback_request': created (tool_0003)",
+        "tool 'find_duplicates': created (tool_0004)",
+        "tool 'find_jobs': created (tool_0005)",
+        "tool 'find_open_requests': created (tool_0006)",
+        "tool 'resolve_needed_by': created (tool_0007)",
+        "tool 'submit_requests': created (tool_0008)",
+        "tool 'transfer_to_office': created (tool_0009)",
         "agent 'Field Request Assistant (test)': created (agent_0001)",
     ]
     second = out[len(out) // 2 :]
-    assert second[:9] == [
+    assert second[:10] == [
         "tool 'add_note': unchanged",
+        "tool 'amend_request': unchanged",
         "tool 'create_callback_request': unchanged",
         "tool 'find_duplicates': unchanged",
         "tool 'find_jobs': unchanged",
@@ -395,8 +400,10 @@ def test_cli_prints_one_line_per_object_and_exits_0(
         "tool 'transfer_to_office': unchanged",
         "agent 'Field Request Assistant (test)': unchanged",
     ]
-    assert len(second) == 9 + len(list((agent_dir / "tests").glob("*.json"))) + 1
-    assert all(line.startswith("test '") and line.endswith("': unchanged") for line in second[9:-1])
+    assert len(second) == 10 + len(list((agent_dir / "tests").glob("*.json"))) + 1
+    assert all(
+        line.startswith("test '") and line.endswith("': unchanged") for line in second[10:-1]
+    )
     assert second[-1] == "No changes."
 
 

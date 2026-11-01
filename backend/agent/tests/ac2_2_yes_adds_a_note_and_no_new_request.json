@@ -28,7 +28,8 @@
       "${tool_create_callback_request}",
       "${tool_add_note}",
       "${tool_transfer_to_office}",
-      "${tool_find_duplicates}"
+      "${tool_find_duplicates}",
+      "${tool_amend_request}"
     ],
     "fallback_strategy": "raise_error"
   },
@@ -78,6 +79,12 @@
     "${tool_find_duplicates}": [
       {
         "mock_result": "[{\"ref\": \"R-1042\", \"job\": \"Route 104 Widening\", \"category\": \"Trucking\", \"need\": \"tri-axle dump trucks\", \"quantity\": 3, \"unit\": \"trucks\", \"needed_by\": \"Monday, November 2 at 7:00 AM\", \"recorded_at\": \"Saturday, October 31 at 6:45 AM\"}]",
+        "is_error": false
+      }
+    ],
+    "${tool_amend_request}": [
+      {
+        "mock_result": "{\"error\": \"The change could not be saved.\"}",
         "is_error": false
       }
     ]

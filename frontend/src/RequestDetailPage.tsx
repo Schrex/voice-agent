@@ -39,6 +39,8 @@ const KINDS: Record<string, string> = {
   edited: "Edited",
   foreman_informed: "Foreman Informed",
   note_added: "Note added",
+  amended: "Amended",
+  change_requested: "Change requested",
 };
 
 /** One request's fields and its full audit history: who, when, what changed. */

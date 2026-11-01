@@ -22,6 +22,7 @@ from app.domain.urgency import Urgency
 from app.http.sms import get_sms_sender
 from app.integrations.twilio_sms import SmsSender
 from app.services.alerts import alert_callback, alert_new_today, alert_transfer
+from app.services.amend import AmendRequestNotFound, amend_request
 from app.services.callbacks import create_callback_request
 from app.services.calls import Caller, caller_for_conversation
 from app.services.duplicates import find_duplicates
@@ -463,3 +464,76 @@ def transfer_to_office_tool(
         return {"error": OFFICE_NOT_TOLD}
     log.info("transfer_to_office", extra=log_ctx)
     return {"ok": True}
+
+
+# --- amend_request (ticket #19, spec J4) ---
+
+CHANGE_NOT_SAVED = "The change could not be saved."
+AMEND_REQUEST_NOT_FOUND = "I couldn't find that request."
+
+
+class AmendChanges(BaseModel, extra="forbid"):
+    """Only what the Foreman changes. Anything else (a Job, a Category) is refused rather than
+    ignored, so the agent never says a change was made that was not."""
+
+    need: str = Field(default="", min_length=1)
+    quantity: Decimal | None = None
+    unit: str | None = None
+    needed_by_spoken: str = Field(default="", min_length=1)
+
+
+class AmendBody(BaseModel):
+    """Unknown top-level fields (such as a foreman id) are ignored."""
+
+    ref: str
+    """As `find_open_requests` returned it ("R-1042")."""
+    changes: AmendChanges
+
+
+@router.post("/amend_request")
+def amend_request_tool(
+    body: Annotated[Any, Body()],
+    caller: Annotated[Caller, Depends(get_caller)],
+    session: Annotated[Session, Depends(get_session)],
+    clock: Annotated[Clock, Depends(get_clock)],
+    x_conversation_id: Annotated[str | None, Header()] = None,
+) -> Any:
+    """Before In Progress the change is applied and read back:
+    `{"applied": true, "status", "ref", "need", "quantity", "unit", "needed_by_resolved"}`.
+    At or after In Progress nothing changes; the Request gets a note and the Change requested
+    flag: `{"applied": false, "status": "In Progress"}`.
+    """
+    log_ctx = {"conversation_id": x_conversation_id}
+    try:
+        parsed = AmendBody.model_validate(body)
+    except ValidationError:
+        log.warning("amend_request_invalid", extra=log_ctx)
+        return {"error": CHANGE_NOT_SAVED}
+    changes = parsed.changes.model_dump(exclude_unset=True)
+    if not changes:
+        log.warning("amend_request_invalid", extra=log_ctx)
+        return {"error": CHANGE_NOT_SAVED}
+    try:
+        amended = amend_request(
+            session, caller=caller, ref=parsed.ref, changes=changes, now=clock()
+        )
+    except AmendRequestNotFound:
+        session.rollback()
+        log.info("amend_request_not_found", extra=log_ctx)
+        return {"error": AMEND_REQUEST_NOT_FOUND}
+    except Exception:
+        session.rollback()
+        log.exception("amend_request_failed", extra=log_ctx)
+        return {"error": CHANGE_NOT_SAVED}
+    log.info("amend_request", extra={**log_ctx, "ref": amended.ref, "applied": amended.applied})
+    if not amended.applied:
+        return {"applied": False, "status": amended.status}
+    return {
+        "applied": True,
+        "status": amended.status,
+        "ref": amended.ref,
+        "need": amended.need,
+        "quantity": _number(amended.quantity),
+        "unit": amended.unit,
+        "needed_by_resolved": amended.needed_by_resolved,
+    }

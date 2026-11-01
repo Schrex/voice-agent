@@ -24,7 +24,8 @@
       "${tool_create_callback_request}",
       "${tool_add_note}",
       "${tool_transfer_to_office}",
-      "${tool_find_duplicates}"
+      "${tool_find_duplicates}",
+      "${tool_amend_request}"
     ],
     "fallback_strategy": "raise_error"
   },
@@ -74,6 +75,12 @@
     "${tool_find_duplicates}": [
       {
         "mock_result": "[]",
+        "is_error": false
+      }
+    ],
+    "${tool_amend_request}": [
+      {
+        "mock_result": "{\"error\": \"The change could not be saved.\"}",
         "is_error": false
       }
     ]

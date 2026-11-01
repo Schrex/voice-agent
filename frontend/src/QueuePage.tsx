@@ -89,6 +89,12 @@ function QueueTable({ requests, now }: { requests: QueueRequest[]; now: number }
                   <span className="flag">Overdue</span>
                 </>
               )}
+              {r.change_requested && (
+                <>
+                  {" "}
+                  <span className="flag">Change requested</span>
+                </>
+              )}
             </td>
             <td>
               {age(now - Date.parse(r.recorded_at))}

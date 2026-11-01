@@ -108,6 +108,7 @@ def test_queue_lists_the_request_fields(
                 "status": "Recorded",
                 "recorded_at": "2026-11-01T12:00:00Z",
                 "overdue": False,
+                "change_requested": False,
             }
         ]
     }

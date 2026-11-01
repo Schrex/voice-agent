@@ -31,6 +31,7 @@ function row(overrides: Partial<QueueRequest>): QueueRequest {
     status: "Recorded",
     recorded_at: "2026-11-02T01:30:00Z",
     overdue: false,
+    change_requested: false,
     ...overrides,
   };
 }
@@ -149,6 +150,25 @@ describe("queue", () => {
       "Recorded Overdue",
     ]);
     expect(within(statuses[0]).getByText("Overdue")).toHaveClass("flag");
+  });
+
+  it("flags requests the Foreman asked to change at or after In Progress (ticket #19)", async () => {
+    serve([
+      row({ ref: "R-1001", status: "In Progress", change_requested: true }),
+      row({ ref: "R-1000", status: "Acknowledged" }),
+    ]);
+
+    const table = await renderQueue();
+
+    const statuses = within(table)
+      .getAllByRole("row")
+      .slice(1)
+      .map((r) => within(r).getAllByRole("cell")[6]);
+    expect(statuses.map((c) => c.textContent)).toEqual([
+      "In Progress Change requested",
+      "Acknowledged",
+    ]);
+    expect(within(statuses[0]).getByText("Change requested")).toHaveClass("flag");
   });
 
   it("shows an Overdue count of zero when nothing is Overdue", async () => {

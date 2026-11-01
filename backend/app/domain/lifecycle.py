@@ -8,6 +8,8 @@ Statuses and Outcomes are the glossary words, stored verbatim. Each move has one
 - `merge`: Request A merged into Request B (ticket #33): A is resolved as `resolve` requires;
   B must be another Request that is not Resolved.
 - `edit`: not a move; a coordinator may edit fields or fix the Job of any non-Resolved Request.
+- `may_amend`: not a move; a Foreman's change by phone applies only before In Progress (spec J4,
+  ticket #19); from In Progress on it becomes a note and a Change requested flag instead.
 Any other move raises `TransitionNotAllowed`. The agent's narrower right (only Recorded or
 Acknowledged → Resolved/Withdrawn) is left to the ticket that builds the agent's withdrawal.
 `mark_informed` (Foreman Informed, not a status) is allowed on a Resolved request, once.
@@ -144,6 +146,16 @@ def edit(current: Status) -> Status:
     if current is Status.RESOLVED:
         raise NotEditable(current)
     return current
+
+
+# Before In Progress: what the Foreman changes by phone is applied (spec J4).
+AMENDABLE_STATUSES: frozenset[Status] = frozenset({Status.RECORDED, Status.ACKNOWLEDGED})
+
+
+def may_amend(current: Status) -> bool:
+    """Whether the Foreman's change is applied (Recorded or Acknowledged); else it is only
+    flagged Change requested for the office."""
+    return current in AMENDABLE_STATUSES
 
 
 class NotResolved(ValueError):
