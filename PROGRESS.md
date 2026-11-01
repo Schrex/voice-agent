@@ -6,7 +6,7 @@ docs/task-dependencies.md is the original layer-based plan, superseded by the is
 
 | Current | Status | Notes |
 |---|---|---|
-| #1 Backend skeleton with health check and CI | in progress | Only unblocked ticket |
+| #1 Backend skeleton with health check and CI | done | PR #39; CI red-on-failing-test proven in run 41345092960 |
 
 ## Decisions log
 
