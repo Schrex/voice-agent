@@ -21,6 +21,7 @@ const DETAIL: RequestDetail = {
   ref: "R-1000",
   foreman: "Dale Kramer",
   job: "Route 104 Widening",
+  job_spoken: "the 104 job",
   category: "Trucking",
   need: "tri-axle dump trucks",
   quantity: "3",
@@ -74,6 +75,16 @@ function renderAt(path: string) {
 
 describe("request detail", () => {
   afterEach(() => vi.unstubAllGlobals());
+
+  it("shows an Unmatched Job with what the Foreman said", async () => {
+    serve({ ...DETAIL, job: null, job_spoken: "the Smith pit" });
+    renderAt("/requests/R-1000");
+
+    expect(await screen.findByRole("heading", { name: "R-1000" })).toBeInTheDocument();
+    const fields = screen.getByRole("group", { name: "Fields" });
+    const job = within(fields).getByText("Job").nextElementSibling;
+    expect(job).toHaveTextContent("Unmatched: “the Smith pit”");
+  });
 
   it("shows every field of the request", async () => {
     const fetchMock = serve(DETAIL);
@@ -137,6 +148,7 @@ describe("request detail", () => {
       {
         ref: "R-1000",
         job: "Route 104 Widening",
+        job_spoken: "the 104 job",
         need: "tri-axle dump trucks",
         quantity: "3",
         unit: "trucks",

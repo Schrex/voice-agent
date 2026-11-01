@@ -1,0 +1,40 @@
+{
+  "name": "AC1.4 an unknown Job is read back as said, never as a listed Job",
+  "type": "simulation",
+  "dynamic_variables": {
+    "rejected": false,
+    "foreman_first_name": "Dale",
+    "jobs": "Penfield Sewer Replacement; Route 104 Widening",
+    "now_local": "Sunday, November 1, 2026, 3:04 PM"
+  },
+  "simulation_scenario": "You are Dale, a foreman on the Roster. When the assistant asks what you need, say in one sentence: you need one excavator operator at the Smith pit tomorrow at 6:30 AM. If asked about the job, say it is the Smith pit and nothing else; never agree that it is any other job. When the assistant reads the details back and asks whether to submit, say yes. After it gives you a reference number, say that's all and goodbye.",
+  "simulation_max_turns": 8,
+  "success_conditions": [
+    "The agent calls find_jobs with the Job as the caller said it (the Smith pit).",
+    "After find_jobs finds no Job, the agent never names, suggests or offers Penfield Sewer Replacement, Route 104 Widening or any other Job as the caller's Job.",
+    "The read-back before submitting names the Job in the caller's words (the Smith pit), and the agent submits only after the caller says yes.",
+    "The agent never says the request is confirmed, never states availability, and never gives an arrival time."
+  ],
+  "tool_mock_config": {
+    "mocking_strategy": "selected",
+    "mocked_tool_ids": [
+      "${tool_find_jobs}",
+      "${tool_submit_requests}"
+    ],
+    "fallback_strategy": "raise_error"
+  },
+  "tool_mock_overrides": {
+    "${tool_find_jobs}": [
+      {
+        "mock_result": "[]",
+        "is_error": false
+      }
+    ],
+    "${tool_submit_requests}": [
+      {
+        "mock_result": "[{\"ref\": \"R-1042\"}]",
+        "is_error": false
+      }
+    ]
+  }
+}

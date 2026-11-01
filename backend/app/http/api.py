@@ -31,7 +31,8 @@ def me(staff: CurrentStaff) -> StaffOut:
 
 class QueueRequestOut(BaseModel):
     ref: str
-    job: str
+    job: str | None  # null = Unmatched (no confident match for what the Foreman said)
+    job_spoken: str  # the Job as the Foreman said it
     need: str
     quantity: str | None
     unit: str | None
@@ -53,6 +54,7 @@ def queue(staff: CurrentStaff, session: Annotated[Session, Depends(get_session)]
             QueueRequestOut(
                 ref=row.ref,
                 job=row.job,
+                job_spoken=row.job_spoken,
                 need=row.need,
                 quantity=row.quantity,
                 unit=row.unit,
@@ -89,7 +91,8 @@ class LinkedCallOut(BaseModel):
 class RequestDetailOut(BaseModel):
     ref: str
     foreman: str
-    job: str
+    job: str | None  # null = Unmatched
+    job_spoken: str
     category: str
     need: str
     quantity: str | None
@@ -115,6 +118,7 @@ def detail(
         ref=found.ref,
         foreman=found.foreman,
         job=found.job,
+        job_spoken=found.job_spoken,
         category=found.category,
         need=found.need,
         quantity=found.quantity,

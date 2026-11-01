@@ -184,7 +184,13 @@ def test_a_repeat_delivery_never_overwrites_the_stored_record(
 
 def _submit_on(client: TestClient, session: Session, conversation_id: str) -> None:
     job_id = session.scalars(select(Job.id).where(Job.name == "Route 104 Widening")).one()
-    item = {"job_id": job_id, "category": "Material", "need": "#2 stone", "quantity": 2}
+    item = {
+        "job_id": job_id,
+        "job_spoken": "Route 104",
+        "category": "Material",
+        "need": "#2 stone",
+        "quantity": 2,
+    }
     response = client.post(
         "/tools/submit_requests",
         json={"items": [item]},

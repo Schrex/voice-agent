@@ -20,6 +20,7 @@ function row(overrides: Partial<QueueRequest>): QueueRequest {
   return {
     ref: "R-1000",
     job: "Route 104 Widening",
+    job_spoken: "the 104 job",
     need: "tri-axle dump trucks",
     quantity: "3",
     unit: "trucks",
@@ -101,6 +102,21 @@ describe("queue", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/requests", {
       headers: { Authorization: "Bearer tok-pat" },
     });
+  });
+
+  it("flags a request whose Job matched nothing as Unmatched, with what the Foreman said", async () => {
+    serve([
+      row({ ref: "R-1001", job: null, job_spoken: "the Smith pit" }),
+      row({ ref: "R-1000" }),
+    ]);
+
+    const table = await renderQueue();
+
+    const [unmatched, matched] = within(table).getAllByRole("row").slice(1);
+    const jobCell = within(unmatched).getAllByRole("cell")[1];
+    expect(jobCell).toHaveTextContent("Unmatched: “the Smith pit”");
+    expect(within(jobCell).getByText("Unmatched")).toHaveClass("flag");
+    expect(within(matched).getAllByRole("cell")[1]).toHaveTextContent(/^Route 104 Widening$/);
   });
 
   it("shows when a request was recorded in New York time across the UTC date line", async () => {
