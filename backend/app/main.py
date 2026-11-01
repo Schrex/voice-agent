@@ -7,6 +7,7 @@ from app import jobs
 from app.config import frontend_dist, scheduler_enabled
 from app.http import (
     api,
+    api_admin_office,
     api_admin_roster,
     api_alerts,
     api_calls,
@@ -40,6 +41,7 @@ app.include_router(tools.router)
 app.include_router(api.router)
 app.include_router(api_drafts.router)
 app.include_router(api_admin_roster.router)
+app.include_router(api_admin_office.router)
 app.include_router(api_calls.router)
 app.include_router(api_quick_entry.router)
 app.include_router(api_request_edit.router)

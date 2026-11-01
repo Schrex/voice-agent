@@ -1,4 +1,4 @@
-/** `/api/admin/foremen` and `/api/admin/jobs` (admin role only). */
+/** `/api/admin/*` (admin role only): foremen and jobs (#34); owners, staff, duty, settings (#35). */
 
 export type Phone = { id: number; e164: string };
 export type Foreman = {
@@ -10,6 +10,25 @@ export type Foreman = {
 };
 export type JobAlias = { id: number; alias: string };
 export type Job = { id: number; name: string; active: boolean; aliases: JobAlias[] };
+export type Owner = { id: number; name: string; phone_e164: string | null; email: string | null };
+export type CategoryDefault = { category: string; owner_id: number | null };
+export type StaffMember = {
+  id: string;
+  name: string;
+  email: string;
+  role: "coordinator" | "admin";
+  phone_e164: string | null;
+};
+export type DutyDay = {
+  date: string;
+  on_duty: { id: string; name: string };
+  backup: { id: string; name: string } | null;
+};
+export type OfficeSettings = {
+  office_line_e164: string | null;
+  ack_window_today_min: number;
+  ack_window_planned_min: number;
+};
 
 /** A refused request; `message` is the backend's reason, fit to show the admin. */
 export class AdminApiError extends Error {
@@ -37,6 +56,7 @@ export async function adminFetch<T>(
   if (!response.ok) {
     throw new AdminApiError(response.status, await reason(response));
   }
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 

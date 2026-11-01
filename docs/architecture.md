@@ -166,7 +166,7 @@ Tool contract: tools return short, speakable facts; errors return `{error: "<spe
 | `POST /api/requests/{ref}/merge` | coordinator | Merge into another ref |
 | `GET /api/popups?since` | coordinator | Incoming transfer / emergency pop-ups |
 | `GET /api/calls/{id}`, `/audio` | coordinator | Transcript, audio proxy |
-| `CRUD /api/admin/{foremen,jobs,owners,staff,duty,settings}` | admin | Roster and config |
+| `CRUD /api/admin/{foremen,jobs,owners,category-defaults,staff,duty,settings}` | admin | Roster and config |
 
 All writes go through `services/`, which writes the domain change and a `request_events` row in one transaction.
 

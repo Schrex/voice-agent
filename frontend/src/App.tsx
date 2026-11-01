@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import { AdminPage } from "./AdminPage";
+import { OfficeSetupPage } from "./OfficeSetupPage";
 import { fetchMe, type Staff } from "./api";
 import type { AuthClient, AuthSession } from "./auth";
 import { DraftsPage } from "./DraftsPage";
@@ -63,6 +64,10 @@ export function App({ auth }: { auth: AuthClient }) {
               element={
                 <RequireStaff>{(staff) => <AdminPage staff={staff} />}</RequireStaff>
               }
+            />
+            <Route
+              path="/admin/office"
+              element={<RequireStaff>{(staff) => <OfficeSetupPage staff={staff} />}</RequireStaff>}
             />
             <Route
               path="/drafts"
