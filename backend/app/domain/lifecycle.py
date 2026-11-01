@@ -1,9 +1,12 @@
 """Request lifecycle guards (architecture §5, GLOSSARY "Lifecycle"). Pure: no I/O.
 
-Statuses are the glossary words, stored verbatim. `transition` allows only the guard-free moves
-listed in `_ALLOWED`; a move that needs more than a status has its own function
-(`acknowledge`: Recorded → Acknowledged, Owner required). Later tickets add Acknowledged →
-In Progress and → Resolved.
+Statuses and Outcomes are the glossary words, stored verbatim. Each move has one guard:
+- `transition`: Draft → Recorded (no requirement).
+- `acknowledge`: Recorded → Acknowledged, Owner required.
+- `start`: Acknowledged → In Progress.
+- `resolve`: any non-Resolved status → Resolved, Outcome and explanation required.
+Any other move raises `TransitionNotAllowed`. The agent's narrower right (only Recorded or
+Acknowledged → Resolved/Withdrawn) is left to the ticket that builds the agent's withdrawal.
 """
 
 from enum import StrEnum
@@ -15,6 +18,15 @@ class Status(StrEnum):
     ACKNOWLEDGED = "Acknowledged"
     IN_PROGRESS = "In Progress"
     RESOLVED = "Resolved"
+
+
+class Outcome(StrEnum):
+    """How a Resolved request ended (GLOSSARY "Outcome")."""
+
+    FULFILLED = "Fulfilled"
+    PARTIALLY_FULFILLED = "Partially Fulfilled"
+    DENIED = "Denied"
+    WITHDRAWN = "Withdrawn"
 
 
 class TransitionNotAllowed(ValueError):
@@ -29,6 +41,20 @@ class OwnerRequired(ValueError):
 
     def __init__(self) -> None:
         super().__init__("An Owner is required to acknowledge a request")
+
+
+class OutcomeRequired(ValueError):
+    """Resolved means the request carries an Outcome (GLOSSARY); there is none (AC9.2)."""
+
+    def __init__(self) -> None:
+        super().__init__("An Outcome is required to resolve a request")
+
+
+class ExplanationRequired(ValueError):
+    """Resolved means the request carries an explanation (GLOSSARY); there is none (AC9.2)."""
+
+    def __init__(self) -> None:
+        super().__init__("An explanation is required to resolve a request")
 
 
 # Statuses of a Request still in the queue: confirmed by the Foreman, not yet Resolved.
@@ -53,3 +79,21 @@ def acknowledge(current: Status, owner_id: int | None) -> Status:
     if owner_id is None:
         raise OwnerRequired()
     return Status.ACKNOWLEDGED
+
+
+def start(current: Status) -> Status:
+    """Acknowledged → In Progress (the Owner is acting); from any other status it raises."""
+    if current is not Status.ACKNOWLEDGED:
+        raise TransitionNotAllowed(current, Status.IN_PROGRESS)
+    return Status.IN_PROGRESS
+
+
+def resolve(current: Status, outcome: Outcome | None, explanation: str | None) -> Status:
+    """Any non-Resolved status → Resolved, only with an Outcome and a non-blank explanation."""
+    if current is Status.RESOLVED:
+        raise TransitionNotAllowed(current, Status.RESOLVED)
+    if outcome is None:
+        raise OutcomeRequired()
+    if explanation is None or not explanation.strip():
+        raise ExplanationRequired()
+    return Status.RESOLVED

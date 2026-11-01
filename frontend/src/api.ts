@@ -80,6 +80,11 @@ export type RequestDetail = {
   owner: Owner | null;
   /** UTC, ISO 8601; null until Acknowledged. */
   acknowledged_at: string | null;
+  /** Set with explanation and resolved_at when Resolved; null before. */
+  outcome: Outcome | null;
+  explanation: string | null;
+  /** UTC, ISO 8601; null until Resolved. */
+  resolved_at: string | null;
   /** The category's default Owner, offered first when acknowledging. */
   default_owner_id: number | null;
   /** Oldest first. */
@@ -200,5 +205,35 @@ export async function acknowledgeRequest(
     body: JSON.stringify({ owner_id: ownerId }),
   });
   if (!response.ok) throw new Error(`acknowledge ${ref} failed: ${response.status}`);
+  return (await response.json()) as RequestDetail;
+}
+
+/** How a Resolved request ended (glossary "Outcome"). */
+export const OUTCOMES = ["Fulfilled", "Partially Fulfilled", "Denied", "Withdrawn"] as const;
+export type Outcome = (typeof OUTCOMES)[number];
+
+/** Acknowledged → In Progress; resolves to the updated request. */
+export async function startRequest(accessToken: string, ref: string): Promise<RequestDetail> {
+  const response = await fetch(`/api/requests/${encodeURIComponent(ref)}/start`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(`start ${ref} failed: ${response.status}`);
+  return (await response.json()) as RequestDetail;
+}
+
+/** Any open status → Resolved with an Outcome and explanation; resolves to the updated request. */
+export async function resolveRequest(
+  accessToken: string,
+  ref: string,
+  outcome: Outcome,
+  explanation: string,
+): Promise<RequestDetail> {
+  const response = await fetch(`/api/requests/${encodeURIComponent(ref)}/resolve`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ outcome, explanation }),
+  });
+  if (!response.ok) throw new Error(`resolve ${ref} failed: ${response.status}`);
   return (await response.json()) as RequestDetail;
 }
