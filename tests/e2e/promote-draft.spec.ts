@@ -11,7 +11,7 @@ const COORDINATOR: StubUser = {
   email: "casey@example.com",
   password: "correct horse",
 };
-const DALE = "+15855550102";
+const DALE = "+15855550101";
 
 test.beforeEach(async ({ page }) => {
   await stubSupabaseAuth(page, [COORDINATOR]);
@@ -50,4 +50,20 @@ test("a coordinator records a Draft from a hung-up call", async ({ page, request
   // Recording it again is refused: it is no longer a Draft.
   const again = await request.post(`/api/requests/${ref}/record`, { headers: auth });
   expect(again.status()).toBe(422);
+
+  // It is now in the queue, and its history shows who recorded it.
+  await page.getByRole("link", { name: "Queue" }).click();
+  await page.getByRole("link", { name: ref, exact: true }).click();
+  const fields = page.getByRole("group", { name: "Fields" });
+  await expect(fields).toContainText("Recorded");
+  const events = page
+    .getByRole("table", { name: "History" })
+    .getByRole("row")
+    .filter({ has: page.getByRole("cell") });
+  await expect(events).toHaveCount(2);
+  await expect(events.nth(0).getByRole("cell").nth(1)).toHaveText("Agent");
+  await expect(events.nth(0).getByRole("cell").nth(2)).toHaveText("Draft");
+  await expect(events.nth(1).getByRole("cell").nth(1)).toHaveText("Casey Coordinator");
+  await expect(events.nth(1).getByRole("cell").nth(2)).toHaveText("Recorded");
+  await expect(events.nth(1).getByRole("cell").nth(3)).toContainText("status: Draft → Recorded");
 });

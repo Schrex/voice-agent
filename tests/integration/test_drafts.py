@@ -401,3 +401,33 @@ def test_promoting_needs_a_staff_token(hook: TestClient, db_session: Session) ->
     assert response.status_code == 401
     db_session.expire_all()
     assert draft.status == "Draft"
+
+
+def test_a_draft_without_a_job_is_not_recorded_and_nothing_is_written(
+    hook: TestClient, db_session: Session
+) -> None:
+    """Until a Job can be set on a Request, a Draft whose Job matched nothing stays a Draft."""
+    payload: dict[str, Any] = json.loads(json.dumps(HANG_UP_PAYLOAD))
+    payload["data"]["analysis"]["data_collection_results"]["job_spoken"]["value"] = "the 104"
+    _deliver(hook, payload)
+    headers = _coordinator(db_session)
+    [draft] = _requests_of(db_session, HANG_UP)
+
+    response = hook.post(f"/api/requests/{draft.ref_display}/record", headers=headers)
+
+    assert response.status_code == 422
+    db_session.expire_all()
+    assert draft.status == "Draft"
+    assert len(_events(db_session, draft)) == 1
+
+
+def test_draft_detail_shows_it_is_not_recorded(hook: TestClient, db_session: Session) -> None:
+    _deliver(hook, HANG_UP_PAYLOAD)
+    [draft] = _requests_of(db_session, HANG_UP)
+
+    response = hook.get(f"/api/requests/{draft.ref_display}", headers=_coordinator(db_session))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert (body["status"], body["recorded_at"]) == ("Draft", None)
+    assert [e["kind"] for e in body["events"]] == ["drafted"]

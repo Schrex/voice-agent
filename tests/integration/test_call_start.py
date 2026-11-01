@@ -216,3 +216,26 @@ def test_response_time_p95_under_500ms_over_50_calls(hook: TestClient) -> None:
         f"max={timings_ms[-1]:.1f} ms"
     )
     assert p95 < 500
+
+
+def test_deactivated_foremans_number_is_rejected_at_call_start(
+    hook: TestClient, db_session: Session
+) -> None:
+    # Marco Bellini is on the roster with +15855550104 but inactive in the seed (#34).
+    payload = _fixture("call_start_rostered.json") | {"caller_id": "+15855550104"}
+
+    body = _post(hook, payload).json()
+
+    assert body["dynamic_variables"] == {
+        "rejected": True,
+        "foreman_first_name": "",
+        "jobs": "",
+        "now_local": "",
+    }
+    assert body["conversation_config_override"]["agent"]["first_message"] == (
+        "This line is for registered crew leaders. Please call the office at 585-555-0100."
+    )
+    [call] = _calls(db_session)
+    assert call.caller_e164 == "+15855550104"
+    assert call.foreman_id is None
+    assert call.outcome == "rejected"

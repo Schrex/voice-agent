@@ -35,12 +35,14 @@ Status: **done** = test exists and passes in CI · **defined** = test written in
 | AC6.3 | Transfer to office line after safety line | S, L | #26 | planned | |
 | AC6.4 | Never says help is coming / anyone reached | S | #26, #36 | planned | |
 | AC7.1 | Quick-entry request in same queue and J3 lookup | I, S | #30 | planned | |
-| AC8.1 | Unrostered: main office number, call ends, logged, nothing disclosed | I, S, L | #4, #5, #27 | I done; S defined, deferred; L deferred | I `tests/integration/test_call_start.py::test_unrostered_*` (rejection line, attempt logged, no disclosure), `tests/integration/test_agent_call_start_contract.py::test_agent_allows_the_overrides_the_rejection_response_uses`, `tests/integration/test_post_call.py::test_rejected_call_keeps_outcome_rejected` (post-call record of the attempt keeps outcome `rejected`, with transcript and duration); S `backend/agent/tests/ac8_1_rejected_caller_call_ends.json`, `backend/agent/tests/ac8_1_rejected_caller_nothing_disclosed.json` |
+| AC8.1 | Unrostered: main office number, call ends, logged, nothing disclosed | I, P, S, L | #4, #5, #27, #34 | I/P done; S defined, deferred; L deferred | I `tests/integration/test_call_start.py::test_unrostered_*` (rejection line, attempt logged, no disclosure), `tests/integration/test_call_start.py::test_deactivated_foremans_number_is_rejected_at_call_start` and `tests/integration/test_admin_roster.py::test_deactivated_foreman_is_rejected_at_the_next_call_start` (a deactivated Foreman is treated as unrostered), `tests/integration/test_agent_call_start_contract.py::test_agent_allows_the_overrides_the_rejection_response_uses`, `tests/integration/test_post_call.py::test_rejected_call_keeps_outcome_rejected` (post-call record of the attempt keeps outcome `rejected`, with transcript and duration); P `tests/e2e/admin.spec.ts` "admin adds a foreman, then deactivates him…"; S `backend/agent/tests/ac8_1_rejected_caller_call_ends.json`, `backend/agent/tests/ac8_1_rejected_caller_nothing_disclosed.json` |
 | AC9.1 | Acknowledge requires Owner | I, P | #11 | planned | |
 | AC9.2 | Resolve requires Outcome + explanation | I, P | #12 | planned | |
 | AC9.3 | Today not Acknowledged in 15 min → Overdue + backup SMS | U, I | #22 | planned | |
 | AC9.4 | Resolved, not Foreman Informed in 2 h → Uninformed | U, I | #32 | planned | |
 | AC9.5 | Every field change audited; no hard delete | I | #12 | planned | |
+| J9 (no numbered AC) | Queue: open requests sorted urgency then age, refresh 10 s, times in America/New_York | I, P, U (Vitest) | #9 | done | I `tests/integration/test_queue.py`; P `tests/e2e/queue.spec.ts`; Vitest `frontend/src/QueuePage.test.tsx` |
+| J9 detail (no numbered AC; supports AC9.5) | Request detail: all fields and audit history (who, when, before/after), oldest first, times in America/New_York | I, P, U (Vitest) | #10 | done | I `tests/integration/test_request_detail.py`; P `tests/e2e/request-detail.spec.ts`; Vitest `frontend/src/RequestDetailPage.test.tsx` |
 | ACX.1 | Never states availability, ETA or unrecorded decision | S | #16, #36 | planned | |
 | ACX.2 | Never asks about mood, day or productivity | S | #36 | planned | |
 

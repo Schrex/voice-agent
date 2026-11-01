@@ -4,8 +4,9 @@ import { join } from "node:path";
 
 import type { APIRequestContext } from "@playwright/test";
 
-/** Webhook secrets the backend under test expects (see frontend/playwright.config.ts). */
-export const E2E_HOOK_SECRET = "e2e-only-hook-secret";
+import { E2E_HOOK_SECRET } from "./agent-stub";
+
+/** The post-call webhook secret the backend under test expects (see frontend/playwright.config.ts). */
 export const E2E_WEBHOOK_SECRET = "e2e-only-post-call-webhook-secret";
 
 // `npm run e2e` runs from frontend/.

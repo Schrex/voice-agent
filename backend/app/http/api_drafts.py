@@ -13,7 +13,7 @@ from app.clock import Clock, get_clock
 from app.db.session import get_session
 from app.domain.lifecycle import TransitionNotAllowed
 from app.http.auth import CurrentStaff
-from app.services.drafts import RequestNotFound, list_drafts, record_draft
+from app.services.drafts import DraftWithoutJob, RequestNotFound, list_drafts, record_draft
 
 router = APIRouter(prefix="/api")
 
@@ -75,7 +75,7 @@ def record(
     session: Annotated[Session, Depends(get_session)],
     clock: Annotated[Clock, Depends(get_clock)],
 ) -> RecordedOut:
-    """Promote a Draft to Recorded. 404 unknown ref; 422 if it is not a Draft."""
+    """Promote a Draft to Recorded. 404 unknown ref; 422 if it is not a Draft or has no Job."""
     try:
         request = record_draft(session, ref=ref, staff_id=staff.id, now=clock())
     except RequestNotFound as exc:
@@ -84,4 +84,7 @@ def record(
     except TransitionNotAllowed as exc:
         session.rollback()
         raise HTTPException(422, "Only a Draft can be recorded") from exc
+    except DraftWithoutJob as exc:
+        session.rollback()
+        raise HTTPException(422, "The Job is not known; set it before recording") from exc
     return RecordedOut(ref=request.ref_display, status=request.status)

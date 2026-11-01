@@ -97,7 +97,12 @@ function DraftRow({ draft, busy, onRecord }: { draft: Draft; busy: boolean; onRe
       <td>{draft.call_started_at ? callFormat.format(new Date(draft.call_started_at)) : ""}</td>
       <td>{draft.call_summary ?? ""}</td>
       <td>
-        <button type="button" disabled={busy} onClick={onRecord}>
+        <button
+          type="button"
+          disabled={busy || draft.job === null}
+          title={draft.job === null ? "The Job is not known; it can be recorded once a Job is set." : undefined}
+          onClick={onRecord}
+        >
           Record
         </button>
       </td>

@@ -128,6 +128,10 @@ class RequestNotFound(LookupError):
     pass
 
 
+class DraftWithoutJob(ValueError):
+    """The Draft's Job matched no active Job; it cannot be Recorded until a Job is set."""
+
+
 def parse_ref(ref: str) -> int | None:
     """ "R-1042" → 1042; anything else → None."""
     prefix, _, number = ref.partition("-")
@@ -139,8 +143,8 @@ def parse_ref(ref: str) -> int | None:
 def record_draft(session: Session, *, ref: str, staff_id: uuid.UUID, now: datetime) -> Request:
     """A coordinator promotes a Draft to Recorded (Draft → Recorded guard).
 
-    Raises RequestNotFound for an unknown ref and TransitionNotAllowed when the Request is not
-    a Draft; either way nothing is written.
+    Raises RequestNotFound for an unknown ref, TransitionNotAllowed when the Request is not
+    a Draft, and DraftWithoutJob when no Job is linked; in each case nothing is written.
     """
     number = parse_ref(ref)
     request = (
@@ -153,6 +157,8 @@ def record_draft(session: Session, *, ref: str, staff_id: uuid.UUID, now: dateti
     if request is None:
         raise RequestNotFound(ref)
     status = transition(Status(request.status), Status.RECORDED)
+    if request.job_id is None:
+        raise DraftWithoutJob(ref)
     before = {
         "status": request.status,
         "recorded_at": None if request.recorded_at is None else request.recorded_at.isoformat(),

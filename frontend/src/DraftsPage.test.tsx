@@ -76,6 +76,8 @@ describe("Drafts page", () => {
 
     const row = await screen.findByRole("row", { name: /R-1000/ });
     expect(within(row).getByText("“the 104” (no Job matched)")).toBeInTheDocument();
+    // It can't be recorded until a Job can be set.
+    expect(within(row).getByRole("button", { name: "Record" })).toBeDisabled();
   });
 
   it("says when there are no Drafts", async () => {
