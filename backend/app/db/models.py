@@ -20,6 +20,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app.domain.lifecycle import Status
+from app.domain.urgency import Urgency
 
 # Stable constraint names so migrations can reference them.
 NAMING_CONVENTION = {
@@ -133,6 +134,7 @@ CATEGORIES = (
 )
 REQUEST_STATUSES = tuple(s.value for s in Status)
 REQUEST_SOURCES = ("ai_call", "coordinator")
+URGENCIES = tuple(u.value for u in Urgency)
 
 # References start at 1000 and are rendered "R-1000" (architecture §5).
 request_ref_seq = Sequence("request_ref_seq", start=1000, metadata=Base.metadata)
@@ -146,6 +148,7 @@ class Request(Base):
         CheckConstraint(_one_of("category", CATEGORIES), name="category_values"),
         CheckConstraint(_one_of("status", REQUEST_STATUSES), name="status_values"),
         CheckConstraint(_one_of("source", REQUEST_SOURCES), name="source_values"),
+        CheckConstraint(_one_of("urgency", URGENCIES), name="urgency_values"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -160,6 +163,8 @@ class Request(Base):
     unit: Mapped[str | None] = mapped_column(String(64))
     # Needed-by as the Foreman said it; parsing into a time comes later (ticket #14).
     needed_by_spoken: Mapped[str | None] = mapped_column(Text)
+    # Null until urgency inference (ticket #14) sets it; the queue shows nulls last.
+    urgency: Mapped[str | None] = mapped_column(String(16))
     status: Mapped[str] = mapped_column(String(20))
     source: Mapped[str] = mapped_column(String(20))
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

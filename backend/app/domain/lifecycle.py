@@ -23,6 +23,11 @@ class TransitionNotAllowed(ValueError):
         self.target = target
 
 
+# Statuses of a Request still in the queue: confirmed by the Foreman, not yet Resolved.
+OPEN_STATUSES: frozenset[Status] = frozenset(
+    {Status.RECORDED, Status.ACKNOWLEDGED, Status.IN_PROGRESS}
+)
+
 _ALLOWED: frozenset[tuple[Status, Status]] = frozenset({(Status.DRAFT, Status.RECORDED)})
 
 

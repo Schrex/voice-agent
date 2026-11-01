@@ -37,7 +37,11 @@ function fakeAuth(initial: AuthSession | null = null): AuthClient & { signedOut:
 }
 
 function apiMe(status: number, body: unknown = {}) {
-  const fetchMock = vi.fn(async () => new Response(JSON.stringify(body), { status }));
+  const fetchMock = vi.fn(async (url: string) =>
+    url === "/api/requests"
+      ? new Response(JSON.stringify({ requests: [] }))
+      : new Response(JSON.stringify(body), { status }),
+  );
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
 }

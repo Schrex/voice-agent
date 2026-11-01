@@ -1,4 +1,8 @@
 {
+  "jobs": [{ "name": "Route 104 Widening", "active": true, "aliases": ["Route 104"] }],
+  "foremen": [
+    { "first_name": "Dale", "last_name": "Kramer", "active": true, "phones": ["+15855550101"] }
+  ],
   "staff": [
     {
       "id": "0b6f2c1e-8a8e-4d47-9c3f-5e2d7a1b0c01",
