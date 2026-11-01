@@ -24,7 +24,9 @@ function row(overrides: Partial<QueueRequest>): QueueRequest {
     need: "tri-axle dump trucks",
     quantity: "3",
     unit: "trucks",
-    needed_by: "tomorrow at seven",
+    // Monday, November 2, 7:00 AM in New York (EST).
+    needed_by: "2026-11-02T12:00:00Z",
+    needed_by_spoken: "tomorrow at seven",
     urgency: "Today",
     status: "Recorded",
     recorded_at: "2026-11-02T01:30:00Z",
@@ -62,7 +64,13 @@ describe("queue", () => {
   it("lists each open request's fields in the order the backend sent", async () => {
     const fetchMock = serve([
       row({ ref: "R-1001", need: "excavator", quantity: null, unit: null, urgency: "Emergency" }),
-      row({ ref: "R-1000", status: "Acknowledged", needed_by: null, urgency: null }),
+      row({
+        ref: "R-1000",
+        status: "Acknowledged",
+        needed_by: null,
+        needed_by_spoken: null,
+        urgency: null,
+      }),
     ]);
 
     const table = await renderQueue();
@@ -84,7 +92,7 @@ describe("queue", () => {
       "Route 104 Widening",
       "excavator",
       "—",
-      "tomorrow at seven",
+      "Mon, Nov 2, 7:00 AM",
       "Emergency",
       "Recorded",
       expect.stringMatching(/^2h 0m/),
@@ -94,7 +102,7 @@ describe("queue", () => {
       "Route 104 Widening",
       "tri-axle dump trucks",
       "3 trucks",
-      "—",
+      "Unknown",
       "—",
       "Acknowledged",
       expect.stringMatching(/^2h 0m/),
@@ -117,6 +125,23 @@ describe("queue", () => {
     expect(jobCell).toHaveTextContent("Unmatched: “the Smith pit”");
     expect(within(jobCell).getByText("Unmatched")).toHaveClass("flag");
     expect(within(matched).getAllByRole("cell")[1]).toHaveTextContent(/^Route 104 Widening$/);
+  });
+
+  it("shows a needed-by the backend could not resolve as the Foreman said it", async () => {
+    serve([row({ needed_by: null, needed_by_spoken: "next Tuesday" })]);
+
+    const table = await renderQueue();
+
+    expect(within(table).getAllByRole("cell")[4]).toHaveTextContent(/^“next Tuesday”$/);
+  });
+
+  it("shows the needed-by in New York time across the UTC date line", async () => {
+    // 03:00 UTC on Nov 3 is still Monday, Nov 2 (10:00 PM EST) in New York.
+    serve([row({ needed_by: "2026-11-03T03:00:00Z" })]);
+
+    const table = await renderQueue();
+
+    expect(within(table).getAllByRole("cell")[4]).toHaveTextContent(/^Mon, Nov 2, 10:00 PM$/);
   });
 
   it("shows when a request was recorded in New York time across the UTC date line", async () => {

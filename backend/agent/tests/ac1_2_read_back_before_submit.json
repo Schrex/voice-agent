@@ -10,7 +10,7 @@
   "simulation_scenario": "You are Dale, a foreman on the Roster. When the assistant asks what you need, say in one sentence: you need two tri-axle dump trucks at the Route 104 job tomorrow at 7 AM. Answer any question briefly and truthfully with those facts. When the assistant reads the details back and asks whether to submit, say yes. After it gives you a reference number, say that's all and goodbye.",
   "simulation_max_turns": 8,
   "success_conditions": [
-    "Before the request is submitted, the agent reads back, in one summary, the Job by its listed name (Route 104 Widening), the quantity (two), the unit (tri-axle dump trucks or trucks) and the time (tomorrow at 7 AM).",
+    "Before the request is submitted, the agent reads back, in one summary, the Job by its listed name (Route 104 Widening), the quantity (two), the unit (tri-axle dump trucks or trucks) and the time as Monday, November 2 at 7 AM (the day said by its weekday).",
     "After that read-back the agent asks the caller whether to submit, and submits only after the caller says yes.",
     "The agent never says the request is confirmed, never states availability, and never gives an arrival time."
   ],
@@ -18,6 +18,7 @@
     "mocking_strategy": "selected",
     "mocked_tool_ids": [
       "${tool_find_jobs}",
+      "${tool_resolve_needed_by}",
       "${tool_submit_requests}"
     ],
     "fallback_strategy": "raise_error"
@@ -29,9 +30,15 @@
         "is_error": false
       }
     ],
+    "${tool_resolve_needed_by}": [
+      {
+        "mock_result": "{\"needed_by_resolved\": \"Monday, November 2 at 7:00 AM\", \"urgency\": \"Planned\"}",
+        "is_error": false
+      }
+    ],
     "${tool_submit_requests}": [
       {
-        "mock_result": "[{\"ref\": \"R-1042\"}]",
+        "mock_result": "[{\"ref\": \"R-1042\", \"needed_by_resolved\": \"Monday, November 2 at 7:00 AM\", \"urgency\": \"Planned\"}]",
         "is_error": false
       }
     ]

@@ -40,7 +40,8 @@ class QueueRequestOut(BaseModel):
     need: str
     quantity: str | None
     unit: str | None
-    needed_by: str | None
+    needed_by: str | None  # UTC ISO 8601 "Z"; null = unknown, not understood, or day only
+    needed_by_spoken: str | None  # as the Foreman said it; null = they could not say
     urgency: str | None
     status: str
     recorded_at: str  # UTC, ISO 8601 with "Z"; the dashboard shows it in America/New_York
@@ -62,7 +63,8 @@ def queue(staff: CurrentStaff, session: Annotated[Session, Depends(get_session)]
                 need=row.need,
                 quantity=row.quantity,
                 unit=row.unit,
-                needed_by=row.needed_by,
+                needed_by=_utc_or_none(row.needed_by),
+                needed_by_spoken=row.needed_by_spoken,
                 urgency=row.urgency,
                 status=row.status,
                 recorded_at=_utc(row.recorded_at),
@@ -106,7 +108,8 @@ class RequestDetailOut(BaseModel):
     need: str
     quantity: str | None
     unit: str | None
-    needed_by: str | None
+    needed_by: str | None  # UTC ISO 8601 "Z"; null = unknown, not understood, or day only
+    needed_by_spoken: str | None  # as the Foreman said it; null = they could not say
     urgency: str | None
     status: str
     source: str
@@ -178,7 +181,8 @@ def _detail_out(found: RequestDetail) -> RequestDetailOut:
         need=found.need,
         quantity=found.quantity,
         unit=found.unit,
-        needed_by=found.needed_by,
+        needed_by=_utc_or_none(found.needed_by),
+        needed_by_spoken=found.needed_by_spoken,
         urgency=found.urgency,
         status=found.status,
         source=found.source,
@@ -205,3 +209,7 @@ def _detail_out(found: RequestDetail) -> RequestDetailOut:
 
 def _utc(at: datetime) -> str:
     return at.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
+
+def _utc_or_none(at: datetime | None) -> str | None:
+    return None if at is None else _utc(at)

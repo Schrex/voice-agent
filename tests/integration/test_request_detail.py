@@ -60,7 +60,7 @@ def _record_by_call(session: Session, *, unmatched: bool = False) -> str:
         if unmatched
         else session.scalars(select(Job.id).where(Job.name == "Route 104 Widening")).one()
     )
-    [ref] = submit_requests(
+    [recorded] = submit_requests(
         session,
         caller=Caller(call_id=call.id, foreman_id=dale.id),
         items=[
@@ -76,7 +76,7 @@ def _record_by_call(session: Session, *, unmatched: bool = False) -> str:
         ],
         now=T0,
     )
-    return ref
+    return recorded.ref
 
 
 def test_detail_requires_a_staff_token(client: TestClient, db_session: Session) -> None:
@@ -109,8 +109,10 @@ def test_detail_returns_the_request_fields(
         "need": "tri-axle dump trucks",
         "quantity": None,
         "unit": None,
-        "needed_by": "tomorrow at seven",
-        "urgency": None,
+        # T0 is Sunday 7:00 AM EST: "tomorrow at seven" is Monday 7:00 AM EST.
+        "needed_by": "2026-11-02T12:00:00Z",
+        "needed_by_spoken": "tomorrow at seven",
+        "urgency": "Planned",
         "status": "Recorded",
         "source": "ai_call",
         "recorded_at": "2026-11-01T12:00:00Z",

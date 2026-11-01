@@ -102,7 +102,7 @@ def test_valid_call_records_a_request_with_a_reference_and_an_agent_event(
     assert response.status_code == 200
     [result] = response.json()
     request = db_session.scalars(select(Request)).one()
-    assert result == {"ref": f"R-{request.ref}"}
+    assert result["ref"] == f"R-{request.ref}"
     assert request.ref >= 1000
     assert request.status == "Recorded"
     assert request.foreman_id == _foreman_id(db_session, "Dale")
@@ -297,7 +297,7 @@ def test_unmatched_job_is_recorded_without_a_job_and_keeps_what_the_foreman_said
 
     assert response.status_code == 200
     request = db_session.scalars(select(Request)).one()
-    assert response.json() == [{"ref": f"R-{request.ref}"}]
+    assert [r["ref"] for r in response.json()] == [f"R-{request.ref}"]
     assert (request.job_id, request.job_spoken, request.status) == (
         None,
         "the Smith pit",
@@ -326,3 +326,78 @@ def test_job_spoken_is_required(tools: TestClient, db_session: Session) -> None:
 
     assert response.json() == SPEAKABLE_ERROR
     assert _nothing_written(db_session)
+
+
+# Needed-by and Urgency (ticket #14). NOW is Sunday, November 1, 2026, 3:04 PM in New York.
+
+
+def test_spoken_needed_by_is_stored_as_a_time_with_its_urgency_and_read_back_by_weekday(
+    tools: TestClient, db_session: Session
+) -> None:
+    response = _submit(tools, {"items": [_item(db_session, needed_by_spoken="tomorrow at seven")]})
+
+    request = db_session.scalars(select(Request)).one()
+    assert response.json() == [
+        {
+            "ref": f"R-{request.ref}",
+            "needed_by_resolved": "Monday, November 2 at 7:00 AM",
+            "urgency": "Planned",
+        }
+    ]
+    # 7:00 AM EST on Monday 2 November is 12:00 UTC.
+    assert request.needed_by == datetime(2026, 11, 2, 12, 0, tzinfo=UTC)
+    assert request.needed_by_spoken == "tomorrow at seven"
+    assert request.urgency == "Planned"
+    event = db_session.scalars(select(RequestEvent)).one()
+    assert event.after is not None
+    assert event.after["needed_by"] == "2026-11-02T12:00:00Z"
+    assert event.after["needed_by_spoken"] == "tomorrow at seven"
+    assert event.after["urgency"] == "Planned"
+
+
+def test_needed_today_is_today_urgency(tools: TestClient, db_session: Session) -> None:
+    response = _submit(tools, {"items": [_item(db_session, needed_by_spoken="this afternoon")]})
+
+    request = db_session.scalars(select(Request)).one()
+    assert response.json()[0]["urgency"] == "Today"
+    assert request.urgency == "Today"
+    assert request.needed_by == datetime(2026, 11, 1, 18, 0, tzinfo=UTC)
+
+
+def test_missing_needed_by_is_recorded_as_unknown(tools: TestClient, db_session: Session) -> None:
+    # AC1.5: the Foreman could not say when; the request is Recorded, not blocked.
+    item = _item(db_session)
+    del item["needed_by_spoken"]
+
+    response = _submit(tools, {"items": [item]})
+
+    request = db_session.scalars(select(Request)).one()
+    assert response.json() == [
+        {"ref": f"R-{request.ref}", "needed_by_resolved": None, "urgency": None}
+    ]
+    assert request.status == "Recorded"
+    assert (request.needed_by, request.needed_by_spoken, request.urgency) == (None, None, None)
+
+
+def test_needed_by_that_is_not_understood_is_kept_as_said_and_not_guessed(
+    tools: TestClient, db_session: Session
+) -> None:
+    response = _submit(tools, {"items": [_item(db_session, needed_by_spoken="next Tuesday")]})
+
+    request = db_session.scalars(select(Request)).one()
+    assert response.json()[0]["needed_by_resolved"] is None
+    assert (request.needed_by, request.needed_by_spoken, request.urgency) == (
+        None,
+        "next Tuesday",
+        None,
+    )
+
+
+def test_a_day_without_a_time_sets_urgency_but_no_needed_by_time(
+    tools: TestClient, db_session: Session
+) -> None:
+    response = _submit(tools, {"items": [_item(db_session, needed_by_spoken="tomorrow")]})
+
+    request = db_session.scalars(select(Request)).one()
+    assert response.json()[0]["needed_by_resolved"] == "Monday, November 2"
+    assert (request.needed_by, request.urgency) == (None, "Planned")

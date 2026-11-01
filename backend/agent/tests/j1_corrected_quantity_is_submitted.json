@@ -45,7 +45,32 @@
     },
     {
       "role": "agent",
-      "message": "Three tri-axle dump trucks at Route 104 Widening, tomorrow at 7 AM. Should I submit it?",
+      "message": null,
+      "time_in_call_secs": 9,
+      "tool_calls": [
+        {
+          "type": "webhook",
+          "request_id": "resolve_needed_by_0001",
+          "tool_name": "resolve_needed_by",
+          "tool_id": "${tool_resolve_needed_by}",
+          "params_as_json": "{\"needed_by_spoken\": \"tomorrow at 7 AM\"}",
+          "tool_has_been_called": true
+        }
+      ],
+      "tool_results": [
+        {
+          "type": "webhook",
+          "request_id": "resolve_needed_by_0001",
+          "tool_name": "resolve_needed_by",
+          "result_value": "{\"needed_by_resolved\": \"Monday, November 2 at 7:00 AM\", \"urgency\": \"Planned\"}",
+          "is_error": false,
+          "tool_has_been_called": true
+        }
+      ]
+    },
+    {
+      "role": "agent",
+      "message": "Three tri-axle dump trucks at Route 104 Widening, Monday, November 2 at 7:00 AM. Should I submit it?",
       "time_in_call_secs": 12
     },
     {
@@ -55,7 +80,7 @@
     },
     {
       "role": "agent",
-      "message": "Two tri-axle dump trucks at Route 104 Widening, tomorrow at 7 AM. Should I submit it?",
+      "message": "Two tri-axle dump trucks at Route 104 Widening, Monday, November 2 at 7:00 AM. Should I submit it?",
       "time_in_call_secs": 21
     },
     {
@@ -74,7 +99,7 @@
         "path": "items",
         "eval": {
           "type": "llm",
-          "description": "Exactly one item, with job_id 14 (from find_jobs), job_spoken naming Route 104, category Trucking, quantity 2 (not 3), a unit naming trucks, and needed_by_spoken saying tomorrow at 7 AM."
+          "description": "Exactly one item, with job_id 14 (from find_jobs), job_spoken naming Route 104, category Trucking, quantity 2 (not 3), a unit naming trucks, and needed_by_spoken in the Foreman's words, tomorrow at 7 AM (not the resolved Monday date)."
         }
       }
     ]

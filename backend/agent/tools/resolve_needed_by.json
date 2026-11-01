@@ -1,0 +1,26 @@
+{
+  "tool_config": {
+    "type": "webhook",
+    "name": "resolve_needed_by",
+    "description": "Work out the day and time from when the Foreman said the need is needed. Call it as soon as the Foreman says when, with their words, before the read-back. Returns {\"needed_by_resolved\": \"Monday, November 2 at 7:00 AM\", \"urgency\": \"Planned\"}; needed_by_resolved is null when the words could not be worked out. Returns {\"error\": \"...\"} if it failed.",
+    "api_schema": {
+      "url": "${backend_url}/tools/resolve_needed_by",
+      "method": "POST",
+      "request_headers": {
+        "X-Tool-Secret": { "secret_id": "${tool_secret_id}" },
+        "X-Conversation-Id": { "variable_name": "system__conversation_id" }
+      },
+      "request_body_schema": {
+        "type": "object",
+        "description": "When it is needed, as the Foreman said it.",
+        "required": ["needed_by_spoken"],
+        "properties": {
+          "needed_by_spoken": {
+            "type": "string",
+            "description": "When it is needed, exactly as the Foreman said it, for example 'tomorrow at seven' or 'first thing'. Do not convert it."
+          }
+        }
+      }
+    }
+  }
+}

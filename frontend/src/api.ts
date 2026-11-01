@@ -26,12 +26,38 @@ export type QueueRequest = {
   need: string;
   quantity: string | null;
   unit: string | null;
+  /** UTC, ISO 8601; null when unknown, not understood, or only a day was said. */
   needed_by: string | null;
+  /** The needed-by as the Foreman said it; null when they could not say. */
+  needed_by_spoken: string | null;
   urgency: "Emergency" | "Today" | "Planned" | null;
   status: "Recorded" | "Acknowledged" | "In Progress";
   /** UTC, ISO 8601. */
   recorded_at: string;
 };
+
+/** Every time on the dashboard is shown in the office's zone, whatever the browser's zone. */
+export const officeTime = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+/**
+ * The resolved needed-by in New York time; else what the Foreman said, in quotes, when the
+ * backend could not resolve it; else "Unknown" (spec AC1.5: the Foreman could not say).
+ */
+export function neededByText(r: {
+  needed_by: string | null;
+  needed_by_spoken: string | null;
+}): string {
+  if (r.needed_by) return officeTime.format(new Date(r.needed_by));
+  if (r.needed_by_spoken) return `“${r.needed_by_spoken}”`;
+  return "Unknown";
+}
 
 /** "Unmatched: “<what the Foreman said>”" for a Job that matched nothing, else its name. */
 export function jobText(r: { job: string | null; job_spoken: string }): string {
@@ -71,7 +97,10 @@ export type RequestDetail = {
   need: string;
   quantity: string | null;
   unit: string | null;
+  /** UTC, ISO 8601; null when unknown, not understood, or only a day was said. */
   needed_by: string | null;
+  /** The needed-by as the Foreman said it; null when they could not say. */
+  needed_by_spoken: string | null;
   urgency: "Emergency" | "Today" | "Planned" | null;
   status: "Draft" | "Recorded" | "Acknowledged" | "In Progress" | "Resolved";
   source: "ai_call" | "coordinator";

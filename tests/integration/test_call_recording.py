@@ -124,7 +124,7 @@ def _record(session: Session, call: Call) -> str:
     """A Request recorded on `call` through the submit service (writes the `created` link)."""
     assert call.foreman_id is not None
     job_id = session.scalars(select(Job.id).where(Job.name == "Route 104 Widening")).one()
-    [ref] = submit_requests(
+    [recorded] = submit_requests(
         session,
         caller=Caller(call_id=call.id, foreman_id=call.foreman_id),
         items=[
@@ -140,7 +140,7 @@ def _record(session: Session, call: Call) -> str:
         ],
         now=call.started_at,
     )
-    return ref
+    return recorded.ref
 
 
 # --- audio -------------------------------------------------------------------------------

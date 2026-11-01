@@ -27,6 +27,7 @@ const DETAIL: RequestDetail = {
   quantity: null,
   unit: null,
   needed_by: null,
+  needed_by_spoken: null,
   urgency: null,
   status: "Recorded",
   source: "ai_call",
