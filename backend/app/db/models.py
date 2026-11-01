@@ -314,6 +314,7 @@ class DutyRoster(Base):
     backup_staff_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("staff.id"))
 
     on_duty: Mapped[Staff] = relationship(foreign_keys=[on_duty_staff_id])
+    backup: Mapped[Staff | None] = relationship(foreign_keys=[backup_staff_id])
 
 
 ALERT_KINDS = ("today_new", "callback", "emergency", "overdue", "transfer", "eod_summary")

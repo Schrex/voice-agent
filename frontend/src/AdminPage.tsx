@@ -49,6 +49,11 @@ export function AdminPage({ staff }: { staff: Staff }) {
       </header>
       <main>
         <h1>Admin</h1>
+        {staff.role === "admin" && (
+          <p>
+            <Link to="/admin/office">Owners, staff, duty roster, settings</Link>
+          </p>
+        )}
         {staff.role !== "admin" ? (
           <p role="alert">Admins only.</p>
         ) : (
