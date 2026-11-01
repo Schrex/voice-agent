@@ -92,6 +92,13 @@ def status_request(session: Session, ref: str) -> Request:
     )
     if request is None:
         raise RequestNotFound(ref)
+    return final_target(session, request)
+
+
+def final_target(session: Session, request: Request) -> Request:
+    """The Request that `request` was finally merged into (following merges of merges), else
+    `request` itself. Merges cannot cycle: a merged Request is Resolved and nothing merges into
+    a Resolved Request."""
     while request.merged_into_id is not None:
         merged_into = session.get(Request, request.merged_into_id)
         assert merged_into is not None  # foreign key

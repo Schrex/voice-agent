@@ -24,6 +24,7 @@ from app.domain.lifecycle import Outcome
 from app.main import app
 from app.services.calls import Caller
 from app.services.drafts import save_draft
+from app.services.merges import merge_request
 from app.services.requests import (
     NewItem,
     acknowledge_request,
@@ -284,3 +285,56 @@ def test_the_call_is_linked_once_to_each_request_it_looked_up(
 def test_an_unknown_or_missing_conversation_is_rejected(tools: TestClient) -> None:
     assert _find(tools, {}, conversation_id="conv_unknown").status_code == 403
     assert _find(tools, {}, conversation_id=None).status_code == 403
+
+
+def _merge(session: Session, ref: str, into: str) -> None:
+    merge_request(
+        session,
+        ref=ref,
+        into=into,
+        outcome=Outcome.WITHDRAWN,
+        explanation=f"Duplicate of {into}.",
+        staff_id=STAFF_ID,
+        now=NOW,
+    )
+
+
+def test_a_merged_request_is_reported_as_its_final_target(
+    tools: TestClient, db_session: Session
+) -> None:
+    """#33 + #16: a lookup that finds merged A reports B, following A→B→C, once each."""
+    a = _record(db_session, need="a water truck")
+    b = _record(db_session, need="water truck")
+    c = _record(db_session, need="water truck for dust")
+    other = _record(db_session, need="a lowboy")
+    _merge(db_session, a, b)
+    _merge(db_session, b, c)
+    owner_id = _owner_id(db_session, "Dispatch")
+    acknowledge_request(db_session, ref=c, owner_id=owner_id, staff_id=STAFF_ID, now=NOW)
+
+    found = _find(tools, {}).json()
+    assert [f["ref"] for f in found] == [other, c]
+    reported = next(f for f in found if f["ref"] == c)
+    assert (reported["need"], reported["status"], reported["owner"]) == (
+        "water truck for dust",
+        "Acknowledged",
+        "Dispatch",
+    )
+    linked = db_session.scalars(
+        select(Request.ref)
+        .join(CallRequest, CallRequest.request_id == Request.id)
+        .where(CallRequest.relation == "looked_up")
+    ).all()
+    assert sorted(f"R-{n}" for n in linked) == sorted([other, c])
+
+
+def test_a_merge_target_of_another_foreman_is_left_out(
+    tools: TestClient, db_session: Session
+) -> None:
+    """#16's rule holds through a merge: Dale's A merged into Rita's B returns nothing of Rita's."""
+    dales = _record(db_session)
+    ritas = _record(db_session, RITA_CONVERSATION, need="tri-axle dump trucks")
+    _merge(db_session, dales, ritas)
+
+    assert _refs(_find(tools, {})) == []
+    assert _refs(_find(tools, {}, conversation_id=RITA_CONVERSATION)) == [ritas]
