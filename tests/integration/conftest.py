@@ -17,6 +17,8 @@ from sqlalchemy.orm import Session
 
 from app.db.migrate import upgrade
 from app.db.session import get_session
+from app.http.sms import get_sms_sender
+from app.integrations.twilio_sms import SmsNotSent
 from app.main import app
 
 
@@ -53,9 +55,17 @@ def db_session(engine: Engine) -> Iterator[Session]:
         connection.close()
 
 
+class _NoSms:
+    """Default SMS sender in I-tests: never reaches Twilio, every send fails."""
+
+    def send(self, to: str, body: str) -> str:
+        raise SmsNotSent("SMS is off in tests")
+
+
 @pytest.fixture
 def client(db_session: Session) -> Iterator[TestClient]:
     app.dependency_overrides[get_session] = lambda: db_session
+    app.dependency_overrides[get_sms_sender] = _NoSms
     try:
         yield TestClient(app)
     finally:

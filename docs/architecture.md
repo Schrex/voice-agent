@@ -190,7 +190,7 @@ All timestamps `timestamptz` (UTC); displayed and parsed in `America/New_York`.
 | `request_notes` | id, request_id, at, author_type, author_id?, text, urgent |
 | `calls` | id, conversation_id (unique), call_sid, caller_e164, foreman_id?, started_at, ended_at, duration_s, termination_reason, transcript jsonb, summary, outcome (`submitted` \| `draft` \| `transferred` \| `emergency` \| `rejected` \| `status_only` \| `none`) |
 | `call_requests` | call_id, request_id, relation (`created` \| `looked_up` \| `amended`) |
-| `alerts` | id, request_id?, call_id?, kind (`today_new` \| `callback` \| `emergency` \| `overdue` \| `transfer` \| `eod_summary`), channel (`sms` \| `email` \| `popup`), to_staff_id?, sent_at, provider_id, status, seen_at? |
+| `alerts` | id, request_id?, call_id?, kind (`today_new` \| `callback` \| `emergency` \| `overdue` \| `transfer` \| `eod_summary`), channel (`sms` \| `email` \| `popup`), to_staff_id?, sent_at (attempted), provider_id?, status (`pending` \| `sent` \| `failed`), detail? (why not sent), seen_at? |
 
 Derived, not stored: **Overdue** = status Recorded and `now > ack_due_at`; **Uninformed** = Resolved, `foreman_informed_at` null, and `now > resolved_at + uninformed_after`.
 

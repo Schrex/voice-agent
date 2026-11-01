@@ -75,6 +75,26 @@ def supabase_jwt_secret() -> str:
     return secret
 
 
+def twilio_account_sid() -> str | None:
+    """Twilio account SID for alert SMS. Unset: every alert SMS is recorded as failed."""
+    return os.environ.get("TWILIO_ACCOUNT_SID") or None
+
+
+def twilio_auth_token() -> str | None:
+    """Twilio auth token for alert SMS. Unset: every alert SMS is recorded as failed."""
+    return os.environ.get("TWILIO_AUTH_TOKEN") or None
+
+
+def twilio_from_e164() -> str | None:
+    """Number alert SMS are sent from (E.164). Unset: every alert SMS is recorded as failed."""
+    return os.environ.get("TWILIO_FROM_E164") or None
+
+
+def twilio_api_base() -> str:
+    """Twilio API base URL; `TWILIO_API_BASE` overrides it (tests, stubs)."""
+    return os.environ.get("TWILIO_API_BASE") or "https://api.twilio.com"
+
+
 def frontend_dist() -> Path:
     """Built dashboard (`npm run build` output) served at `/`; defaults to `frontend/dist`."""
     configured = os.environ.get("FRONTEND_DIST")

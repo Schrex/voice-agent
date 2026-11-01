@@ -18,6 +18,10 @@ from sqlalchemy.orm import Session
 from app.clock import Clock, get_clock
 from app.config import tool_secret
 from app.db.session import get_session
+from app.domain.urgency import Urgency
+from app.http.sms import get_sms_sender
+from app.integrations.twilio_sms import SmsSender
+from app.services.alerts import alert_new_today
 from app.services.calls import Caller, caller_for_conversation
 from app.services.jobs import find_jobs
 from app.services.requests import NewItem, resolve_needed_by, submit_requests
@@ -126,8 +130,10 @@ def submit_requests_tool(
     caller: Annotated[Caller, Depends(get_caller)],
     session: Annotated[Session, Depends(get_session)],
     clock: Annotated[Clock, Depends(get_clock)],
+    sms: Annotated[SmsSender, Depends(get_sms_sender)],
     x_conversation_id: Annotated[str | None, Header()] = None,
 ) -> Any:
+    """Records the confirmed items; a Today Request texts the on-duty Coordinator (AC1.9)."""
     log_ctx = {"conversation_id": x_conversation_id}
     try:
         parsed = SubmitBody.model_validate(body)
@@ -142,6 +148,16 @@ def submit_requests_tool(
         log.exception("submit_requests_failed", extra=log_ctx)
         return {"error": NOT_SAVED}
     log.info("submit_requests", extra={**log_ctx, "ref": [r.ref for r in recorded]})
+    now = clock()
+    for r in recorded:
+        if r.needed_by.urgency != Urgency.TODAY.value:
+            continue
+        # The Request is saved; an alert problem must not turn into a spoken error.
+        try:
+            alert_new_today(session, sms, ref=r.ref, now=now)
+        except Exception:
+            session.rollback()
+            log.exception("today_alert_failed", extra={**log_ctx, "ref": r.ref})
     return [
         {
             "ref": r.ref,

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { fetchQueue, neededByText, officeTime, type QueueRequest, type Staff } from "./api";
 import { useAuth } from "./App";
+import { FailedAlerts } from "./FailedAlerts";
 
 /** How often the queue refetches (spec J9 / architecture §1: refresh every 10 s). */
 const REFRESH_MS = 10_000;
@@ -31,6 +32,7 @@ export function QueuePage({ staff }: { staff: Staff }) {
       </header>
       <main>
         <h1>Queue</h1>
+        <FailedAlerts />
         {queue.isError && !queue.data && (
           <p role="alert">Could not load the queue.</p>
         )}

@@ -14,6 +14,9 @@ ALL_TABLES = {
     "staff",
     "owners",
     "category_owner_defaults",
+    "duty_roster",
+    "alerts",
+    "settings",
 }
 
 
