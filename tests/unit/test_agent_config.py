@@ -4,7 +4,7 @@ in backend/agent/tests/ (S layer); these check what is fixed in config before an
 
 from typing import Any
 
-from agent.push import desired_agent
+from agent.push import desired_agent, desired_tools
 from app.db.models import CATEGORIES
 from app.domain.draft import DATA_COLLECTION_FIELDS
 
@@ -90,3 +90,29 @@ def test_prompt_reads_back_the_needed_by_the_backend_resolved() -> None:
     assert "`resolve_needed_by`" in prompt
     assert "needed_by_resolved" in prompt
     assert "leave `needed_by_spoken` out" in prompt
+
+
+def test_prompt_splits_several_needs_into_one_numbered_summary_and_one_submit() -> None:
+    """Ticket #15 / spec J1 step 4, AC1.6: several needs are separate items, read back as a
+    numbered summary with one confirmation, submitted together, and every reference given.
+    The S tests check the spoken behavior."""
+    prompt = _agent()["prompt"]["prompt"]
+
+    assert "## Several needs" in prompt
+    assert "numbered summary" in prompt
+    assert "one `submit_requests` call" in prompt
+    assert "every reference number" in prompt
+
+
+def test_submit_tool_takes_every_confirmed_need_not_exactly_one() -> None:
+    """Ticket #15: the tool schema tells the agent to send each confirmed need as its own item."""
+    [tool] = [
+        t["tool_config"]
+        for t in desired_tools(ENV)
+        if t["tool_config"]["name"] == "submit_requests"
+    ]
+    items = tool["api_schema"]["request_body_schema"]["properties"]["items"]
+
+    assert "Exactly one" not in items["description"]
+    assert "one item per need" in items["description"]
+    assert "maxItems" not in items

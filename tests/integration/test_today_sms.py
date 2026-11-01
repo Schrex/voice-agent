@@ -98,20 +98,23 @@ def _on_duty(session: Session, day: date, on_duty: Staff, backup: Staff | None =
     session.flush()
 
 
-def _submit(client: TestClient, session: Session, needed_by_spoken: str) -> Any:
+def _submit(client: TestClient, session: Session, *needed_by_spoken: str) -> Any:
     job_id = session.scalars(select(Job.id).where(Job.name == "Route 104 Widening")).one()
-    item = {
-        "job_id": job_id,
-        "job_spoken": "the 104 job",
-        "category": "Trucking",
-        "need": "tri-axle dump trucks",
-        "quantity": 3,
-        "unit": "trucks",
-        "needed_by_spoken": needed_by_spoken,
-    }
+    items = [
+        {
+            "job_id": job_id,
+            "job_spoken": "the 104 job",
+            "category": "Trucking",
+            "need": "tri-axle dump trucks",
+            "quantity": 3,
+            "unit": "trucks",
+            "needed_by_spoken": spoken,
+        }
+        for spoken in needed_by_spoken
+    ]
     response = client.post(
         "/tools/submit_requests",
-        json={"items": [item]},
+        json={"items": items},
         headers={"X-Tool-Secret": TOOL_SECRET, "X-Conversation-Id": CONVERSATION},
     )
     assert response.status_code == 200
@@ -165,6 +168,19 @@ def test_retrying_the_trigger_does_not_resend(
 
     assert len(sms.sent) == 1
     assert len(_alerts(db_session)) == 1
+
+
+def test_each_today_request_of_a_call_is_texted_and_planned_ones_are_not(
+    tools: TestClient, db_session: Session, sms: FakeSms
+) -> None:
+    _on_duty(db_session, TODAY_NY, _staff(db_session, "Pat Lee", "+15855550199"))
+
+    results = _submit(tools, db_session, "today at five", "tomorrow at seven", "today at noon")
+
+    assert [r["urgency"] for r in results] == ["Today", "Planned", "Today"]
+    texted = [body.split(" ")[2] for _, body in sms.sent]
+    assert texted == [results[0]["ref"], results[2]["ref"]]
+    assert len(_alerts(db_session)) == 2
 
 
 def test_a_planned_request_sends_no_sms(
