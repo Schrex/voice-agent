@@ -8,6 +8,7 @@ import type { AuthClient, AuthSession } from "./auth";
 import { DraftsPage } from "./DraftsPage";
 import { LoginPage } from "./LoginPage";
 import { QueuePage } from "./QueuePage";
+import { QuickEntryPage } from "./QuickEntryPage";
 import { RequestDetailPage } from "./RequestDetailPage";
 
 type AuthState = { auth: AuthClient; session: AuthSession | null };
@@ -66,6 +67,10 @@ export function App({ auth }: { auth: AuthClient }) {
             <Route
               path="/drafts"
               element={<RequireStaff>{(staff) => <DraftsPage staff={staff} />}</RequireStaff>}
+            />
+            <Route
+              path="/quick-entry"
+              element={<RequireStaff>{(staff) => <QuickEntryPage staff={staff} />}</RequireStaff>}
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

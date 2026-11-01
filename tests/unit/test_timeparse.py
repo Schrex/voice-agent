@@ -150,6 +150,21 @@ def test_read_back_names_the_weekday_and_date_never_tomorrow(
     assert speakable(needed_by) == expected
 
 
+@pytest.mark.parametrize(
+    ("typed", "expected"),
+    [
+        ("tomorrow 7am", utc(11, 2, 12)),
+        ("tomorrow 7:30pm", utc(11, 3, 0, 30)),
+        ("Tuesday 10AM", utc(11, 3, 15)),
+    ],
+)
+def test_am_pm_typed_against_the_hour_is_understood(typed: str, expected: datetime) -> None:
+    """A coordinator types "7am" where a transcript has "7 am" (quick entry, ticket #30)."""
+    needed_by = parse_needed_by(typed, SUN_AFTERNOON)
+    assert needed_by is not None
+    assert needed_by.at == expected
+
+
 def test_naive_now_is_refused() -> None:
     with pytest.raises(ValueError):
         parse_needed_by("tomorrow at seven", datetime(2026, 11, 1, 15, 4))

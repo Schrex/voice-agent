@@ -21,7 +21,7 @@ export function QueuePage({ staff }: { staff: Staff }) {
     <>
       <header className="topbar">
         <nav>
-          <Link to="/drafts">Drafts</Link>
+          <Link to="/drafts">Drafts</Link> <Link to="/quick-entry">Log a request</Link>
         </nav>
         {staff.role === "admin" && <Link to="/admin">Admin</Link>}
         <span>{staff.name}</span>
