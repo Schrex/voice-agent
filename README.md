@@ -19,6 +19,23 @@ Twilio → ElevenLabs Agents (Claude Sonnet 5.5) → FastAPI (Python 3.12) → S
 | `GLOSSARY.md` | Domain vocabulary |
 | `PROGRESS.md` | Build status |
 
-## Getting started
+## Run locally
 
-Setup and run commands land with task T01.
+Prerequisites: [uv](https://docs.astral.sh/uv/getting-started/installation/) (it installs Python 3.12 for you).
+
+```bash
+git clone https://github.com/Schrex/voice-agent.git
+cd voice-agent/backend
+uv sync
+uv run uvicorn app.main:app --reload
+```
+
+Then `curl localhost:8000/healthz` returns `{"status":"ok"}`.
+
+Checks (the same ones CI runs on every PR), from `backend/`:
+
+```bash
+uv run ruff check . ../tests && uv run ruff format --check . ../tests
+uv run mypy
+uv run pytest
+```
