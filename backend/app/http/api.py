@@ -12,12 +12,14 @@ from app.clock import Clock, get_clock
 from app.db.session import get_session
 from app.domain.lifecycle import (
     ExplanationRequired,
+    MergeIntoItself,
     Outcome,
     OutcomeRequired,
     OwnerRequired,
     TransitionNotAllowed,
 )
 from app.http.auth import CurrentStaff
+from app.services.merges import merge_request
 from app.services.owners import list_owners
 from app.services.queue import open_requests
 from app.services.request_detail import RequestDetail, request_detail
@@ -131,6 +133,7 @@ class RequestDetailOut(BaseModel):
     outcome: str | None  # Fulfilled | Partially Fulfilled | Denied | Withdrawn; null until Resolved
     explanation: str | None  # as the coordinator wrote it; null until Resolved
     resolved_at: str | None  # UTC, ISO 8601 with "Z"; null until Resolved
+    merged_into: str | None  # ref of the Request this one was merged into; null if not merged
     default_owner_id: int | None  # the category's default Owner, offered when acknowledging
     events: list[EventOut]  # oldest first
     calls: list[LinkedCallOut]  # oldest first
@@ -227,6 +230,46 @@ def resolve(
     return _updated(session, ref)
 
 
+class MergeIn(BaseModel):
+    into: str  # ref of the Request to merge into ("R-1042")
+    # Optional, as in ResolveIn, so a missing one reaches the lifecycle guard: 422 either way.
+    outcome: Outcome | None = None
+    explanation: str | None = None
+
+
+@router.post("/requests/{ref}/merge")
+def merge(
+    ref: str,
+    body: MergeIn,
+    staff: CurrentStaff,
+    session: Annotated[Session, Depends(get_session)],
+    clock: Annotated[Clock, Depends(get_clock)],
+) -> RequestDetailOut:
+    """Merge this duplicate into another Request: this one is Resolved with a pointer to it."""
+    try:
+        merge_request(
+            session,
+            ref=ref,
+            into=body.into,
+            outcome=body.outcome,
+            explanation=body.explanation,
+            staff_id=staff.id,
+            now=clock(),
+        )
+    except RequestNotFound as exc:
+        session.rollback()
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such request") from exc
+    except (
+        OutcomeRequired,
+        ExplanationRequired,
+        TransitionNotAllowed,
+        MergeIntoItself,
+    ) as exc:
+        session.rollback()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+    return _updated(session, ref)
+
+
 def _updated(session: Session, ref: str) -> RequestDetailOut:
     found = request_detail(session, ref)
     assert found is not None
@@ -264,6 +307,7 @@ def _detail_out(found: RequestDetail) -> RequestDetailOut:
         outcome=found.outcome,
         explanation=found.explanation,
         resolved_at=_utc(found.resolved_at) if found.resolved_at else None,
+        merged_into=found.merged_into,
         default_owner_id=found.default_owner_id,
         events=[
             EventOut(

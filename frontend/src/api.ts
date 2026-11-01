@@ -114,6 +114,8 @@ export type RequestDetail = {
   explanation: string | null;
   /** UTC, ISO 8601; null until Resolved. */
   resolved_at: string | null;
+  /** Ref of the request this one was merged into; null if not merged. */
+  merged_into?: string | null;
   /** The category's default Owner, offered first when acknowledging. */
   default_owner_id: number | null;
   /** Oldest first. */
@@ -264,5 +266,22 @@ export async function resolveRequest(
     body: JSON.stringify({ outcome, explanation }),
   });
   if (!response.ok) throw new Error(`resolve ${ref} failed: ${response.status}`);
+  return (await response.json()) as RequestDetail;
+}
+
+/** Merge this request into `into`: it is Resolved with the Outcome and explanation, pointing to `into`. */
+export async function mergeRequest(
+  accessToken: string,
+  ref: string,
+  into: string,
+  outcome: Outcome,
+  explanation: string,
+): Promise<RequestDetail> {
+  const response = await fetch(`/api/requests/${encodeURIComponent(ref)}/merge`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ into, outcome, explanation }),
+  });
+  if (!response.ok) throw new Error(`merge ${ref} failed: ${response.status}`);
   return (await response.json()) as RequestDetail;
 }

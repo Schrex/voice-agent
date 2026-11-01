@@ -187,6 +187,10 @@ class Request(Base):
             " AND resolved_at IS NOT NULL)",
             name="resolved_has_outcome",
         ),
+        CheckConstraint(
+            "merged_into_id IS NULL OR (status = 'Resolved' AND merged_into_id <> id)",
+            name="merged_is_resolved",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -221,6 +225,9 @@ class Request(Base):
     outcome: Mapped[str | None] = mapped_column(String(32))
     explanation: Mapped[str | None] = mapped_column(Text)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set when a coordinator merges this duplicate into another Request (ticket #33); this one
+    # is then Resolved and a status lookup of its ref reports the other one.
+    merged_into_id: Mapped[int | None] = mapped_column(ForeignKey("requests.id"), index=True)
 
     @property
     def ref_display(self) -> str:
