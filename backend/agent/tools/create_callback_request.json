@@ -1,0 +1,25 @@
+{
+  "tool_config": {
+    "type": "webhook",
+    "name": "create_callback_request",
+    "description": "Record a Callback Request: the Foreman asked for someone at the office to call him back and said yes to recording it. Call it once, only after that yes. Returns {\"ref\": \"R-1042\"}. Returns {\"error\": \"...\"} if it could not be saved. It returns no callback time: there is none to give.",
+    "api_schema": {
+      "url": "${backend_url}/tools/create_callback_request",
+      "method": "POST",
+      "request_headers": {
+        "X-Tool-Secret": { "secret_id": "${tool_secret_id}" },
+        "X-Conversation-Id": { "variable_name": "system__conversation_id" }
+      },
+      "request_body_schema": {
+        "type": "object",
+        "description": "What the callback is about, if the Foreman said.",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "The Foreman's answer to \"What's it about?\", in his own words. Leave it out when he gave no answer or did not want to say."
+          }
+        }
+      }
+    }
+  }
+}
