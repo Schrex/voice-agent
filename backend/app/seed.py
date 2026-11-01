@@ -1,6 +1,6 @@
 """Seed command: `uv run python -m app.seed [roster.json]` (defaults to seed/sample_roster.json).
 
-Loads foremen, their phones, jobs and job aliases into DATABASE_URL. Safe to re-run.
+Loads foremen, their phones, jobs, job aliases and staff into DATABASE_URL. Safe to re-run.
 """
 
 import sys
@@ -17,7 +17,10 @@ def main(argv: list[str]) -> None:
     roster = load_roster_file(path)
     with new_session() as session:
         seed_roster(session, roster)
-    print(f"Seeded {len(roster.foremen)} foremen and {len(roster.jobs)} jobs from {path}")
+    print(
+        f"Seeded {len(roster.foremen)} foremen, {len(roster.jobs)} jobs"
+        f" and {len(roster.staff)} staff from {path}"
+    )
 
 
 if __name__ == "__main__":

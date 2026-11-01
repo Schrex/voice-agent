@@ -1,5 +1,6 @@
 """SQLAlchemy models (architecture §5). Schema changes go through an Alembic migration."""
 
+import uuid
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
@@ -13,6 +14,7 @@ from sqlalchemy import (
     Sequence,
     String,
     Text,
+    Uuid,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -92,7 +94,9 @@ class Call(Base):
     """One ElevenLabs conversation. Binds the conversation to the verified Foreman (ADR 0004).
 
     `foreman_id` is null for an unrostered caller (outcome `rejected`). `outcome` of a rostered
-    call stays null until the post-call webhook sets it.
+    call stays null until the post-call webhook sets it. The post-call columns (`ended_at`,
+    `duration_s`, `termination_reason`, `transcript`, `summary`) are null until then;
+    `ended_at` set means the post-call record has been stored.
     """
 
     __tablename__ = "calls"
@@ -110,6 +114,12 @@ class Call(Base):
     foreman_id: Mapped[int | None] = mapped_column(ForeignKey("foremen.id"), index=True)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     outcome: Mapped[str | None] = mapped_column(String(20))
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    duration_s: Mapped[int | None]
+    termination_reason: Mapped[str | None] = mapped_column(Text)
+    # The ElevenLabs transcript turns as delivered (role, message, time_in_call_secs, tool calls).
+    transcript: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
+    summary: Mapped[str | None] = mapped_column(Text)
 
     foreman: Mapped[Foreman | None] = relationship()
 
@@ -206,3 +216,15 @@ class CallRequest(Base):
     call_id: Mapped[int] = mapped_column(ForeignKey("calls.id"), primary_key=True)
     request_id: Mapped[int] = mapped_column(ForeignKey("requests.id"), primary_key=True, index=True)
     relation: Mapped[str] = mapped_column(String(16), primary_key=True)
+
+
+class Staff(Base):
+    """A dashboard user. `id` is the Supabase Auth user id (the access token's `sub`)."""
+
+    __tablename__ = "staff"
+    __table_args__ = (CheckConstraint("role IN ('coordinator', 'admin')", name="role"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    email: Mapped[str] = mapped_column(String(320))
+    role: Mapped[str] = mapped_column(String(20))

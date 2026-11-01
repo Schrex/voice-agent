@@ -11,6 +11,7 @@ ALL_TABLES = {
     "requests",
     "request_events",
     "call_requests",
+    "staff",
 }
 
 

@@ -1,0 +1,58 @@
+{
+  "type": "post_call_transcription",
+  "event_timestamp": 1793563520,
+  "data": {
+    "agent_id": "agent_synthetic_0001",
+    "conversation_id": "conv_synthetic_unrostered_0001",
+    "status": "done",
+    "transcript": [
+      {
+        "role": "agent",
+        "message": "This line is for registered crew leaders. Please call the office at 585-555-0100.",
+        "time_in_call_secs": 0
+      },
+      {
+        "role": "agent",
+        "message": null,
+        "time_in_call_secs": 7,
+        "tool_calls": [
+          {
+            "type": "system",
+            "request_id": "end_call_0002",
+            "tool_name": "end_call",
+            "params_as_json": "{}",
+            "tool_has_been_called": true,
+            "tool_details": null
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "start_time_unix_secs": 1793563510,
+      "call_duration_secs": 8,
+      "termination_reason": "end_call tool was called.",
+      "phone_call": {
+        "type": "twilio",
+        "direction": "inbound",
+        "phone_number_id": "phnum_synthetic_0001",
+        "agent_number": "+15855550199",
+        "external_number": "+15855550999",
+        "call_sid": "CA00000000000000000000000000000002",
+        "stream_sid": "MZ00000000000000000000000000000002"
+      }
+    },
+    "analysis": {
+      "call_successful": "failure",
+      "transcript_summary": "An unregistered caller was told the line is for registered crew leaders and given the office number.",
+      "call_summary_title": "Unregistered caller",
+      "data_collection_results": {},
+      "evaluation_criteria_results": {}
+    },
+    "conversation_initiation_client_data": {
+      "dynamic_variables": {
+        "rejected": true,
+        "foreman_first_name": ""
+      }
+    }
+  }
+}
