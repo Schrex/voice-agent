@@ -28,6 +28,14 @@ def tool_secret() -> str | None:
     return os.environ.get("TOOL_SECRET") or None
 
 
+def elevenlabs_webhook_secret() -> str | None:
+    """HMAC secret ElevenLabs signs the post-call webhook with (`ElevenLabs-Signature`).
+
+    None when unset; every post-call delivery is then rejected (fails closed).
+    """
+    return os.environ.get("ELEVENLABS_WEBHOOK_SECRET") or None
+
+
 def office_main_number() -> str:
     """Main office number spoken to unrostered callers (spec J8), inserted as written."""
     number = os.environ.get("OFFICE_MAIN_NUMBER")

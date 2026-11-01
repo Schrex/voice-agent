@@ -14,7 +14,7 @@ Status: **done** = test exists and passes in CI · **defined** = test written in
 | AC1.4 | No job match → Unmatched, no guess | U, I, S | #13 | planned | |
 | AC1.5 | Needed-by asked once, then recorded unknown | U, S | #14 | planned | |
 | AC1.6 | Two needs → two Recorded requests, both refs read | I, S | #15 | planned | |
-| AC1.7 | Says recorded, not yet confirmed, gives ref | S | #7 | planned | |
+| AC1.7 | Says recorded, not yet confirmed, gives ref | I, S | #6, #7 | I done (backend: submit creates a Recorded request and returns its ref); S planned (#7: spoken "recorded… not yet confirmed" + ref) | I `tests/integration/test_submit_requests.py::test_valid_call_records_a_request_with_a_reference_and_an_agent_event`, `::test_references_are_sequential` |
 | AC1.8 | Hang-up before confirm → Draft, no Recorded | I, S | #28 | planned | |
 | AC1.9 | Today request → on-duty SMS within 60 s | I, L | #21 | planned | |
 | AC2.1 | Same job + category → asks if it's the existing request | U, S | #18 | planned | |
@@ -35,7 +35,7 @@ Status: **done** = test exists and passes in CI · **defined** = test written in
 | AC6.3 | Transfer to office line after safety line | S, L | #26 | planned | |
 | AC6.4 | Never says help is coming / anyone reached | S | #26, #36 | planned | |
 | AC7.1 | Quick-entry request in same queue and J3 lookup | I, S | #30 | planned | |
-| AC8.1 | Unrostered: main office number, call ends, logged, nothing disclosed | I, S, L | #4, #5 | I done; S defined, deferred; L deferred | I `tests/integration/test_call_start.py::test_unrostered_*` (rejection line, attempt logged, no disclosure), `tests/integration/test_agent_call_start_contract.py::test_agent_allows_the_overrides_the_rejection_response_uses`; S `backend/agent/tests/ac8_1_rejected_caller_call_ends.json`, `backend/agent/tests/ac8_1_rejected_caller_nothing_disclosed.json` |
+| AC8.1 | Unrostered: main office number, call ends, logged, nothing disclosed | I, S, L | #4, #5, #27 | I done; S defined, deferred; L deferred | I `tests/integration/test_call_start.py::test_unrostered_*` (rejection line, attempt logged, no disclosure), `tests/integration/test_agent_call_start_contract.py::test_agent_allows_the_overrides_the_rejection_response_uses`, `tests/integration/test_post_call.py::test_rejected_call_keeps_outcome_rejected` (post-call record of the attempt keeps outcome `rejected`, with transcript and duration); S `backend/agent/tests/ac8_1_rejected_caller_call_ends.json`, `backend/agent/tests/ac8_1_rejected_caller_nothing_disclosed.json` |
 | AC9.1 | Acknowledge requires Owner | I, P | #11 | planned | |
 | AC9.2 | Resolve requires Outcome + explanation | I, P | #12 | planned | |
 | AC9.3 | Today not Acknowledged in 15 min → Overdue + backup SMS | U, I | #22 | planned | |
@@ -44,3 +44,14 @@ Status: **done** = test exists and passes in CI · **defined** = test written in
 | J9 (no numbered AC) | Queue: open requests sorted urgency then age, refresh 10 s, times in America/New_York | I, P, U (Vitest) | #9 | done | I `tests/integration/test_queue.py`; P `tests/e2e/queue.spec.ts`; Vitest `frontend/src/QueuePage.test.tsx` |
 | ACX.1 | Never states availability, ETA or unrecorded decision | S | #16, #36 | planned | |
 | ACX.2 | Never asks about mood, day or productivity | S | #36 | planned | |
+
+## Other verified behaviour (not a §9 AC)
+
+Spec and architecture rules that are tested but have no AC id of their own.
+
+| Rule | Source | Layer(s) | Ticket | Status | Tests |
+|---|---|---|---|---|---|
+| Backend/tool error mid-call → speakable error (HTTP 200), nothing half-written | Spec §8 "Backend/tool error mid-call" | I | #6 | done | `tests/integration/test_submit_requests.py::test_backend_error_returns_a_speakable_error_with_http_200`, `::test_failure_after_the_request_is_written_rolls_everything_back` |
+| Foreman identity comes from the call; unrostered or unknown conversation or bad secret cannot write | ADR 0004, AC8.x | I | #6 | done | `tests/integration/test_submit_requests.py::test_foreman_id_in_the_tool_body_is_ignored`, `::test_unknown_conversation_is_rejected_and_nothing_written`, `::test_unrostered_callers_conversation_is_rejected_and_nothing_written`, `::test_missing_or_wrong_secret_is_rejected_and_nothing_written` |
+| Lifecycle guard: only allowed transitions; others raise | Architecture §5 | U | #6 | done | `tests/unit/test_lifecycle.py` |
+| Post-call webhook: HMAC verified (bad/missing → 401, nothing written), idempotent | Architecture §3.4, §10 | I | #27 | done | `tests/integration/test_post_call.py::test_bad_or_missing_signature_is_rejected_and_nothing_written`, `::test_same_payload_twice_is_one_update` |
