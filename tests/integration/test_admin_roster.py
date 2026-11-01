@@ -1,5 +1,6 @@
 """Admin: roster and jobs (#34). `/api/admin/foremen` and `/api/admin/jobs`, admin role only."""
 
+import re
 import time
 import uuid
 from collections.abc import Iterator
@@ -62,6 +63,12 @@ def _call_start(client: TestClient, caller_e164: str) -> dict[str, Any]:
     assert response.status_code == 200
     variables: dict[str, Any] = response.json()["dynamic_variables"]
     return variables
+
+
+def _offered_jobs(client: TestClient) -> list[str]:
+    """Job names the agent gets at call start ("<name> (job_id <id>)", joined by "; ")."""
+    jobs: str = _call_start(client, "+15855550101")["jobs"]
+    return [re.sub(r" \(job_id \d+\)$", "", job) for job in jobs.split("; ")]
 
 
 # --- Access ------------------------------------------------------------------------------
@@ -314,9 +321,11 @@ def test_admin_adds_a_job_offered_at_the_next_call_start(
 
     assert response.status_code == 201
     assert (response.json()["active"], _aliases(response.json())) == (True, ["culvert"])
-    assert _call_start(client, "+15855550101")["jobs"] == (
-        "Brighton Culvert; Penfield Sewer Replacement; Route 104 Widening"
-    )
+    assert _offered_jobs(client) == [
+        "Brighton Culvert",
+        "Penfield Sewer Replacement",
+        "Route 104 Widening",
+    ]
 
 
 def test_deactivated_job_is_not_offered_at_call_start(
@@ -330,7 +339,7 @@ def test_deactivated_job_is_not_offered_at_call_start(
 
     assert response.status_code == 200
     assert response.json()["active"] is False
-    assert _call_start(client, "+15855550101")["jobs"] == "Route 104 Widening"
+    assert _offered_jobs(client) == ["Route 104 Widening"]
 
 
 def test_admin_renames_a_job(client: TestClient, admin: dict[str, str], seeded: None) -> None:

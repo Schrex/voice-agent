@@ -25,7 +25,13 @@ ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "tests" / "fixtures" / "elevenlabs"
 SAMPLE_ROSTER = ROOT / "backend" / "seed" / "sample_roster.json"
 SECRET = "test-hook-secret"
-ENV = {"agent_name": "x", "backend_url": "https://b.example.test", "hook_secret_id": "s"}
+ENV = {
+    "agent_name": "x",
+    "backend_url": "https://b.example.test",
+    "hook_secret_id": "s",
+    "tool_secret_id": "t",
+}
+TOOL_IDS = {"submit_requests": "tool_submit"}
 
 
 @pytest.fixture
@@ -69,7 +75,7 @@ def test_agent_defines_exactly_the_dynamic_variables_call_start_sends(
     hook: TestClient, fixture: str
 ) -> None:
     sent = _call_start(hook, fixture)["dynamic_variables"]
-    agent = desired_agent(ENV)
+    agent = desired_agent(ENV, TOOL_IDS)
     placeholders = agent["conversation_config"]["agent"]["dynamic_variables"][
         "dynamic_variable_placeholders"
     ]
@@ -83,12 +89,12 @@ def test_agent_allows_the_overrides_the_rejection_response_uses(hook: TestClient
     response = _call_start(hook, "call_start_unrostered.json")
 
     _assert_allowed(
-        response["conversation_config_override"], _allowed_overrides(desired_agent(ENV))
+        response["conversation_config_override"], _allowed_overrides(desired_agent(ENV, TOOL_IDS))
     )
 
 
 def test_prompt_and_first_message_use_only_defined_variables() -> None:
-    agent = desired_agent(ENV)["conversation_config"]["agent"]
+    agent = desired_agent(ENV, TOOL_IDS)["conversation_config"]["agent"]
     defined = set(agent["dynamic_variables"]["dynamic_variable_placeholders"])
     text = agent["first_message"] + agent["prompt"]["prompt"]
 

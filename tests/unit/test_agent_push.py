@@ -20,6 +20,7 @@ ENV = {
     "agent_name": "Field Request Assistant (test)",
     "backend_url": "https://backend.example.test",
     "hook_secret_id": "secret_hook_0001",
+    "tool_secret_id": "secret_tool_0001",
 }
 
 # Fields the real API fills in on its own; push.py must not treat them as drift.
@@ -33,6 +34,11 @@ SERVER_AGENT_DEFAULTS: dict[str, Any] = {
     "metadata": {"created_at_unix_secs": 1_790_000_000},
 }
 SERVER_TEST_DEFAULTS: dict[str, Any] = {"parent_folder_id": None, "environment": "production"}
+SERVER_TOOL_DEFAULTS: dict[str, Any] = {
+    "tool_config": {"response_timeout_secs": 20, "disable_interruptions": False},
+    "access_info": {"is_creator": True},
+    "usage_stats": {"avg_latency_secs": 0.0},
+}
 
 
 def _merge(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
@@ -49,6 +55,7 @@ class FakeElevenLabs:
     def __init__(self) -> None:
         self.agents: dict[str, dict[str, Any]] = {}
         self.tests: dict[str, dict[str, Any]] = {}
+        self.tools: dict[str, dict[str, Any]] = {}
         self.writes: list[str] = []
         self.api_keys: set[str] = set()
 
@@ -93,6 +100,27 @@ class FakeElevenLabs:
             if method == "PUT":
                 self.tests[test_id] = {**SERVER_TEST_DEFAULTS, **body}
             return httpx.Response(200, json={"id": test_id, **self.tests[test_id]})
+
+        if path == "/v1/convai/tools" and method == "GET":
+            # The list holds full tool objects; the name is inside tool_config.
+            needle = request.url.params.get("search", "").lower()
+            found = [
+                {"id": tool_id, **tool}
+                for tool_id, tool in self.tools.items()
+                if needle in tool["tool_config"]["name"].lower()
+            ]
+            return httpx.Response(200, json={"tools": found, "has_more": False})
+        if path == "/v1/convai/tools" and method == "POST":
+            tool_id = f"tool_{len(self.tools) + 1:04d}"
+            self.tools[tool_id] = _merge(SERVER_TOOL_DEFAULTS, body)
+            return httpx.Response(200, json={"id": tool_id, **self.tools[tool_id]})
+        if m := re.fullmatch(r"/v1/convai/tools/([^/]+)", path):
+            tool_id = m.group(1)
+            if tool_id not in self.tools:
+                return httpx.Response(404, json={"detail": "not found"})
+            if method == "PATCH":
+                self.tools[tool_id] = _merge(self.tools[tool_id], body)
+            return httpx.Response(200, json={"id": tool_id, **self.tools[tool_id]})
         return httpx.Response(404, json={"detail": f"no route {method} {path}"})
 
     @staticmethod
@@ -128,13 +156,74 @@ def test_first_push_creates_the_agent_and_second_push_changes_nothing(
     assert second[-1] == "No changes."
 
 
+def test_push_creates_the_submit_requests_tool_pointing_at_the_env_backend(
+    el: FakeElevenLabs,
+) -> None:
+    push(ENV, el.client())
+
+    (tool,) = el.tools.values()
+    config = tool["tool_config"]
+    assert config["type"] == "webhook"
+    assert config["name"] == "submit_requests"
+    assert config["api_schema"]["url"] == "https://backend.example.test/tools/submit_requests"
+    assert config["api_schema"]["method"] == "POST"
+    assert config["api_schema"]["request_headers"] == {
+        "X-Tool-Secret": {"secret_id": "secret_tool_0001"},
+        "X-Conversation-Id": {"variable_name": "system__conversation_id"},
+    }
+
+
+def test_pushed_agent_uses_the_created_tool_by_id(el: FakeElevenLabs) -> None:
+    push(ENV, el.client())
+
+    (tool_id,) = el.tools
+    (agent,) = el.agents.values()
+    assert agent["conversation_config"]["agent"]["prompt"]["tool_ids"] == [tool_id]
+
+
+def test_tests_that_mock_submit_requests_reference_the_created_tool_id(
+    el: FakeElevenLabs,
+) -> None:
+    push(ENV, el.client())
+
+    (tool_id,) = el.tools
+    mocking = [t for t in el.tests.values() if t.get("tool_mock_config")]
+    assert mocking
+    for test in mocking:
+        assert test["tool_mock_config"]["mocked_tool_ids"] == [tool_id]
+        assert list(test["tool_mock_overrides"]) == [tool_id]
+    referencing = [t for t in el.tests.values() if t.get("type") == "tool"]
+    assert {t["tool_call_parameters"]["referenced_tool"]["id"] for t in referencing} >= {tool_id}
+    assert not any("${" in json.dumps(t) for t in el.tests.values())
+
+
+def test_edit_to_the_tool_in_the_web_ui_is_overwritten_then_stable(el: FakeElevenLabs) -> None:
+    push(ENV, el.client())
+    (tool_id,) = el.tools
+    el.tools[tool_id]["tool_config"]["api_schema"]["url"] = "https://elsewhere.example.test/x"
+    el.writes.clear()
+
+    lines = push(ENV, el.client())
+
+    assert el.writes == [f"PATCH /v1/convai/tools/{tool_id}"]
+    assert "tool_config.api_schema.url" in lines[0]
+    el.writes.clear()
+    assert push(ENV, el.client())[-1] == "No changes."
+    assert el.writes == []
+
+
 def test_push_creates_each_repo_test_by_name(el: FakeElevenLabs) -> None:
     push(ENV, el.client())
 
     assert sorted(t["name"] for t in el.tests.values()) == [
         "AC1.1 first utterance identifies as automated and discloses recording",
+        "AC1.2 does not submit before the read-back is confirmed",
+        "AC1.2 reads back Job, quantity, unit and time before asking to submit",
+        "AC1.7 says recorded and not yet confirmed and gives the reference",
         "AC8.1 unrostered caller: call ends after the rejection line",
         "AC8.1 unrostered caller: no Job or Request information disclosed",
+        "J1 asks at most one question per turn",
+        "J1 quantity corrected during read-back is the value submitted",
     ]
 
 
@@ -167,7 +256,8 @@ def test_edit_made_in_the_web_ui_is_overwritten_then_stable(el: FakeElevenLabs) 
     lines = push(ENV, el.client())
 
     assert el.writes == [f"PATCH /v1/convai/agents/{agent_id}"]
-    assert "conversation_config.agent.first_message" in lines[0]
+    (agent_line,) = [line for line in lines if line.startswith("agent ")]
+    assert "conversation_config.agent.first_message" in agent_line
     assert lines[-1] == "1 change(s)."
     assert el.agents[agent_id]["conversation_config"]["agent"]["first_message"].startswith(
         "Hi {{foreman_first_name}}"
@@ -204,7 +294,7 @@ def test_two_agents_with_the_same_name_is_an_error(el: FakeElevenLabs) -> None:
 
     with pytest.raises(PushError, match="2 objects named"):
         push(ENV, el.client())
-    assert el.writes == []
+    assert not any("/agents" in write for write in el.writes)
 
 
 @pytest.fixture
@@ -212,9 +302,10 @@ def agent_dir(tmp_path: Path) -> Path:
     """A copy of backend/agent whose `staging` env is provisioned and `local` is not."""
     for name in ("agent.json", "prompt.md"):
         (tmp_path / name).write_text((AGENT_DIR / name).read_text())
-    (tmp_path / "tests").mkdir()
-    for path in (AGENT_DIR / "tests").glob("*.json"):
-        (tmp_path / "tests" / path.name).write_text(path.read_text())
+    for sub in ("tests", "tools"):
+        (tmp_path / sub).mkdir(exist_ok=True)
+        for path in (AGENT_DIR / sub).glob("*.json"):
+            (tmp_path / sub / path.name).write_text(path.read_text())
     envs = {"staging": ENV, "local": {**ENV, "backend_url": None}}
     (tmp_path / "envs.json").write_text(json.dumps(envs))
     return tmp_path
@@ -227,14 +318,18 @@ def test_cli_prints_one_line_per_object_and_exits_0(
     assert main(["--env", "staging"], client=el.client(), agent_dir=agent_dir) == 0
 
     out = capsys.readouterr().out.splitlines()
-    assert out[:1] == ["agent 'Field Request Assistant (test)': created (agent_0001)"]
-    assert out[-5:] == [
-        "agent 'Field Request Assistant (test)': unchanged",
-        "test 'AC1.1 first utterance identifies as automated and discloses recording': unchanged",
-        "test 'AC8.1 unrostered caller: call ends after the rejection line': unchanged",
-        "test 'AC8.1 unrostered caller: no Job or Request information disclosed': unchanged",
-        "No changes.",
+    assert out[:2] == [
+        "tool 'submit_requests': created (tool_0001)",
+        "agent 'Field Request Assistant (test)': created (agent_0001)",
     ]
+    second = out[len(out) // 2 :]
+    assert second[:2] == [
+        "tool 'submit_requests': unchanged",
+        "agent 'Field Request Assistant (test)': unchanged",
+    ]
+    assert len(second) == 2 + 8 + 1
+    assert all(line.startswith("test '") and line.endswith("': unchanged") for line in second[2:-1])
+    assert second[-1] == "No changes."
 
 
 def test_cli_refuses_an_env_with_unset_values_and_sends_nothing(

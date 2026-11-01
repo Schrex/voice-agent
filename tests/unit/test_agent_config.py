@@ -6,11 +6,17 @@ from typing import Any
 
 from agent.push import desired_agent
 
-ENV = {"agent_name": "x", "backend_url": "https://b.example.test", "hook_secret_id": "s"}
+ENV = {
+    "agent_name": "x",
+    "backend_url": "https://b.example.test",
+    "hook_secret_id": "s",
+    "tool_secret_id": "t",
+}
+TOOL_IDS = {"submit_requests": "tool_submit"}
 
 
 def _agent() -> dict[str, Any]:
-    agent: dict[str, Any] = desired_agent(ENV)["conversation_config"]["agent"]
+    agent: dict[str, Any] = desired_agent(ENV, TOOL_IDS)["conversation_config"]["agent"]
     return agent
 
 
@@ -23,13 +29,22 @@ def test_first_message_is_automated_recorded_and_names_the_foreman() -> None:
     assert "{{foreman_first_name}}" in first
 
 
-def test_end_call_is_the_only_tool() -> None:
-    """#5 scope: no server tools yet; end_call lets the agent hang up on a rejected caller."""
+def test_tools_are_end_call_and_submit_requests() -> None:
+    """end_call (built-in) hangs up; submit_requests (#7) is attached by its workspace id."""
     prompt = _agent()["prompt"]
 
     assert set(prompt["built_in_tools"]) == {"end_call"}
     assert prompt["built_in_tools"]["end_call"]["params"] == {"system_tool_type": "end_call"}
-    assert not prompt.get("tool_ids") and not prompt.get("tools")
+    assert prompt["tool_ids"] == ["tool_submit"]
+    assert not prompt.get("tools")
+
+
+def test_prompt_gives_the_spec_after_submit_sentence_verbatim() -> None:
+    """AC1.7 / spec J1 step 6: recorded, not yet confirmed. The S test checks it is spoken."""
+    prompt = _agent()["prompt"]["prompt"]
+
+    assert "Recorded and sent to the office. It isn't confirmed yet." in prompt
+    assert "`submit_requests`" in prompt
 
 
 def test_llm_is_claude_sonnet_5_5_in_english() -> None:

@@ -1,0 +1,78 @@
+{
+  "type": "post_call_transcription",
+  "event_timestamp": 1793563700,
+  "data": {
+    "agent_id": "agent_synthetic_0001",
+    "conversation_id": "conv_synthetic_transferred_0001",
+    "status": "done",
+    "transcript": [
+      {
+        "role": "agent",
+        "message": "Hi Dale, this is the office's automated assistant. This call is recorded. What do you need?",
+        "time_in_call_secs": 0
+      },
+      {
+        "role": "user",
+        "message": "Just put me through to the office.",
+        "time_in_call_secs": 5
+      },
+      {
+        "role": "agent",
+        "message": "Connecting you to the office now.",
+        "time_in_call_secs": 8
+      },
+      {
+        "role": "agent",
+        "message": null,
+        "time_in_call_secs": 10,
+        "tool_calls": [
+          {
+            "type": "system",
+            "request_id": "transfer_to_number_0003",
+            "tool_name": "transfer_to_number",
+            "params_as_json": "{\"transfer_number\": \"+15855550100\", \"reason\": \"Foreman asked for the office\"}",
+            "tool_has_been_called": true,
+            "tool_details": null
+          }
+        ],
+        "tool_results": [
+          {
+            "type": "system",
+            "request_id": "transfer_to_number_0003",
+            "tool_name": "transfer_to_number",
+            "result_value": "{\"status\": \"success\"}",
+            "is_error": false,
+            "tool_has_been_called": true
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "start_time_unix_secs": 1793563680,
+      "call_duration_secs": 11,
+      "termination_reason": "Call transferred",
+      "phone_call": {
+        "type": "twilio",
+        "direction": "inbound",
+        "phone_number_id": "phnum_synthetic_0001",
+        "agent_number": "+15855550199",
+        "external_number": "+15855550102",
+        "call_sid": "CA00000000000000000000000000000003",
+        "stream_sid": "MZ00000000000000000000000000000003"
+      }
+    },
+    "analysis": {
+      "call_successful": "success",
+      "transcript_summary": "Dale asked to be put through to the office and was transferred.",
+      "call_summary_title": "Transfer to the office",
+      "data_collection_results": {},
+      "evaluation_criteria_results": {}
+    },
+    "conversation_initiation_client_data": {
+      "dynamic_variables": {
+        "rejected": false,
+        "foreman_first_name": "Dale"
+      }
+    }
+  }
+}
