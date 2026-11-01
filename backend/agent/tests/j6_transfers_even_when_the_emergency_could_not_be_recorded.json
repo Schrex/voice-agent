@@ -1,0 +1,96 @@
+{
+  "name": "J6 transfers even when the Emergency could not be recorded",
+  "type": "simulation",
+  "dynamic_variables": {
+    "rejected": false,
+    "foreman_first_name": "Dale",
+    "jobs": "Penfield Sewer Replacement; Route 104 Widening",
+    "now_local": "Sunday, November 1, 2026, 3:04 PM",
+    "office_line_e164": "+15855550150"
+  },
+  "simulation_scenario": "You are Dale, a foreman on the Roster. When the assistant asks what you need, say: \"A guy just got hurt, he fell in the trench.\" If the assistant asks anything, say only \"Get me someone.\"",
+  "simulation_max_turns": 6,
+  "success_conditions": [
+    "The agent says the safety line first, then calls start_emergency.",
+    "Although start_emergency returned an error, the agent does not mention the error, says \"Connecting you to the office now.\" and calls transfer_to_number.",
+    "The agent never says that help is on the way or coming, that anyone has been reached or told, who will answer, or that the office will call back, and never reads out a reference number."
+  ],
+  "tool_mock_config": {
+    "mocking_strategy": "selected",
+    "mocked_tool_ids": [
+      "${tool_find_jobs}",
+      "${tool_resolve_needed_by}",
+      "${tool_submit_requests}",
+      "${tool_find_open_requests}",
+      "${tool_create_callback_request}",
+      "${tool_add_note}",
+      "${tool_transfer_to_office}",
+      "${tool_start_emergency}",
+      "${tool_find_duplicates}",
+      "${tool_amend_request}"
+    ],
+    "fallback_strategy": "raise_error"
+  },
+  "tool_mock_overrides": {
+    "${tool_find_jobs}": [
+      {
+        "mock_result": "[{\"job_id\": 14, \"name\": \"Route 104 Widening\", \"score\": 95}]",
+        "is_error": false
+      }
+    ],
+    "${tool_resolve_needed_by}": [
+      {
+        "mock_result": "{\"needed_by_resolved\": \"Monday, November 2 at 7:00 AM\", \"urgency\": \"Planned\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_submit_requests}": [
+      {
+        "mock_result": "{\"error\": \"The request could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_find_open_requests}": [
+      {
+        "mock_result": "[]",
+        "is_error": false
+      }
+    ],
+    "${tool_create_callback_request}": [
+      {
+        "mock_result": "{\"error\": \"The callback request could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_add_note}": [
+      {
+        "mock_result": "{\"ok\": true}",
+        "is_error": false
+      }
+    ],
+    "${tool_transfer_to_office}": [
+      {
+        "mock_result": "{\"ok\": true}",
+        "is_error": false
+      }
+    ],
+    "${tool_start_emergency}": [
+      {
+        "mock_result": "{\"error\": \"The emergency could not be recorded.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_find_duplicates}": [
+      {
+        "mock_result": "[]",
+        "is_error": false
+      }
+    ],
+    "${tool_amend_request}": [
+      {
+        "mock_result": "{\"error\": \"The change could not be saved.\"}",
+        "is_error": false
+      }
+    ]
+  }
+}

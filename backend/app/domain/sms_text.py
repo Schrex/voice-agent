@@ -90,11 +90,23 @@ def transfer_text(foreman: str, job: str | None, job_spoken: str | None, about: 
     """Spec J5 step 2, verbatim: "Incoming transfer: <foreman>, <job>, about: <need or 'not
     stated'>". An Unmatched Job is quoted as said (as in the Today text); a Job not said at all
     is "not stated" too (open question on #25)."""
-    if job is not None:
-        job_text = job
-    elif job_spoken and job_spoken.strip():
-        job_text = f"“{job_spoken.strip()}” (Unmatched)"
-    else:
-        job_text = NOT_STATED
     need = about.strip() if about and about.strip() else NOT_STATED
-    return f"Incoming transfer: {foreman}, {job_text}, about: {need}"
+    return f"Incoming transfer: {foreman}, {_job_text(job, job_spoken)}, about: {need}"
+
+
+def _job_text(job: str | None, job_spoken: str | None) -> str:
+    """The Job's name; else `“said” (Unmatched)`; else "not stated" (#25 open question 1)."""
+    if job is not None:
+        return job
+    if job_spoken and job_spoken.strip():
+        return f"“{job_spoken.strip()}” (Unmatched)"
+    return NOT_STATED
+
+
+def emergency_text(foreman: str, job: str | None, job_spoken: str | None, summary: str) -> str:
+    """Spec J6 step 3, verbatim: "EMERGENCY call from <foreman>, <job>: <summary>" (ticket #26).
+
+    The Job as in the transfer text: its name, else quoted as said (Unmatched), else "not
+    stated". `summary` is the Foreman's own words for what happened.
+    """
+    return f"EMERGENCY call from {foreman}, {_job_text(job, job_spoken)}: {summary.strip()}"

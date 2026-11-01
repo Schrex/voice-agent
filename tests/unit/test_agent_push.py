@@ -171,6 +171,7 @@ def _tool_id(el: FakeElevenLabs, name: str) -> str:
         "find_jobs",
         "find_open_requests",
         "resolve_needed_by",
+        "start_emergency",
         "submit_requests",
         "transfer_to_office",
     ],
@@ -178,7 +179,7 @@ def _tool_id(el: FakeElevenLabs, name: str) -> str:
 def test_push_creates_each_tool_pointing_at_the_env_backend(el: FakeElevenLabs, name: str) -> None:
     push(ENV, el.client())
 
-    assert len(el.tools) == 9
+    assert len(el.tools) == 10
     config = el.tools[_tool_id(el, name)]["tool_config"]
     assert config["type"] == "webhook"
     assert config["api_schema"]["url"] == f"https://backend.example.test/tools/{name}"
@@ -203,6 +204,7 @@ def test_pushed_agent_uses_the_created_tools_by_id(el: FakeElevenLabs) -> None:
         _tool_id(el, "transfer_to_office"),
         _tool_id(el, "find_duplicates"),
         _tool_id(el, "amend_request"),
+        _tool_id(el, "start_emergency"),
     ]
 
 
@@ -272,6 +274,10 @@ def test_push_creates_each_repo_test_by_name(el: FakeElevenLabs) -> None:
         "AC5.4 Callback Request recorded after a yes, with no callback time promised",
         "AC5.4 Callback Request without a reason: asked once, then recorded",
         "AC5.4 the reason is sent as the Foreman said it, after the yes",
+        'AC6.1 "I just want the office, there\'s a gas leak" is an Emergency, not a plain Transfer',
+        "AC6.1 gas line mid-intake: the safety line comes before any other question",
+        "AC6.2/AC6.3 Emergency is recorded, then the call is transferred after the safety line",
+        "AC6.4 Emergency: never says help is coming or that anyone was reached",
         "AC8.1 unrostered caller: call ends after the rejection line",
         "AC8.1 unrostered caller: no Job or Request information disclosed",
         "ACX.1 status lookup: never states availability, ETA or an unrecorded decision",
@@ -281,6 +287,7 @@ def test_push_creates_each_repo_test_by_name(el: FakeElevenLabs) -> None:
         "J2 no, it is a new one: a new request is submitted",
         "J3 step 2: several matching requests, asks which one by need and Job",
         "J5 transfers even when the office could not be told",
+        "J6 transfers even when the Emergency could not be recorded",
     ]
 
 
@@ -375,7 +382,7 @@ def test_cli_prints_one_line_per_object_and_exits_0(
     assert main(["--env", "staging"], client=el.client(), agent_dir=agent_dir) == 0
 
     out = capsys.readouterr().out.splitlines()
-    assert out[:10] == [
+    assert out[:11] == [
         "tool 'add_note': created (tool_0001)",
         "tool 'amend_request': created (tool_0002)",
         "tool 'create_callback_request': created (tool_0003)",
@@ -383,12 +390,13 @@ def test_cli_prints_one_line_per_object_and_exits_0(
         "tool 'find_jobs': created (tool_0005)",
         "tool 'find_open_requests': created (tool_0006)",
         "tool 'resolve_needed_by': created (tool_0007)",
-        "tool 'submit_requests': created (tool_0008)",
-        "tool 'transfer_to_office': created (tool_0009)",
+        "tool 'start_emergency': created (tool_0008)",
+        "tool 'submit_requests': created (tool_0009)",
+        "tool 'transfer_to_office': created (tool_0010)",
         "agent 'Field Request Assistant (test)': created (agent_0001)",
     ]
     second = out[len(out) // 2 :]
-    assert second[:10] == [
+    assert second[:11] == [
         "tool 'add_note': unchanged",
         "tool 'amend_request': unchanged",
         "tool 'create_callback_request': unchanged",
@@ -396,13 +404,14 @@ def test_cli_prints_one_line_per_object_and_exits_0(
         "tool 'find_jobs': unchanged",
         "tool 'find_open_requests': unchanged",
         "tool 'resolve_needed_by': unchanged",
+        "tool 'start_emergency': unchanged",
         "tool 'submit_requests': unchanged",
         "tool 'transfer_to_office': unchanged",
         "agent 'Field Request Assistant (test)': unchanged",
     ]
-    assert len(second) == 10 + len(list((agent_dir / "tests").glob("*.json"))) + 1
+    assert len(second) == 11 + len(list((agent_dir / "tests").glob("*.json"))) + 1
     assert all(
-        line.startswith("test '") and line.endswith("': unchanged") for line in second[10:-1]
+        line.startswith("test '") and line.endswith("': unchanged") for line in second[11:-1]
     )
     assert second[-1] == "No changes."
 

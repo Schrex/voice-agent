@@ -27,7 +27,8 @@
       "${tool_add_note}",
       "${tool_transfer_to_office}",
       "${tool_find_duplicates}",
-      "${tool_amend_request}"
+      "${tool_amend_request}",
+      "${tool_start_emergency}"
     ],
     "fallback_strategy": "raise_error"
   },
@@ -83,6 +84,12 @@
     "${tool_amend_request}": [
       {
         "mock_result": "{\"error\": \"The change could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_start_emergency}": [
+      {
+        "mock_result": "{\"ref\": \"R-1099\"}",
         "is_error": false
       }
     ]

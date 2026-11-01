@@ -41,6 +41,7 @@ TOOL_IDS = {
     "transfer_to_office": "tool_transfer",
     "find_duplicates": "tool_duplicates",
     "amend_request": "tool_amend",
+    "start_emergency": "tool_emergency",
 }
 
 

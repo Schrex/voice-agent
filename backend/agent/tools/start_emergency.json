@@ -1,0 +1,34 @@
+{
+  "tool_config": {
+    "type": "webhook",
+    "name": "start_emergency",
+    "description": "Record an Emergency and alert the office, right after you said the safety line and just before you transfer the call with transfer_to_number. The backend records an Emergency request, texts every Coordinator and puts a pop-up on the office dashboard. Returns {\"ref\": \"R-1042\"}, or {\"error\": \"...\"} if it could not be recorded; transfer the call either way. Never read the ref out.",
+    "api_schema": {
+      "url": "${backend_url}/tools/start_emergency",
+      "method": "POST",
+      "request_headers": {
+        "X-Tool-Secret": { "secret_id": "${tool_secret_id}" },
+        "X-Conversation-Id": { "variable_name": "system__conversation_id" }
+      },
+      "request_body_schema": {
+        "type": "object",
+        "description": "Only what the Foreman already said on this call. Never ask for any of it.",
+        "properties": {
+          "summary": {
+            "type": "string",
+            "description": "What happened, in the Foreman's own words (for example \"we hit a gas line\")."
+          },
+          "job_id": {
+            "type": "integer",
+            "description": "The job_id find_jobs returned for the Job the Foreman named. Leave it out unless find_jobs already returned exactly one Job."
+          },
+          "job_spoken": {
+            "type": "string",
+            "description": "The Job in the Foreman's own words, if he already named one. Leave it out if he did not."
+          }
+        },
+        "required": ["summary"]
+      }
+    }
+  }
+}
