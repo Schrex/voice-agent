@@ -297,3 +297,39 @@ def test_call_with_nothing_submitted_or_transferred_gets_outcome_none(
     _deliver(hook, SUBMITTED)
 
     assert _call(db_session, "conv_synthetic_rostered_0001").outcome == "none"
+
+
+def _start_emergency(client: TestClient, conversation_id: str) -> None:
+    response = client.post(
+        "/tools/start_emergency",
+        json={"summary": "we hit a gas line"},
+        headers={"X-Tool-Secret": TOOL_SECRET, "X-Conversation-Id": conversation_id},
+    )
+    assert "ref" in response.json()
+
+
+def test_emergency_call_gets_outcome_emergency_although_it_was_transferred(
+    hook: TestClient, db_session: Session
+) -> None:
+    """Ticket #26: the Emergency Request recorded on the call makes it `emergency`."""
+    _start_emergency(hook, "conv_synthetic_transferred_0001")
+
+    _deliver(hook, _fixture("post_call_transferred.json"))
+
+    assert _call(db_session, "conv_synthetic_transferred_0001").outcome == "emergency"
+
+
+def test_a_lookup_of_an_earlier_emergency_does_not_make_the_call_an_emergency(
+    hook: TestClient, db_session: Session
+) -> None:
+    _start_emergency(hook, "conv_synthetic_transferred_0001")
+    looked_up = hook.post(
+        "/tools/find_open_requests",
+        json={},
+        headers={"X-Tool-Secret": TOOL_SECRET, "X-Conversation-Id": "conv_synthetic_rostered_0001"},
+    )
+    assert len(looked_up.json()) == 1
+
+    _deliver(hook, SUBMITTED)
+
+    assert _call(db_session, "conv_synthetic_rostered_0001").outcome == "status_only"

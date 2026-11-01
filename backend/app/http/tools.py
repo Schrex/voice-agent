@@ -12,7 +12,7 @@ from decimal import Decimal
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Body, Depends, Header, HTTPException
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, StringConstraints, ValidationError
 from sqlalchemy.orm import Session
 
 from app.clock import Clock, get_clock
@@ -26,6 +26,7 @@ from app.services.amend import AmendRequestNotFound, amend_request
 from app.services.callbacks import create_callback_request
 from app.services.calls import Caller, caller_for_conversation
 from app.services.duplicates import find_duplicates
+from app.services.emergencies import EmergencyReport, start_emergency
 from app.services.jobs import find_jobs
 from app.services.notes import NoteRequestNotFound, add_note_for_caller
 from app.services.requests import NewItem, resolve_needed_by, submit_requests
@@ -538,6 +539,59 @@ def amend_request_tool(
         "unit": amended.unit,
         "needed_by_resolved": amended.needed_by_resolved,
     }
+
+
+# --- start_emergency (ticket #26, spec J6) ---
+
+EMERGENCY_NOT_RECORDED = "The emergency could not be recorded."
+
+
+class StartEmergencyBody(BaseModel):
+    """Only what the Foreman already said. Unknown fields (such as a foreman id) are ignored."""
+
+    summary: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+    """What happened, in the Foreman's words."""
+    job_id: int | None = None
+    """From `find_jobs`, when the Job is already known on this call."""
+    job_spoken: str | None = None
+    """The Job in the Foreman's words, if they named one."""
+
+
+@router.post("/start_emergency")
+def start_emergency_tool(
+    body: Annotated[Any, Body()],
+    caller: Annotated[Caller, Depends(get_caller)],
+    session: Annotated[Session, Depends(get_session)],
+    clock: Annotated[Clock, Depends(get_clock)],
+    sms: Annotated[SmsSender, Depends(get_sms_sender)],
+    x_conversation_id: Annotated[str | None, Header()] = None,
+) -> Any:
+    """Emergency Request + pop-up + SMS to every Coordinator, before the agent transfers
+    (architecture §3.3). `{"ref": "R-1042"}`, even if an SMS could not be sent (that alert is
+    recorded as failed). The agent transfers whatever this returns.
+    """
+    log_ctx = {"conversation_id": x_conversation_id}
+    try:
+        parsed = StartEmergencyBody.model_validate(body, strict=True)
+    except ValidationError:
+        log.warning("start_emergency_invalid", extra=log_ctx)
+        return {"error": EMERGENCY_NOT_RECORDED}
+    try:
+        ref = start_emergency(
+            session,
+            sms,
+            caller=caller,
+            report=EmergencyReport(
+                summary=parsed.summary, job_id=parsed.job_id, job_spoken=parsed.job_spoken
+            ),
+            now=clock(),
+        )
+    except Exception:
+        session.rollback()
+        log.exception("start_emergency_failed", extra=log_ctx)
+        return {"error": EMERGENCY_NOT_RECORDED}
+    log.info("start_emergency", extra={**log_ctx, "ref": ref})
+    return {"ref": ref}
 
 
 # --- withdraw_request (ticket #20, spec J4) ---

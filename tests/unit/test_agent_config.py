@@ -2,9 +2,10 @@
 in backend/agent/tests/ (S layer); these check what is fixed in config before any LLM runs.
 """
 
+import json
 from typing import Any
 
-from agent.push import desired_agent, desired_tools
+from agent.push import AGENT_DIR, desired_agent, desired_tools, safety_line
 from app.db.models import CATEGORIES
 from app.domain.draft import DATA_COLLECTION_FIELDS
 
@@ -24,6 +25,7 @@ TOOL_IDS = {
     "transfer_to_office": "tool_transfer",
     "find_duplicates": "tool_duplicates",
     "amend_request": "tool_amend",
+    "start_emergency": "tool_emergency",
     "withdraw_request": "tool_withdraw",
 }
 
@@ -45,8 +47,8 @@ def test_first_message_is_automated_recorded_and_names_the_foreman() -> None:
 def test_tools_are_the_system_tools_and_the_backend_tools() -> None:
     """end_call and transfer_to_number (#25) are built in; find_jobs (#13), resolve_needed_by
     (#14), submit_requests (#7), find_open_requests (#16), create_callback_request (#24),
-    add_note (#17), transfer_to_office (#25), find_duplicates (#18), amend_request (#19)
-    and withdraw_request (#20) are attached by their workspace ids."""
+    add_note (#17), transfer_to_office (#25), find_duplicates (#18), amend_request (#19),
+    start_emergency (#26) and withdraw_request (#20) are attached by their workspace ids."""
     prompt = _agent()["prompt"]
 
     assert set(prompt["built_in_tools"]) == {"end_call", "transfer_to_number"}
@@ -61,6 +63,7 @@ def test_tools_are_the_system_tools_and_the_backend_tools() -> None:
         "tool_transfer",
         "tool_duplicates",
         "tool_amend",
+        "tool_emergency",
         "tool_withdraw",
     ]
     assert not prompt.get("tools")
@@ -334,3 +337,104 @@ def test_find_duplicates_tool_takes_the_job_id_and_the_category() -> None:
     assert schema["properties"]["job_id"]["type"] == "integer"
     assert schema["properties"]["category"]["enum"] == list(CATEGORIES)
     assert sorted(schema["required"]) == ["category", "job_id"]
+
+
+# --- Emergency (ticket #26, spec J6) ---
+
+
+def _j6() -> str:
+    prompt: str = _agent()["prompt"]["prompt"]
+    start = prompt.index("# J6: Emergency")
+    end = prompt.find("\n# ", start + 1)
+    return prompt[start : end if end != -1 else None]
+
+
+def test_the_safety_line_is_the_approved_text_file_verbatim() -> None:
+    """Ticket #26 DoD: the safety line spoken is exactly `backend/agent/safety_line.txt` (until
+    the safety lead approves, the spec J6 placeholder, marked as placeholder in that file)."""
+    line = safety_line()
+
+    assert line == (
+        "Stop work in the affected area and follow site procedures. Call 911 if anyone's hurt."
+    )
+    assert f'Say exactly: "{line}"' in _j6()
+
+
+def test_safety_line_file_is_marked_as_a_placeholder_and_the_mark_is_never_spoken() -> None:
+    raw = (AGENT_DIR / "safety_line.txt").read_text()
+
+    assert "PLACEHOLDER" in raw  # remove the mark together with the approved wording
+    assert "PLACEHOLDER" not in safety_line()
+    assert "PLACEHOLDER" not in _agent()["prompt"]["prompt"]
+
+
+def test_prompt_j6_safety_line_first_then_record_then_transfer() -> None:
+    """Spec J6 steps 2-4 / AC6.1-AC6.3: the safety line before any other question, then
+    `start_emergency`, then the J5 sentence, then `transfer_to_number`."""
+    j6 = _j6()
+
+    said, recorded, connecting, transferred = (
+        j6.index(safety_line()),
+        j6.index("`start_emergency`"),
+        j6.index('"Connecting you to the office now."'),
+        j6.index("`transfer_to_number`"),
+    )
+    assert said < recorded < connecting < transferred
+    assert "before anything else" in j6
+
+
+def test_prompt_j6_overrides_a_plain_transfer_at_any_point() -> None:
+    """Spec J6 step 1: safety keywords at any point override a plain Transfer request."""
+    prompt = _agent()["prompt"]["prompt"]
+    rules = prompt[prompt.index("# Rules for every call") : prompt.index("# J8")]
+    j6 = _j6()
+
+    for keyword in ("injury", "utility strike", "gas", "collapse", "fire"):
+        assert keyword in j6
+    assert "never use `transfer_to_office`" in j6
+    assert "J6: Emergency" in rules
+
+
+def test_prompt_j6_never_says_help_is_coming_or_anyone_was_reached() -> None:
+    """Spec J6 step 5 / AC6.4."""
+    j6 = _j6()
+
+    assert "Never say that help is on the way or coming" in j6
+    assert "that anyone has been reached" in j6
+
+
+def test_transfer_to_number_condition_covers_an_emergency() -> None:
+    """Architecture §3.3: the Emergency transfers to the same Office Line (spec §4)."""
+    params = _agent()["prompt"]["built_in_tools"]["transfer_to_number"]["params"]
+    [transfer] = params["transfers"]
+
+    assert "Emergency" in transfer["condition"]
+
+
+def test_start_emergency_tool_takes_the_summary_and_the_job_if_said() -> None:
+    """Architecture §4.2: `start_emergency(summary, job_id?, job_spoken?)` → `{ref}`."""
+    [tool] = [
+        t["tool_config"]
+        for t in desired_tools(ENV)
+        if t["tool_config"]["name"] == "start_emergency"
+    ]
+    body = tool["api_schema"]["request_body_schema"]
+
+    assert list(body["properties"]) == ["summary", "job_id", "job_spoken"]
+    assert body["properties"]["job_id"]["type"] == "integer"
+    assert body["required"] == ["summary"]
+
+
+def test_every_emergency_simulation_checks_the_exact_safety_line() -> None:
+    """The S tests judge the spoken line against the approved file's text, word for word."""
+    tests = [
+        json.loads(path.read_text())
+        for path in sorted((AGENT_DIR / "tests").glob("*.json"))
+        if path.name.startswith(("ac6_", "j6_"))
+    ]
+
+    assert len(tests) == 5
+    for test in tests:
+        if test["name"].startswith("J6 transfers"):
+            continue
+        assert any(f'"{safety_line()}"' in c for c in test["success_conditions"]), test["name"]

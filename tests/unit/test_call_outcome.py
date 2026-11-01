@@ -66,3 +66,25 @@ def test_call_with_a_status_lookup(
     )
 
     assert outcome == expected
+
+
+@pytest.mark.parametrize(
+    ("rejected", "tools_called", "expected"),
+    [
+        pytest.param(False, ["transfer_to_number"], "emergency", id="emergency outranks transfer"),
+        pytest.param(False, [], "emergency", id="emergency, transfer not made"),
+        pytest.param(True, [], "rejected", id="rejected outranks all"),
+    ],
+)
+def test_call_with_an_emergency(rejected: bool, tools_called: list[str], expected: str) -> None:
+    """Ticket #26: a call that recorded an Emergency Request is `emergency`, even though it
+    also transferred and created a Request (architecture §5 `calls.outcome`)."""
+    outcome = call_outcome(
+        rejected=rejected,
+        submitted=True,
+        tools_called=tools_called,
+        looked_up=True,
+        emergency=True,
+    )
+
+    assert outcome == expected
