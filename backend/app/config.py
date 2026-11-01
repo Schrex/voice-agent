@@ -12,6 +12,30 @@ def database_url() -> str:
     return url
 
 
+def hook_secret() -> str | None:
+    """Shared secret ElevenLabs sends as `X-Hook-Secret` on the call-start webhook.
+
+    None when unset; the webhook then rejects every request (fails closed).
+    """
+    return os.environ.get("HOOK_SECRET") or None
+
+
+def tool_secret() -> str | None:
+    """Shared secret ElevenLabs sends as `X-Tool-Secret` on every `/tools/*` call.
+
+    None when unset; every tool call is then rejected (fails closed).
+    """
+    return os.environ.get("TOOL_SECRET") or None
+
+
+def office_main_number() -> str:
+    """Main office number spoken to unrostered callers (spec J8), inserted as written."""
+    number = os.environ.get("OFFICE_MAIN_NUMBER")
+    if not number:
+        raise RuntimeError("OFFICE_MAIN_NUMBER is not set")
+    return number
+
+
 def app_env() -> str:
     """Deployment name: local, staging or prod. Tags Sentry events."""
     return os.environ.get("APP_ENV") or "local"

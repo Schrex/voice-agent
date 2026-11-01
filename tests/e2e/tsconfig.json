@@ -1,0 +1,17 @@
+{
+  // Type-checks the Playwright specs and config (`npm run typecheck` in frontend/). Their packages
+  // live in frontend/node_modules, which Node finds via NODE_PATH (`npm run e2e`) and tsc via paths.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "typeRoots": ["../../frontend/node_modules/@types"],
+    "types": ["node"],
+    "paths": { "@playwright/test": ["../../frontend/node_modules/@playwright/test"] }
+  },
+  "include": ["./*.ts", "../../frontend/playwright.config.ts"]
+}

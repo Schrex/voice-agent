@@ -2,7 +2,17 @@ from sqlalchemy import Engine, inspect
 
 from app.db.migrate import downgrade, upgrade
 
-ALL_TABLES = {"foremen", "foreman_phones", "jobs", "job_aliases", "staff"}
+ALL_TABLES = {
+    "foremen",
+    "foreman_phones",
+    "jobs",
+    "job_aliases",
+    "calls",
+    "requests",
+    "request_events",
+    "call_requests",
+    "staff",
+}
 
 
 def _tables(engine: Engine) -> set[str]:

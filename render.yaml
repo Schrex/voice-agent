@@ -26,6 +26,12 @@ services:
         sync: false
       - key: SENTRY_DSN
         sync: false
+      - key: HOOK_SECRET
+        sync: false
+      - key: TOOL_SECRET
+        sync: false
+      - key: OFFICE_MAIN_NUMBER
+        sync: false
       - key: SUPABASE_JWT_SECRET
         sync: false
       - key: VITE_SUPABASE_URL

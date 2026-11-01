@@ -6,14 +6,14 @@
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "strict": true,
+    "allowJs": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "isolatedModules": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["vite/client", "node", "@testing-library/jest-dom"],
-    "paths": { "@playwright/test": ["./node_modules/@playwright/test"] }
+    "types": ["vite/client", "node", "@testing-library/jest-dom"]
   },
-  "include": ["src", "vite.config.ts", "playwright.config.ts", "../tests/e2e"]
+  "include": ["src", "scripts", "vite.config.ts"]
 }
