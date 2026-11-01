@@ -24,3 +24,7 @@ services:
         sync: false
       - key: SENTRY_DSN
         sync: false
+      - key: HOOK_SECRET
+        sync: false
+      - key: OFFICE_MAIN_NUMBER
+        sync: false
