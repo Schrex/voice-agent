@@ -240,6 +240,10 @@ class Request(Base):
     # Set when a coordinator marks Foreman Informed (ticket #32); null = not marked. A Resolved
     # Request not marked within the threshold shows Uninformed (app.domain.sla; derived).
     foreman_informed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # When it must be Acknowledged by: Recorded time + the ack window of its Urgency (ticket
+    # #22, app.domain.sla.ack_due_at); null while a Draft, and for Emergency or no Urgency.
+    # Still Recorded after it = Overdue (derived).
+    ack_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     @property
     def ref_display(self) -> str:
@@ -326,7 +330,8 @@ class Alert(Base):
 
     `status` pending (being sent), sent (provider accepted it; `provider_id` set) or failed
     (`detail` says why, e.g. nobody on duty). `sent_at` is when it was attempted.
-    One `today_new` alert per Request at most (`uq_alerts_today_new`).
+    One `today_new` alert per Request at most (`uq_alerts_today_new`), and one `overdue`
+    alert (`uq_alerts_overdue`).
     """
 
     __tablename__ = "alerts"
@@ -339,6 +344,12 @@ class Alert(Base):
             "request_id",
             unique=True,
             postgresql_where=text("kind = 'today_new'"),
+        ),
+        Index(
+            "uq_alerts_overdue",
+            "request_id",
+            unique=True,
+            postgresql_where=text("kind = 'overdue'"),
         ),
     )
 

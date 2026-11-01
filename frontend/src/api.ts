@@ -34,6 +34,8 @@ export type QueueRequest = {
   status: "Recorded" | "Acknowledged" | "In Progress";
   /** UTC, ISO 8601. */
   recorded_at: string;
+  /** Still Recorded after its ack window (Today 15 min, Planned 2 h): the backup is texted. */
+  overdue: boolean;
 };
 
 /** Every time on the dashboard is shown in the office's zone, whatever the browser's zone. */

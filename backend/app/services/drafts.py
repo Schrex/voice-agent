@@ -17,6 +17,7 @@ from app.db.models import Call, CallRequest, Foreman, Job, Request
 from app.db.models import RequestEvent as Event
 from app.domain.draft import DraftItem
 from app.domain.lifecycle import Status, transition
+from app.services.ack_window import set_ack_due_at
 from app.services.jobs import find_jobs
 
 
@@ -153,12 +154,17 @@ def record_draft(session: Session, *, ref: str, staff_id: uuid.UUID, now: dateti
     if request is None:
         raise RequestNotFound(ref)
     status = transition(Status(request.status), Status.RECORDED)
-    before = {
+    before: dict[str, object] = {
         "status": request.status,
         "recorded_at": None if request.recorded_at is None else request.recorded_at.isoformat(),
     }
     request.status = status.value
     request.recorded_at = now
+    set_ack_due_at(session, request)
+    after: dict[str, object] = {"status": request.status, "recorded_at": now.isoformat()}
+    if request.ack_due_at is not None:  # changed fields only: a Draft has no ack window
+        before["ack_due_at"] = None
+        after["ack_due_at"] = request.ack_due_at.isoformat()
     session.add(
         Event(
             request_id=request.id,
@@ -167,7 +173,7 @@ def record_draft(session: Session, *, ref: str, staff_id: uuid.UUID, now: dateti
             actor_id=str(staff_id),
             kind="recorded",
             before=before,
-            after={"status": request.status, "recorded_at": now.isoformat()},
+            after=after,
         )
     )
     session.commit()

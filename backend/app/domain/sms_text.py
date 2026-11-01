@@ -40,10 +40,26 @@ def short_date(day: date) -> str:
 def today_request_text(facts: TodayRequestFacts) -> str:
     """E.g. "Today request R-1000 from Dale Kramer, Route 104 Widening: tri-axle dump trucks,
     3 trucks, needed by Sun, Nov 1, 5:00 PM"."""
+    return f"Today request {_described(facts)}"
+
+
+def overdue_request_text(facts: TodayRequestFacts, *, urgency: str, recorded_at: datetime) -> str:
+    """E.g. "Overdue: Today request R-1000 from Dale Kramer, Route 104 Widening: tri-axle dump
+    trucks, 3 trucks, needed by Sun, Nov 1, 5:00 PM. Recorded Sun, Nov 1, 3:04 PM, not
+    Acknowledged" (ticket #22)."""
+    return (
+        f"Overdue: {urgency} request {_described(facts)}. "
+        f"Recorded {short_time(recorded_at)}, not Acknowledged"
+    )
+
+
+def _described(facts: TodayRequestFacts) -> str:
+    """ "R-1000 from Dale Kramer, Route 104 Widening: tri-axle dump trucks, 3 trucks, needed by
+    Sun, Nov 1, 5:00 PM"."""
     job = facts.job if facts.job is not None else f"“{facts.job_spoken}” (Unmatched)"
     amount = " ".join(part for part in (facts.quantity, facts.unit) if part)
     what = f"{facts.need}, {amount}" if amount else facts.need
-    text = f"Today request {facts.ref} from {facts.foreman}, {job}: {what}"
+    text = f"{facts.ref} from {facts.foreman}, {job}: {what}"
     if facts.needed_by is not None:
         return f"{text}, needed by {short_time(facts.needed_by)}"
     if facts.needed_by_spoken:

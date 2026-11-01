@@ -11,7 +11,8 @@ from sqlalchemy import case, select
 from sqlalchemy.orm import Session
 
 from app.db.models import Job, Request
-from app.domain.lifecycle import OPEN_STATUSES
+from app.domain.lifecycle import OPEN_STATUSES, Status
+from app.domain.sla import is_overdue
 from app.domain.urgency import Urgency, rank
 
 
@@ -30,10 +31,13 @@ class QueueRow:
     urgency: str | None
     status: str
     recorded_at: datetime
+    overdue: bool
+    """Still Recorded after its ack window (ticket #22, `domain.sla.is_overdue`)."""
 
 
-def open_requests(session: Session) -> list[QueueRow]:
-    """Recorded, Acknowledged and In Progress Requests (no Draft, no Resolved).
+def open_requests(session: Session, now: datetime) -> list[QueueRow]:
+    """Recorded, Acknowledged and In Progress Requests (no Draft, no Resolved), flagged Overdue
+    as of `now`.
 
     Sorted by urgency (Emergency, Today, Planned; no urgency yet last), then by age, oldest
     first; ref breaks ties.
@@ -60,6 +64,7 @@ def open_requests(session: Session) -> list[QueueRow]:
             urgency=request.urgency,
             status=request.status,
             recorded_at=_recorded_at(request),
+            overdue=is_overdue(Status(request.status), ack_due_at=request.ack_due_at, now=now),
         )
         for request, job_name in rows
     ]

@@ -181,6 +181,7 @@ describe("request detail", () => {
         urgency: null,
         status: "Recorded",
         recorded_at: "2026-11-02T01:30:00Z",
+        overdue: false,
       },
     ]);
     renderAt("/");

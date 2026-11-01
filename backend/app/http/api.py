@@ -66,6 +66,7 @@ class QueueRequestOut(BaseModel):
     urgency: str | None
     status: str
     recorded_at: str  # UTC, ISO 8601 with "Z"; the dashboard shows it in America/New_York
+    overdue: bool  # still Recorded after its ack window (ticket #22)
 
 
 class QueueOut(BaseModel):
@@ -93,7 +94,7 @@ def queue(
     clock: Annotated[Clock, Depends(get_clock)],
     flag: Literal["uninformed"] | None = None,
 ) -> QueueOut | UninformedOut:
-    """Open Requests, sorted urgency then age (spec J9).
+    """Open Requests, sorted urgency then age (spec J9), each flagged Overdue or not (#22).
 
     `?flag=uninformed`: instead, the Uninformed Requests (Resolved, not marked Foreman Informed
     within the threshold), oldest Resolved first (ticket #32, AC9.4).
@@ -127,8 +128,9 @@ def queue(
                 urgency=row.urgency,
                 status=row.status,
                 recorded_at=_utc(row.recorded_at),
+                overdue=row.overdue,
             )
-            for row in open_requests(session)
+            for row in open_requests(session, clock())
         ]
     )
 

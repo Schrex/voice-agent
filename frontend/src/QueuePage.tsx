@@ -37,6 +37,9 @@ export function QueuePage({ staff }: { staff: Staff }) {
         {queue.isError && !queue.data && (
           <p role="alert">Could not load the queue.</p>
         )}
+        {queue.data && (
+          <p className="counts">Overdue ({queue.data.filter((r) => r.overdue).length})</p>
+        )}
         {queue.data && queue.data.length === 0 && <p>No requests.</p>}
         {queue.data && queue.data.length > 0 && <QueueTable requests={queue.data} now={queue.dataUpdatedAt} />}
         <UninformedList />
@@ -78,7 +81,15 @@ function QueueTable({ requests, now }: { requests: QueueRequest[]; now: number }
             <td>{quantity(r)}</td>
             <td>{neededByText(r)}</td>
             <td>{r.urgency ?? "—"}</td>
-            <td>{r.status}</td>
+            <td>
+              {r.status}
+              {r.overdue && (
+                <>
+                  {" "}
+                  <span className="flag">Overdue</span>
+                </>
+              )}
+            </td>
             <td>
               {age(now - Date.parse(r.recorded_at))}
               <time className="recorded" dateTime={r.recorded_at}>

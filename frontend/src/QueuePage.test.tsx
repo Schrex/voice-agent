@@ -30,6 +30,7 @@ function row(overrides: Partial<QueueRequest>): QueueRequest {
     urgency: "Today",
     status: "Recorded",
     recorded_at: "2026-11-02T01:30:00Z",
+    overdue: false,
     ...overrides,
   };
 }
@@ -126,6 +127,36 @@ describe("queue", () => {
     expect(jobCell).toHaveTextContent("Unmatched: “the Smith pit”");
     expect(within(jobCell).getByText("Unmatched")).toHaveClass("flag");
     expect(within(matched).getAllByRole("cell")[1]).toHaveTextContent(/^Route 104 Widening$/);
+  });
+
+  it("flags Overdue requests and shows how many there are (ticket #22)", async () => {
+    serve([
+      row({ ref: "R-1002", overdue: true }),
+      row({ ref: "R-1001", status: "Acknowledged" }),
+      row({ ref: "R-1000", urgency: "Planned", overdue: true }),
+    ]);
+
+    const table = await renderQueue();
+
+    expect(screen.getByText("Overdue (2)")).toBeInTheDocument();
+    const statuses = within(table)
+      .getAllByRole("row")
+      .slice(1)
+      .map((r) => within(r).getAllByRole("cell")[6]);
+    expect(statuses.map((c) => c.textContent)).toEqual([
+      "Recorded Overdue",
+      "Acknowledged",
+      "Recorded Overdue",
+    ]);
+    expect(within(statuses[0]).getByText("Overdue")).toHaveClass("flag");
+  });
+
+  it("shows an Overdue count of zero when nothing is Overdue", async () => {
+    serve([row({})]);
+
+    await renderQueue();
+
+    expect(screen.getByText("Overdue (0)")).toBeInTheDocument();
   });
 
   it("shows a needed-by the backend could not resolve as the Foreman said it", async () => {
