@@ -51,6 +51,26 @@ button {
   cursor: pointer;
 }
 
+table.queue {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+table.queue th,
+table.queue td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #dde1e6;
+  text-align: left;
+  vertical-align: top;
+}
+
+table.queue .recorded {
+  display: block;
+  font-size: 0.8rem;
+  color: #5c6670;
+}
+
 [role="alert"] {
   color: #b00020;
 }
