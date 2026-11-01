@@ -13,6 +13,8 @@ export default defineConfig({
     // Run in UTC so tests prove the dashboard shows America/New_York whatever the browser zone.
     env: { TZ: "UTC" },
     setupFiles: ["./src/test-setup.ts"],
+    // Above the 5 s async-query wait in src/test-setup.ts, so a missing element reports as such.
+    testTimeout: 15_000,
     include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.ts"],
   },
 });
