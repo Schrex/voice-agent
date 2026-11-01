@@ -18,6 +18,7 @@ TOOL_IDS = {
     "find_jobs": "tool_find",
     "resolve_needed_by": "tool_resolve",
     "submit_requests": "tool_submit",
+    "find_open_requests": "tool_status",
 }
 
 
@@ -35,14 +36,14 @@ def test_first_message_is_automated_recorded_and_names_the_foreman() -> None:
     assert "{{foreman_first_name}}" in first
 
 
-def test_tools_are_end_call_find_jobs_resolve_needed_by_and_submit_requests() -> None:
-    """end_call (built-in) hangs up; find_jobs (#13), resolve_needed_by (#14) and
-    submit_requests (#7) are attached by their workspace ids."""
+def test_tools_are_end_call_and_the_backend_tools() -> None:
+    """end_call (built-in) hangs up; find_jobs (#13), resolve_needed_by (#14),
+    submit_requests (#7) and find_open_requests (#16) are attached by their workspace ids."""
     prompt = _agent()["prompt"]
 
     assert set(prompt["built_in_tools"]) == {"end_call"}
     assert prompt["built_in_tools"]["end_call"]["params"] == {"system_tool_type": "end_call"}
-    assert prompt["tool_ids"] == ["tool_find", "tool_resolve", "tool_submit"]
+    assert prompt["tool_ids"] == ["tool_find", "tool_resolve", "tool_submit", "tool_status"]
     assert not prompt.get("tools")
 
 
@@ -90,6 +91,21 @@ def test_prompt_reads_back_the_needed_by_the_backend_resolved() -> None:
     assert "`resolve_needed_by`" in prompt
     assert "needed_by_resolved" in prompt
     assert "leave `needed_by_spoken` out" in prompt
+
+
+def test_prompt_reports_status_in_the_spec_lifecycle_words() -> None:
+    """Spec J3 step 3 / AC3.1-AC3.3: the status is looked up, never recalled, and reported in
+    the lifecycle words verbatim; no match is said plainly with Transfer or Callback offered
+    (AC3.4). The S tests check the spoken behavior."""
+    prompt = _agent()["prompt"]["prompt"]
+
+    assert "`find_open_requests`" in prompt
+    assert '"The office hasn\'t picked it up yet."' in prompt
+    assert '"<owner> has it, not confirmed yet."' in prompt
+    assert '"<owner> is working on it."' in prompt
+    assert "read the `explanation` exactly as written" in prompt
+    assert "can't find that request" in prompt
+    assert "put them through to the office or to have someone call them back" in prompt
 
 
 def test_prompt_splits_several_needs_into_one_numbered_summary_and_one_submit() -> None:

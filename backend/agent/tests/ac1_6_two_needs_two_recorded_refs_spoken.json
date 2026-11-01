@@ -21,7 +21,8 @@
     "mocked_tool_ids": [
       "${tool_find_jobs}",
       "${tool_resolve_needed_by}",
-      "${tool_submit_requests}"
+      "${tool_submit_requests}",
+      "${tool_find_open_requests}"
     ],
     "fallback_strategy": "raise_error"
   },
@@ -41,6 +42,12 @@
     "${tool_submit_requests}": [
       {
         "mock_result": "[{\"ref\": \"R-1042\", \"needed_by_resolved\": \"Monday, November 2 at 7:00 AM\", \"urgency\": \"Planned\"}, {\"ref\": \"R-1043\", \"needed_by_resolved\": \"Monday, November 2 at 7:00 AM\", \"urgency\": \"Planned\"}]",
+        "is_error": false
+      }
+    ],
+    "${tool_find_open_requests}": [
+      {
+        "mock_result": "[]",
         "is_error": false
       }
     ]

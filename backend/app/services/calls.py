@@ -186,6 +186,15 @@ def record_post_call(session: Session, post_call: PostCall, *, now: datetime) ->
         submitted=bool(submitted),
         tools_called=post_call.tools_called,
         drafted=drafted,
+        looked_up=bool(
+            session.scalar(
+                select(
+                    exists().where(
+                        CallRequest.call_id == call.id, CallRequest.relation == "looked_up"
+                    )
+                )
+            )
+        ),
     )
     session.commit()
     return PostCallResult.RECORDED

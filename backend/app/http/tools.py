@@ -21,6 +21,7 @@ from app.db.session import get_session
 from app.services.calls import Caller, caller_for_conversation
 from app.services.jobs import find_jobs
 from app.services.requests import NewItem, resolve_needed_by, submit_requests
+from app.services.status_lookup import find_open_requests
 
 log = logging.getLogger(__name__)
 
@@ -172,3 +173,64 @@ def resolve_needed_by_tool(
     resolved = resolve_needed_by(parsed.needed_by_spoken, clock())
     log.info("resolve_needed_by", extra={**log_ctx, "resolved": resolved.urgency is not None})
     return {"needed_by_resolved": resolved.needed_by_resolved, "urgency": resolved.urgency}
+
+
+# --- find_open_requests (ticket #16, spec J3) ---
+
+NOT_LOOKED_UP = "Your Requests could not be looked up."
+
+
+class FindOpenRequestsBody(BaseModel):
+    """Both optional. Unknown fields (such as a foreman id) are ignored."""
+
+    job_id: int | None = None
+    """From `find_jobs`."""
+    category: Category | None = None
+
+
+@router.post("/find_open_requests")
+def find_open_requests_tool(
+    body: Annotated[Any, Body()],
+    caller: Annotated[Caller, Depends(get_caller)],
+    session: Annotated[Session, Depends(get_session)],
+    x_conversation_id: Annotated[str | None, Header()] = None,
+) -> Any:
+    """The caller's own Requests with their recorded state; `[]` when none match."""
+    log_ctx = {"conversation_id": x_conversation_id}
+    try:
+        parsed = FindOpenRequestsBody.model_validate(body, strict=True)
+    except ValidationError:
+        log.warning("find_open_requests_invalid", extra=log_ctx)
+        return {"error": NOT_LOOKED_UP}
+    try:
+        found = find_open_requests(
+            session, caller=caller, job_id=parsed.job_id, category=parsed.category
+        )
+    except Exception:
+        session.rollback()
+        log.exception("find_open_requests_failed", extra=log_ctx)
+        return {"error": NOT_LOOKED_UP}
+    log.info("find_open_requests", extra={**log_ctx, "ref": [r.ref for r in found]})
+    return [
+        {
+            "ref": r.ref,
+            "job": r.job,
+            "category": r.category,
+            "need": r.need,
+            "quantity": _number(r.quantity),
+            "unit": r.unit,
+            "needed_by": r.needed_by,
+            "status": r.status,
+            "owner": r.owner,
+            "outcome": r.outcome,
+            "explanation": r.explanation,
+        }
+        for r in found
+    ]
+
+
+def _number(quantity: Decimal | None) -> int | float | None:
+    """3 rather than "3" or 3.0, so the agent can say it as a number."""
+    if quantity is None:
+        return None
+    return int(quantity) if quantity == quantity.to_integral_value() else float(quantity)
