@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import UTC, datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -11,13 +11,17 @@ from sqlalchemy.orm import Session
 from app.clock import Clock, get_clock
 from app.db.session import get_session
 from app.domain.lifecycle import (
+    AlreadyInformed,
     ExplanationRequired,
     MergeIntoItself,
+    NotResolved,
     Outcome,
     OutcomeRequired,
     OwnerRequired,
+    Status,
     TransitionNotAllowed,
 )
+from app.domain.sla import is_uninformed
 from app.http.auth import CurrentStaff
 from app.services.merges import merge_request
 from app.services.owners import list_owners
@@ -27,9 +31,11 @@ from app.services.requests import (
     RequestNotFound,
     UnknownOwner,
     acknowledge_request,
+    mark_foreman_informed,
     resolve_request,
     start_request,
 )
+from app.services.uninformed import uninformed_requests
 
 router = APIRouter(prefix="/api")
 
@@ -65,9 +71,47 @@ class QueueOut(BaseModel):
     requests: list[QueueRequestOut]
 
 
+class UninformedRequestOut(BaseModel):
+    ref: str
+    foreman: str  # full name: who to tell
+    job: str | None  # null = Unmatched
+    job_spoken: str
+    need: str
+    outcome: str
+    resolved_at: str  # UTC, ISO 8601 with "Z"
+
+
+class UninformedOut(BaseModel):
+    requests: list[UninformedRequestOut]
+
+
 @router.get("/requests")
-def queue(staff: CurrentStaff, session: Annotated[Session, Depends(get_session)]) -> QueueOut:
-    """Open Requests, sorted urgency then age (spec J9)."""
+def queue(
+    staff: CurrentStaff,
+    session: Annotated[Session, Depends(get_session)],
+    clock: Annotated[Clock, Depends(get_clock)],
+    flag: Literal["uninformed"] | None = None,
+) -> QueueOut | UninformedOut:
+    """Open Requests, sorted urgency then age (spec J9).
+
+    `?flag=uninformed`: instead, the Uninformed Requests (Resolved, not marked Foreman Informed
+    within the threshold), oldest Resolved first (ticket #32, AC9.4).
+    """
+    if flag == "uninformed":
+        return UninformedOut(
+            requests=[
+                UninformedRequestOut(
+                    ref=row.ref,
+                    foreman=row.foreman,
+                    job=row.job,
+                    job_spoken=row.job_spoken,
+                    need=row.need,
+                    outcome=row.outcome,
+                    resolved_at=_utc(row.resolved_at),
+                )
+                for row in uninformed_requests(session, clock())
+            ]
+        )
     return QueueOut(
         requests=[
             QueueRequestOut(
@@ -135,6 +179,8 @@ class RequestDetailOut(BaseModel):
     explanation: str | None  # as the coordinator wrote it; null until Resolved
     resolved_at: str | None  # UTC, ISO 8601 with "Z"; null until Resolved
     merged_into: str | None  # ref of the Request this one was merged into; null if not merged
+    foreman_informed_at: str | None  # UTC, ISO 8601 with "Z"; null until marked Foreman Informed
+    uninformed: bool  # Resolved, not marked Foreman Informed within the threshold (now)
     default_owner_id: int | None  # the category's default Owner, offered when acknowledging
     events: list[EventOut]  # oldest first
     calls: list[LinkedCallOut]  # oldest first
@@ -142,13 +188,16 @@ class RequestDetailOut(BaseModel):
 
 @router.get("/requests/{ref}")
 def detail(
-    ref: str, staff: CurrentStaff, session: Annotated[Session, Depends(get_session)]
+    ref: str,
+    staff: CurrentStaff,
+    session: Annotated[Session, Depends(get_session)],
+    clock: Annotated[Clock, Depends(get_clock)],
 ) -> RequestDetailOut:
     """One Request's fields and its full audit history (who, when, what changed)."""
     found = request_detail(session, ref)
     if found is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such request")
-    return _detail_out(found)
+    return _detail_out(found, clock())
 
 
 class AcknowledgeIn(BaseModel):
@@ -166,18 +215,15 @@ def acknowledge(
     clock: Annotated[Clock, Depends(get_clock)],
 ) -> RequestDetailOut:
     """Recorded → Acknowledged with an Owner; returns the updated Request."""
+    now = clock()
     try:
-        acknowledge_request(
-            session, ref=ref, owner_id=body.owner_id, staff_id=staff.id, now=clock()
-        )
+        acknowledge_request(session, ref=ref, owner_id=body.owner_id, staff_id=staff.id, now=now)
     except RequestNotFound as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such request") from exc
     except (OwnerRequired, TransitionNotAllowed, UnknownOwner) as exc:
         session.rollback()
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
-    found = request_detail(session, ref)
-    assert found is not None
-    return _detail_out(found)
+    return _updated(session, ref, now)
 
 
 @router.post("/requests/{ref}/start")
@@ -188,14 +234,15 @@ def start(
     clock: Annotated[Clock, Depends(get_clock)],
 ) -> RequestDetailOut:
     """Acknowledged → In Progress ("Move to In Progress"); returns the updated Request."""
+    now = clock()
     try:
-        start_request(session, ref=ref, staff_id=staff.id, now=clock())
+        start_request(session, ref=ref, staff_id=staff.id, now=now)
     except RequestNotFound as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such request") from exc
     except TransitionNotAllowed as exc:
         session.rollback()
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
-    return _updated(session, ref)
+    return _updated(session, ref, now)
 
 
 class ResolveIn(BaseModel):
@@ -214,6 +261,7 @@ def resolve(
     clock: Annotated[Clock, Depends(get_clock)],
 ) -> RequestDetailOut:
     """Any open status → Resolved with an Outcome and explanation; returns the updated Request."""
+    now = clock()
     try:
         resolve_request(
             session,
@@ -221,14 +269,14 @@ def resolve(
             outcome=body.outcome,
             explanation=body.explanation,
             staff_id=staff.id,
-            now=clock(),
+            now=now,
         )
     except RequestNotFound as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such request") from exc
     except (OutcomeRequired, ExplanationRequired, TransitionNotAllowed) as exc:
         session.rollback()
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
-    return _updated(session, ref)
+    return _updated(session, ref, now)
 
 
 class MergeIn(BaseModel):
@@ -247,6 +295,7 @@ def merge(
     clock: Annotated[Clock, Depends(get_clock)],
 ) -> RequestDetailOut:
     """Merge this duplicate into another Request: this one is Resolved with a pointer to it."""
+    now = clock()
     try:
         merge_request(
             session,
@@ -255,7 +304,7 @@ def merge(
             outcome=body.outcome,
             explanation=body.explanation,
             staff_id=staff.id,
-            now=clock(),
+            now=now,
         )
     except RequestNotFound as exc:
         session.rollback()
@@ -268,13 +317,32 @@ def merge(
     ) as exc:
         session.rollback()
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
-    return _updated(session, ref)
+    return _updated(session, ref, now)
 
 
-def _updated(session: Session, ref: str) -> RequestDetailOut:
+@router.post("/requests/{ref}/informed")
+def informed(
+    ref: str,
+    staff: CurrentStaff,
+    session: Annotated[Session, Depends(get_session)],
+    clock: Annotated[Clock, Depends(get_clock)],
+) -> RequestDetailOut:
+    """Mark Foreman Informed on a Resolved Request (once); returns the updated Request."""
+    now = clock()
+    try:
+        mark_foreman_informed(session, ref=ref, staff_id=staff.id, now=now)
+    except RequestNotFound as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such request") from exc
+    except (NotResolved, AlreadyInformed) as exc:
+        session.rollback()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+    return _updated(session, ref, now)
+
+
+def _updated(session: Session, ref: str, now: datetime) -> RequestDetailOut:
     found = request_detail(session, ref)
     assert found is not None
-    return _detail_out(found)
+    return _detail_out(found, now)
 
 
 class OwnersOut(BaseModel):
@@ -287,7 +355,7 @@ def owners(staff: CurrentStaff, session: Annotated[Session, Depends(get_session)
     return OwnersOut(owners=[OwnerOut(id=o.id, name=o.name) for o in list_owners(session)])
 
 
-def _detail_out(found: RequestDetail) -> RequestDetailOut:
+def _detail_out(found: RequestDetail, now: datetime) -> RequestDetailOut:
     return RequestDetailOut(
         ref=found.ref,
         foreman=found.foreman,
@@ -310,6 +378,13 @@ def _detail_out(found: RequestDetail) -> RequestDetailOut:
         explanation=found.explanation,
         resolved_at=_utc(found.resolved_at) if found.resolved_at else None,
         merged_into=found.merged_into,
+        foreman_informed_at=_utc_or_none(found.foreman_informed_at),
+        uninformed=is_uninformed(
+            Status(found.status),
+            resolved_at=found.resolved_at,
+            foreman_informed_at=found.foreman_informed_at,
+            now=now,
+        ),
         default_owner_id=found.default_owner_id,
         events=[
             EventOut(

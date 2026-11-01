@@ -137,6 +137,10 @@ export type RequestDetail = {
   resolved_at: string | null;
   /** Ref of the request this one was merged into; null if not merged. */
   merged_into?: string | null;
+  /** UTC, ISO 8601; null until a coordinator marks Foreman Informed. */
+  foreman_informed_at: string | null;
+  /** Resolved, not marked Foreman Informed within the threshold (as of the backend's clock). */
+  uninformed: boolean;
   /** The category's default Owner, offered first when acknowledging. */
   default_owner_id: number | null;
   /** Oldest first. */
@@ -352,5 +356,41 @@ export async function editRequest(
     body: JSON.stringify(changes),
   });
   if (!response.ok) throw new Error(`edit ${ref} failed: ${response.status}`);
+  return (await response.json()) as RequestDetail;
+}
+
+/** A Resolved request whose Foreman has not been told the Outcome in time (dashboard only). */
+export type UninformedRequest = {
+  ref: string;
+  /** Who to tell. */
+  foreman: string;
+  /** Null when Unmatched. */
+  job: string | null;
+  job_spoken: string;
+  need: string;
+  outcome: Outcome;
+  /** UTC, ISO 8601. */
+  resolved_at: string;
+};
+
+/** The Uninformed requests, oldest Resolved first (`GET /api/requests?flag=uninformed`). */
+export async function fetchUninformed(accessToken: string): Promise<UninformedRequest[]> {
+  const response = await fetch("/api/requests?flag=uninformed", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(`GET uninformed requests failed: ${response.status}`);
+  return ((await response.json()) as { requests: UninformedRequest[] }).requests;
+}
+
+/** Mark Foreman Informed on a Resolved request; resolves to the updated request. */
+export async function markForemanInformed(
+  accessToken: string,
+  ref: string,
+): Promise<RequestDetail> {
+  const response = await fetch(`/api/requests/${encodeURIComponent(ref)}/informed`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(`informed ${ref} failed: ${response.status}`);
   return (await response.json()) as RequestDetail;
 }

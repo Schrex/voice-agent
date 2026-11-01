@@ -38,6 +38,7 @@ function serve(requests: QueueRequest[]) {
   const fetchMock = vi.fn(async (url: string) => {
     if (url === "/api/me") return new Response(JSON.stringify(STAFF));
     if (url === "/api/requests") return new Response(JSON.stringify({ requests }));
+    if (url === "/api/requests?flag=uninformed") return new Response('{"requests": []}');
     return new Response("{}", { status: 404 });
   });
   vi.stubGlobal("fetch", fetchMock);

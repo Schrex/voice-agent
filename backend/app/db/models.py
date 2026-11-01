@@ -197,6 +197,9 @@ class Request(Base):
             "merged_into_id IS NULL OR (status = 'Resolved' AND merged_into_id <> id)",
             name="merged_is_resolved",
         ),
+        CheckConstraint(
+            "foreman_informed_at IS NULL OR status = 'Resolved'", name="informed_only_when_resolved"
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -234,6 +237,9 @@ class Request(Base):
     # Set when a coordinator merges this duplicate into another Request (ticket #33); this one
     # is then Resolved and a status lookup of its ref reports the other one.
     merged_into_id: Mapped[int | None] = mapped_column(ForeignKey("requests.id"), index=True)
+    # Set when a coordinator marks Foreman Informed (ticket #32); null = not marked. A Resolved
+    # Request not marked within the threshold shows Uninformed (app.domain.sla; derived).
+    foreman_informed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     @property
     def ref_display(self) -> str:

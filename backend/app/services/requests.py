@@ -14,7 +14,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.models import CallRequest, Foreman, Job, Owner, Request, RequestEvent
-from app.domain.lifecycle import Outcome, Status, acknowledge, resolve, start, transition
+from app.domain.lifecycle import (
+    Outcome,
+    Status,
+    acknowledge,
+    mark_informed,
+    resolve,
+    start,
+    transition,
+)
 from app.domain.timeparse import NeededBy, parse_needed_by, speakable, urgency_for
 from app.services.calls import Caller
 
@@ -233,6 +241,30 @@ def resolve_request(
         "resolved_at": _iso(now),
     }
     _staff_event(session, request, staff_id, now, "resolved", before, after)
+    session.commit()
+
+
+def mark_foreman_informed(
+    session: Session, *, ref: str, staff_id: uuid.UUID, now: datetime
+) -> None:
+    """A coordinator marks that the Foreman was told the Outcome (spec J9; ticket #32).
+
+    Resolved and not yet marked only (`domain.lifecycle.mark_informed`). Sets the informed time
+    and writes a `foreman_informed` event by the staff member in the same transaction; a refused
+    mark raises and writes nothing. Once marked, the Request is never Uninformed.
+    """
+    request = _locked(session, ref)
+    mark_informed(Status(request.status), request.foreman_informed_at)
+    request.foreman_informed_at = now
+    _staff_event(
+        session,
+        request,
+        staff_id,
+        now,
+        "foreman_informed",
+        {"foreman_informed_at": None},
+        {"foreman_informed_at": _iso(now)},
+    )
     session.commit()
 
 

@@ -40,14 +40,15 @@ def edit(
 ) -> RequestDetailOut:
     """Edit fields / fix the Job; returns the updated Request. 422 when Resolved or invalid."""
     changes = {name: getattr(body, name) for name in body.model_fields_set}
+    now = clock()
     try:
-        edit_request(session, ref=ref, changes=changes, staff_id=staff.id, now=clock())
+        edit_request(session, ref=ref, changes=changes, staff_id=staff.id, now=now)
     except RequestNotFound as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such request") from exc
     except (NotEditable, InvalidEdit) as exc:
         session.rollback()
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
-    return _updated(session, ref)
+    return _updated(session, ref, now)
 
 
 class JobOut(BaseModel):

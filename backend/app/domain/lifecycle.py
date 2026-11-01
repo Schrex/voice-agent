@@ -10,8 +10,10 @@ Statuses and Outcomes are the glossary words, stored verbatim. Each move has one
 - `edit`: not a move; a coordinator may edit fields or fix the Job of any non-Resolved Request.
 Any other move raises `TransitionNotAllowed`. The agent's narrower right (only Recorded or
 Acknowledged → Resolved/Withdrawn) is left to the ticket that builds the agent's withdrawal.
+`mark_informed` (Foreman Informed, not a status) is allowed on a Resolved request, once.
 """
 
+from datetime import datetime
 from enum import StrEnum
 
 
@@ -142,3 +144,23 @@ def edit(current: Status) -> Status:
     if current is Status.RESOLVED:
         raise NotEditable(current)
     return current
+
+
+class NotResolved(ValueError):
+    """Foreman Informed marks that the foreman was told the outcome of a Resolved request."""
+
+    def __init__(self, current: Status) -> None:
+        super().__init__(f"Only a Resolved request can be marked Foreman Informed, not {current}")
+
+
+class AlreadyInformed(ValueError):
+    def __init__(self) -> None:
+        super().__init__("This request is already marked Foreman Informed")
+
+
+def mark_informed(current: Status, foreman_informed_at: datetime | None) -> None:
+    """Mark Foreman Informed (ticket #32): Resolved only, and only once."""
+    if current is not Status.RESOLVED:
+        raise NotResolved(current)
+    if foreman_informed_at is not None:
+        raise AlreadyInformed()

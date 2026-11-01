@@ -39,6 +39,8 @@ const RECORDED: RequestDetail = {
   outcome: null,
   explanation: null,
   resolved_at: null,
+  foreman_informed_at: null,
+  uninformed: false,
   default_owner_id: 1,
   events: [],
   calls: [],
