@@ -1,4 +1,4 @@
-"""Settings read from the environment (see docs/agents/cloud-sessions.md for local values)."""
+"""Settings read from the environment. Every variable is listed in the root `.env.example`."""
 
 import os
 
@@ -25,3 +25,13 @@ def office_main_number() -> str:
     if not number:
         raise RuntimeError("OFFICE_MAIN_NUMBER is not set")
     return number
+
+
+def app_env() -> str:
+    """Deployment name: local, staging or prod. Tags Sentry events."""
+    return os.environ.get("APP_ENV") or "local"
+
+
+def sentry_dsn() -> str | None:
+    """Sentry project DSN; unset or empty disables error reporting."""
+    return os.environ.get("SENTRY_DSN") or None
