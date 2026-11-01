@@ -2,8 +2,9 @@
 (architecture §3.4).
 
 The first delivery for a conversation records a Call bound to the caller's Foreman (or to no
-Foreman, outcome `rejected`, for an unrostered number). Later deliveries for the same
-conversation reuse that row, so a conversation can never be rebound to another number.
+Foreman, outcome `rejected`, for an unrostered number or a deactivated Foreman's number).
+Later deliveries for the same conversation reuse that row, so a conversation can never be
+rebound to another number.
 """
 
 from dataclasses import dataclass, field
@@ -15,7 +16,7 @@ from sqlalchemy import exists, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from app.db.models import Call, CallRequest, ForemanPhone, Job
+from app.db.models import Call, CallRequest, Foreman, ForemanPhone, Job
 from app.domain.call_outcome import call_outcome
 from app.domain.local_time import speakable_local_time
 
@@ -44,9 +45,14 @@ def _bind_call(
     call_sid: str | None,
     started_at: datetime,
 ) -> None:
-    """Insert the Call bound to the caller's Foreman, unless the conversation already has one."""
+    """Insert the Call bound to the caller's Foreman, unless the conversation already has one.
+
+    A deactivated Foreman's numbers stay on file but are refused like unrostered ones.
+    """
     foreman_id = session.scalar(
-        select(ForemanPhone.foreman_id).where(ForemanPhone.e164 == caller_e164)
+        select(ForemanPhone.foreman_id)
+        .join(Foreman)
+        .where(ForemanPhone.e164 == caller_e164, Foreman.active)
     )
     session.execute(
         insert(Call)
