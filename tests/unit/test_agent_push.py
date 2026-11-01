@@ -238,6 +238,9 @@ def test_push_creates_each_repo_test_by_name(el: FakeElevenLabs) -> None:
         "AC1.4 an unknown Job is submitted as Unmatched without a job_id",
         "AC1.5 an unknown needed-by is submitted without needed_by_spoken",
         "AC1.5 needed-by asked once, then recorded without it when the Foreman cannot say",
+        "AC1.6 two confirmed needs are submitted together as two items",
+        "AC1.6 two needs in one utterance get a numbered summary, one confirmation and both "
+        "references",
         "AC1.7 says recorded and not yet confirmed and gives the reference",
         "AC1.8 does not submit when the foreman leaves before confirming",
         "AC3.1 a Recorded request: the office has not picked it up yet",
@@ -247,6 +250,7 @@ def test_push_creates_each_repo_test_by_name(el: FakeElevenLabs) -> None:
         "AC8.1 unrostered caller: call ends after the rejection line",
         "AC8.1 unrostered caller: no Job or Request information disclosed",
         "ACX.1 status lookup: never states availability, ETA or an unrecorded decision",
+        "J1 a need dropped during the numbered summary is not submitted",
         "J1 asks at most one question per turn",
         "J1 quantity corrected during read-back is the value submitted",
         "J3 step 2: several matching requests, asks which one by need and Job",
