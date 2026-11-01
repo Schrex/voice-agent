@@ -36,6 +36,8 @@ export type QueueRequest = {
   recorded_at: string;
   /** Still Recorded after its ack window (Today 15 min, Planned 2 h): the backup is texted. */
   overdue: boolean;
+  /** The Foreman asked by phone to change it at or after In Progress; nothing was changed. */
+  change_requested: boolean;
 };
 
 /** Every time on the dashboard is shown in the office's zone, whatever the browser's zone. */

@@ -23,7 +23,8 @@
       "${tool_submit_requests}",
       "${tool_find_open_requests}",
       "${tool_create_callback_request}",
-      "${tool_add_note}"
+      "${tool_add_note}",
+      "${tool_amend_request}"
     ],
     "fallback_strategy": "raise_error"
   },
@@ -61,6 +62,12 @@
     "${tool_add_note}": [
       {
         "mock_result": "{\"ok\": true}",
+        "is_error": false
+      }
+    ],
+    "${tool_amend_request}": [
+      {
+        "mock_result": "{\"error\": \"The change could not be saved.\"}",
         "is_error": false
       }
     ]

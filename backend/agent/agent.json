@@ -21,7 +21,8 @@
           "${tool_submit_requests}",
           "${tool_find_open_requests}",
           "${tool_create_callback_request}",
-          "${tool_add_note}"
+          "${tool_add_note}",
+          "${tool_amend_request}"
         ],
         "built_in_tools": {
           "end_call": {

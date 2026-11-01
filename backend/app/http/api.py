@@ -67,6 +67,7 @@ class QueueRequestOut(BaseModel):
     status: str
     recorded_at: str  # UTC, ISO 8601 with "Z"; the dashboard shows it in America/New_York
     overdue: bool  # still Recorded after its ack window (ticket #22)
+    change_requested: bool  # asked by phone to change at/after In Progress (ticket #19)
 
 
 class QueueOut(BaseModel):
@@ -129,6 +130,7 @@ def queue(
                 status=row.status,
                 recorded_at=_utc(row.recorded_at),
                 overdue=row.overdue,
+                change_requested=row.change_requested,
             )
             for row in open_requests(session, clock())
         ]

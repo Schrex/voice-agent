@@ -33,6 +33,8 @@ class QueueRow:
     recorded_at: datetime
     overdue: bool
     """Still Recorded after its ack window (ticket #22, `domain.sla.is_overdue`)."""
+    change_requested: bool = False
+    """The Foreman asked by phone to change it at or after In Progress (ticket #19)."""
 
 
 def open_requests(session: Session, now: datetime) -> list[QueueRow]:
@@ -65,6 +67,7 @@ def open_requests(session: Session, now: datetime) -> list[QueueRow]:
             status=request.status,
             recorded_at=_recorded_at(request),
             overdue=is_overdue(Status(request.status), ack_due_at=request.ack_due_at, now=now),
+            change_requested=request.change_requested,
         )
         for request, job_name in rows
     ]

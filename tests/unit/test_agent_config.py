@@ -21,6 +21,7 @@ TOOL_IDS = {
     "find_open_requests": "tool_status",
     "create_callback_request": "tool_callback",
     "add_note": "tool_note",
+    "amend_request": "tool_amend",
 }
 
 
@@ -41,7 +42,7 @@ def test_first_message_is_automated_recorded_and_names_the_foreman() -> None:
 def test_tools_are_end_call_and_the_backend_tools() -> None:
     """end_call (built-in) hangs up; find_jobs (#13), resolve_needed_by (#14),
     submit_requests (#7), find_open_requests (#16), create_callback_request (#24) and
-    add_note (#17) are attached by their workspace ids."""
+    add_note (#17) and amend_request (#19) are attached by their workspace ids."""
     prompt = _agent()["prompt"]
 
     assert set(prompt["built_in_tools"]) == {"end_call"}
@@ -53,6 +54,7 @@ def test_tools_are_end_call_and_the_backend_tools() -> None:
         "tool_status",
         "tool_callback",
         "tool_note",
+        "tool_amend",
     ]
     assert not prompt.get("tools")
 
@@ -166,6 +168,33 @@ def test_add_note_tool_takes_the_ref_the_text_and_an_optional_urgent_flag() -> N
     assert set(schema["properties"]) == {"ref", "text", "urgent"}
     assert schema["properties"]["urgent"]["type"] == "boolean"
     assert schema["required"] == ["ref", "text"]
+
+
+def test_prompt_amends_with_amend_request_and_says_the_spec_sentence_when_not_applied() -> None:
+    """Ticket #19 / spec J4, AC4.2: the change goes through `amend_request` after a yes; when
+    the backend did not apply it the agent says the J4 sentence verbatim. The S test checks the
+    spoken behavior."""
+    prompt = _agent()["prompt"]["prompt"]
+
+    assert "# J4: Changing a Request" in prompt
+    assert "`amend_request`" in prompt
+    assert "I've flagged that for the office; it isn't changed yet." in prompt
+
+
+def test_amend_tool_takes_the_ref_and_only_the_changeable_details() -> None:
+    """Architecture §4.2: `amend_request(ref, changes)` → `{applied, status}`."""
+    [tool] = [
+        t["tool_config"] for t in desired_tools(ENV) if t["tool_config"]["name"] == "amend_request"
+    ]
+    schema = tool["api_schema"]["request_body_schema"]
+
+    assert schema["required"] == ["ref", "changes"]
+    assert set(schema["properties"]["changes"]["properties"]) == {
+        "need",
+        "quantity",
+        "unit",
+        "needed_by_spoken",
+    }
 
 
 def test_prompt_takes_a_callback_request_asking_one_optional_question() -> None:

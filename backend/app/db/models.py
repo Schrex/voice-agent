@@ -244,6 +244,9 @@ class Request(Base):
     # #22, app.domain.sla.ack_due_at); null while a Draft, and for Emergency or no Urgency.
     # Still Recorded after it = Overdue (derived).
     ack_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set when the Foreman asks by phone to change a Request at or after In Progress (spec J4,
+    # ticket #19): nothing was changed, a note says what was asked; the queue flags it.
+    change_requested: Mapped[bool] = mapped_column(default=False, server_default="false")
 
     @property
     def ref_display(self) -> str:

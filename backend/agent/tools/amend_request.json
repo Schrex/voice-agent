@@ -1,0 +1,48 @@
+{
+  "tool_config": {
+    "type": "webhook",
+    "name": "amend_request",
+    "description": "Change one of the Foreman's own Requests that find_open_requests returned, after the Foreman confirmed the change. The backend decides whether it is applied: before the Owner is working on it, it is changed and {\"applied\": true, ...} returns what to read back; once it is In Progress or Resolved nothing is changed, the office is flagged, and it returns {\"applied\": false, \"status\": ...}. Returns {\"error\": \"...\"} if the change could not be saved.",
+    "api_schema": {
+      "url": "${backend_url}/tools/amend_request",
+      "method": "POST",
+      "request_headers": {
+        "X-Tool-Secret": { "secret_id": "${tool_secret_id}" },
+        "X-Conversation-Id": { "variable_name": "system__conversation_id" }
+      },
+      "request_body_schema": {
+        "type": "object",
+        "description": "The Request and only the details the Foreman changes.",
+        "properties": {
+          "ref": {
+            "type": "string",
+            "description": "The ref of the Request as find_open_requests returned it, for example R-1042."
+          },
+          "changes": {
+            "type": "object",
+            "description": "Only the details the Foreman changes; leave out everything else.",
+            "properties": {
+              "need": {
+                "type": "string",
+                "description": "What is now needed, in the Foreman's words."
+              },
+              "quantity": {
+                "type": "number",
+                "description": "How many are now needed."
+              },
+              "unit": {
+                "type": "string",
+                "description": "The unit of the new quantity, for example trucks or tons."
+              },
+              "needed_by_spoken": {
+                "type": "string",
+                "description": "When it is now needed, in the Foreman's own words, for example \"Thursday at seven\". The same words you last gave resolve_needed_by."
+              }
+            }
+          }
+        },
+        "required": ["ref", "changes"]
+      }
+    }
+  }
+}
