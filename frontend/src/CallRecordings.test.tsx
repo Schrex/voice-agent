@@ -37,6 +37,8 @@ const DETAIL: RequestDetail = {
   outcome: null,
   explanation: null,
   resolved_at: null,
+  foreman_informed_at: null,
+  uninformed: false,
   default_owner_id: null,
   events: [],
   calls: [{ id: 7, started_at: "2026-11-02T01:29:00Z", relation: "created" }],

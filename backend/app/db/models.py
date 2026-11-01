@@ -187,6 +187,9 @@ class Request(Base):
             " AND resolved_at IS NOT NULL)",
             name="resolved_has_outcome",
         ),
+        CheckConstraint(
+            "foreman_informed_at IS NULL OR status = 'Resolved'", name="informed_only_when_resolved"
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -221,6 +224,9 @@ class Request(Base):
     outcome: Mapped[str | None] = mapped_column(String(32))
     explanation: Mapped[str | None] = mapped_column(Text)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set when a coordinator marks Foreman Informed (ticket #32); null = not marked. A Resolved
+    # Request not marked within the threshold shows Uninformed (app.domain.sla; derived).
+    foreman_informed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     @property
     def ref_display(self) -> str:

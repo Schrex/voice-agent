@@ -14,6 +14,7 @@ import {
 import { AcknowledgeAction } from "./AcknowledgeAction";
 import { useAuth } from "./App";
 import { CallRecordings } from "./CallRecordings";
+import { ForemanInformedAction } from "./ForemanInformedAction";
 import { ResolveAction } from "./ResolveAction";
 import { StartAction } from "./StartAction";
 
@@ -30,6 +31,7 @@ const KINDS: Record<string, string> = {
   acknowledged: "Acknowledged",
   in_progress: "In Progress",
   resolved: "Resolved",
+  foreman_informed: "Foreman Informed",
 };
 
 /** One request's fields and its full audit history: who, when, what changed. */
@@ -97,6 +99,7 @@ function Detail({ request }: { request: RequestDetail }) {
       <AcknowledgeAction request={request} />
       <StartAction request={request} />
       <ResolveAction request={request} />
+      <ForemanInformedAction request={request} />
       <h2 id="history">History</h2>
       <table className="history" aria-labelledby="history">
         <thead>

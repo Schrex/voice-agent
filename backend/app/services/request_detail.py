@@ -81,6 +81,7 @@ class RequestDetail:
     outcome: str | None  # set with explanation and resolved_at when Resolved
     explanation: str | None
     resolved_at: datetime | None
+    foreman_informed_at: datetime | None  # null until a coordinator marks Foreman Informed
     # The category's default Owner, offered first when acknowledging (null if none is set).
     default_owner_id: int | None
     events: list[Event]
@@ -121,6 +122,7 @@ def request_detail(session: Session, ref: str) -> RequestDetail | None:
         outcome=request.outcome,
         explanation=request.explanation,
         resolved_at=request.resolved_at,
+        foreman_informed_at=request.foreman_informed_at,
         default_owner_id=session.scalar(
             select(CategoryOwnerDefault.owner_id).where(
                 CategoryOwnerDefault.category == request.category

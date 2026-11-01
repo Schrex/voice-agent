@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { fetchQueue, neededByText, officeTime, type QueueRequest, type Staff } from "./api";
 import { useAuth } from "./App";
+import { UninformedList } from "./UninformedList";
 
 /** How often the queue refetches (spec J9 / architecture §1: refresh every 10 s). */
 const REFRESH_MS = 10_000;
@@ -36,6 +37,7 @@ export function QueuePage({ staff }: { staff: Staff }) {
         )}
         {queue.data && queue.data.length === 0 && <p>No requests.</p>}
         {queue.data && queue.data.length > 0 && <QueueTable requests={queue.data} now={queue.dataUpdatedAt} />}
+        <UninformedList />
       </main>
     </>
   );

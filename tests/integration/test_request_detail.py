@@ -121,6 +121,8 @@ def test_detail_returns_the_request_fields(
         "outcome": None,
         "explanation": None,
         "resolved_at": None,
+        "foreman_informed_at": None,
+        "uninformed": False,
         "default_owner_id": db_session.scalar(select(Owner.id).where(Owner.name == "Dispatch")),
     }
 
