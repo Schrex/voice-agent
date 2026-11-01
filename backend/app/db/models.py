@@ -1,5 +1,6 @@
 """SQLAlchemy models (architecture §5). Schema changes go through an Alembic migration."""
 
+import uuid
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
@@ -13,6 +14,7 @@ from sqlalchemy import (
     Sequence,
     String,
     Text,
+    Uuid,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -214,3 +216,15 @@ class CallRequest(Base):
     call_id: Mapped[int] = mapped_column(ForeignKey("calls.id"), primary_key=True)
     request_id: Mapped[int] = mapped_column(ForeignKey("requests.id"), primary_key=True, index=True)
     relation: Mapped[str] = mapped_column(String(16), primary_key=True)
+
+
+class Staff(Base):
+    """A dashboard user. `id` is the Supabase Auth user id (the access token's `sub`)."""
+
+    __tablename__ = "staff"
+    __table_args__ = (CheckConstraint("role IN ('coordinator', 'admin')", name="role"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    email: Mapped[str] = mapped_column(String(320))
+    role: Mapped[str] = mapped_column(String(20))

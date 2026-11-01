@@ -1,0 +1,18 @@
+{
+  "name": "AC1.1 first utterance identifies as automated and discloses recording",
+  "type": "simulation",
+  "dynamic_variables": {
+    "rejected": false,
+    "foreman_first_name": "Dale",
+    "jobs": "Penfield Sewer Replacement; Route 104 Widening",
+    "now_local": "Sunday, November 1, 2026, 3:04 PM"
+  },
+  "simulation_scenario": "You are Dale, a foreman on the Roster, calling from a job site. Wait for the assistant to speak first. Then say you need a dump truck at the Route 104 job tomorrow morning, and say goodbye after the assistant's next reply.",
+  "simulation_max_turns": 3,
+  "success_conditions": [
+    "The agent's first utterance, spoken before the caller says anything, says that it is an automated assistant (not a person).",
+    "The agent's first utterance says that the call is recorded.",
+    "The agent's first utterance addresses the caller as Dale.",
+    "The agent's first utterance contains no small talk (for example it does not ask how the caller's day is going)."
+  ]
+}

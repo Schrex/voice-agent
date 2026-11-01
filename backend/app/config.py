@@ -1,6 +1,7 @@
 """Settings read from the environment. Every variable is listed in the root `.env.example`."""
 
 import os
+from pathlib import Path
 
 
 def database_url() -> str:
@@ -51,3 +52,19 @@ def app_env() -> str:
 def sentry_dsn() -> str | None:
     """Sentry project DSN; unset or empty disables error reporting."""
     return os.environ.get("SENTRY_DSN") or None
+
+
+def supabase_jwt_secret() -> str:
+    """Supabase project's JWT secret (HS256); the backend verifies dashboard tokens with it."""
+    secret = os.environ.get("SUPABASE_JWT_SECRET")
+    if not secret:
+        raise RuntimeError("SUPABASE_JWT_SECRET is not set")
+    return secret
+
+
+def frontend_dist() -> Path:
+    """Built dashboard (`npm run build` output) served at `/`; defaults to `frontend/dist`."""
+    configured = os.environ.get("FRONTEND_DIST")
+    if configured:
+        return Path(configured)
+    return Path(__file__).resolve().parents[2] / "frontend" / "dist"

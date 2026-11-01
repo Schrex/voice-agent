@@ -1,0 +1,10 @@
+{
+  "staff": [
+    {
+      "id": "0b6f2c1e-8a8e-4d47-9c3f-5e2d7a1b0c01",
+      "name": "Casey Coordinator",
+      "email": "casey@example.com",
+      "role": "coordinator"
+    }
+  ]
+}
