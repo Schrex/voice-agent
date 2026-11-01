@@ -4,7 +4,7 @@
   "dynamic_variables": {
     "rejected": false,
     "foreman_first_name": "Dale",
-    "jobs": "Penfield Sewer Replacement; Route 104 Widening",
+    "jobs": "Penfield Sewer Replacement (job_id 12); Route 104 Widening (job_id 14)",
     "now_local": "Sunday, November 1, 2026, 3:04 PM"
   },
   "simulation_scenario": "You are Dale, a foreman on the Roster, calling from a job site. Wait for the assistant to speak first. Then say you need a dump truck at the Route 104 job tomorrow morning, and say goodbye after the assistant's next reply.",

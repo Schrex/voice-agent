@@ -1,0 +1,67 @@
+{
+  "tool_config": {
+    "type": "webhook",
+    "name": "submit_requests",
+    "description": "Record the Foreman's need as a Request. Call it only after you have read back the Job, quantity, unit and needed-by time and the Foreman said yes. Returns [{\"ref\": \"R-1042\"}] with the reference number, or {\"error\": \"...\"} if the request could not be saved.",
+    "api_schema": {
+      "url": "${backend_url}/tools/submit_requests",
+      "method": "POST",
+      "request_headers": {
+        "X-Tool-Secret": { "secret_id": "${tool_secret_id}" },
+        "X-Conversation-Id": { "variable_name": "system__conversation_id" }
+      },
+      "request_body_schema": {
+        "type": "object",
+        "description": "The confirmed need.",
+        "required": ["items"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "Exactly one item: the need the Foreman confirmed.",
+            "items": {
+              "type": "object",
+              "description": "One confirmed need.",
+              "required": ["job_id", "category", "need"],
+              "properties": {
+                "job_id": {
+                  "type": "integer",
+                  "description": "The job_id of the Job from the Active Jobs list. Never spoken."
+                },
+                "category": {
+                  "type": "string",
+                  "description": "The category of the need.",
+                  "enum": [
+                    "Trucking",
+                    "Equipment",
+                    "Equipment Repair",
+                    "Material",
+                    "Labor",
+                    "Information",
+                    "Callback",
+                    "Other"
+                  ]
+                },
+                "need": {
+                  "type": "string",
+                  "description": "What is needed, in the Foreman's words, for example 'tri-axle dump truck'."
+                },
+                "quantity": {
+                  "type": "number",
+                  "description": "How many, as a number, if the Foreman gave one."
+                },
+                "unit": {
+                  "type": "string",
+                  "description": "The unit of the quantity, for example 'trucks', 'loads', 'tons'."
+                },
+                "needed_by_spoken": {
+                  "type": "string",
+                  "description": "When it is needed, exactly as the Foreman said it, for example 'tomorrow at 7 AM'. Do not convert it."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
