@@ -7,6 +7,7 @@ import { fetchMe, type Staff } from "./api";
 import type { AuthClient, AuthSession } from "./auth";
 import { LoginPage } from "./LoginPage";
 import { QueuePage } from "./QueuePage";
+import { RequestDetailPage } from "./RequestDetailPage";
 
 type AuthState = { auth: AuthClient; session: AuthSession | null };
 
@@ -47,6 +48,12 @@ export function App({ auth }: { auth: AuthClient }) {
               path="/"
               element={
                 <RequireStaff>{(staff) => <QueuePage staff={staff} />}</RequireStaff>
+              }
+            />
+            <Route
+              path="/requests/:ref"
+              element={
+                <RequireStaff>{(staff) => <RequestDetailPage staff={staff} />}</RequireStaff>
               }
             />
             <Route

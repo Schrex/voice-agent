@@ -48,7 +48,7 @@ def open_requests(session: Session) -> list[QueueRow]:
             ref=request.ref_display,
             job=job_name,
             need=request.need,
-            quantity=_as_said(request.quantity),
+            quantity=as_said(request.quantity),
             unit=request.unit,
             needed_by=request.needed_by_spoken,
             urgency=request.urgency,
@@ -59,7 +59,7 @@ def open_requests(session: Session) -> list[QueueRow]:
     ]
 
 
-def _as_said(quantity: Decimal | None) -> str | None:
+def as_said(quantity: Decimal | None) -> str | None:
     """3.000 → "3", 2.50 → "2.5"."""
     if quantity is None:
         return None

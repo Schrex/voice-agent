@@ -38,3 +38,48 @@ export async function fetchQueue(accessToken: string): Promise<QueueRequest[]> {
   if (!response.ok) throw new Error(`GET /api/requests failed: ${response.status}`);
   return ((await response.json()) as { requests: QueueRequest[] }).requests;
 }
+
+/** Who made a change: the agent, a staff member (with their name) or the system. */
+export type Actor = { type: "agent" | "staff" | "system"; id: string | null; name: string | null };
+
+/** One audit event; `before`/`after` hold only the changed fields (`before` null on creation). */
+export type RequestEvent = {
+  /** UTC, ISO 8601. */
+  at: string;
+  actor: Actor;
+  kind: string;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+};
+
+/** One request with its full audit history (`GET /api/requests/{ref}`). */
+export type RequestDetail = {
+  ref: string;
+  foreman: string;
+  job: string;
+  category: string;
+  need: string;
+  quantity: string | null;
+  unit: string | null;
+  needed_by: string | null;
+  urgency: "Emergency" | "Today" | "Planned" | null;
+  status: "Draft" | "Recorded" | "Acknowledged" | "In Progress" | "Resolved";
+  source: "ai_call" | "coordinator";
+  /** UTC, ISO 8601. */
+  recorded_at: string;
+  /** Oldest first. */
+  events: RequestEvent[];
+};
+
+/** The request rendered `ref` ("R-1000"), or null if there is none. */
+export async function fetchRequestDetail(
+  accessToken: string,
+  ref: string,
+): Promise<RequestDetail | null> {
+  const response = await fetch(`/api/requests/${encodeURIComponent(ref)}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`GET /api/requests/${ref} failed: ${response.status}`);
+  return (await response.json()) as RequestDetail;
+}

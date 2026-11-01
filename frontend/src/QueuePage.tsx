@@ -67,7 +67,9 @@ function QueueTable({ requests, now }: { requests: QueueRequest[]; now: number }
       <tbody>
         {requests.map((r) => (
           <tr key={r.ref}>
-            <td>{r.ref}</td>
+            <td>
+              <Link to={`/requests/${r.ref}`}>{r.ref}</Link>
+            </td>
             <td>{r.job}</td>
             <td>{r.need}</td>
             <td>{quantity(r)}</td>
