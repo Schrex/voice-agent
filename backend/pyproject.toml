@@ -1,0 +1,42 @@
+[project]
+name = "voice-agent-backend"
+version = "0.1.0"
+description = "Voice agent backend: captures foremen's phoned-in Requests and tracks each to a resolution."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.27",
+    "mypy>=1.11",
+    "pytest>=8.3",
+    "ruff>=0.6",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["../tests/unit"]
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["app", "../tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["app", "../tests"]
+mypy_path = "."
+explicit_package_bases = true
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]

@@ -6,12 +6,13 @@ docs/task-dependencies.md is the original layer-based plan, superseded by the is
 
 | Current | Status | Notes |
 |---|---|---|
-| #1 Backend skeleton with health check and CI | todo | Only unblocked ticket |
+| #1 Backend skeleton with health check and CI | done | PR #39; CI red-on-failing-test proven in run 41345092960 |
 
 ## Decisions log
 
 - 2026-11-01: Product spec, architecture, task plan, ADRs 0001–0005 written.
 - 2026-11-01: Spec broken into 37 thin-slice tickets (#1–#37) with per-ticket Definition of Done; #37 is ready-for-human.
+- 2026-11-01 (#1): Backend managed with uv (`backend/pyproject.toml` + `uv.lock`); lint = ruff (check + format), type-check = mypy strict; pytest runs from `backend/` against root `tests/unit/`.
 
 ## Open items
 
