@@ -9,12 +9,12 @@ Status: **done** = test exists and passes in CI · **defined** = test written in
 | AC | Summary | Layer(s) | Ticket | Status | Tests |
 |---|---|---|---|---|---|
 | AC1.1 | First utterance: automated + recording disclosed | U, I, S, L | #5 | U/I done; S defined, deferred; L deferred | U `tests/unit/test_agent_config.py::test_first_message_is_automated_recorded_and_names_the_foreman`; I `tests/integration/test_agent_call_start_contract.py` (agent accepts call-start vars); S `backend/agent/tests/ac1_1_greeting_automated_and_recorded.json` |
-| AC1.2 | Read back job, quantity, unit, time before submit | S | #7 | planned | |
+| AC1.2 | Read back job, quantity, unit, time before submit | S, L | #7 | S defined, deferred; L deferred | S `backend/agent/tests/ac1_2_read_back_before_submit.json` (simulation), `backend/agent/tests/ac1_2_no_submit_before_confirmation.json` (tool, verify absence); correction `backend/agent/tests/j1_corrected_quantity_is_submitted.json` (tool); one question per turn `backend/agent/tests/j1_one_question_per_turn.json` (simulation) |
 | AC1.3 | Alias → canonical job name read back | U, S | #13 | planned | |
 | AC1.4 | No job match → Unmatched, no guess | U, I, S | #13 | planned | |
 | AC1.5 | Needed-by asked once, then recorded unknown | U, S | #14 | planned | |
 | AC1.6 | Two needs → two Recorded requests, both refs read | I, S | #15 | planned | |
-| AC1.7 | Says recorded, not yet confirmed, gives ref | S | #7 | planned | |
+| AC1.7 | Says recorded, not yet confirmed, gives ref | U, I, S, L | #6, #7 | U/I done; S defined, deferred; L deferred | U `tests/unit/test_agent_config.py::test_prompt_gives_the_spec_after_submit_sentence_verbatim`; I `tests/integration/test_submit_requests.py::test_valid_call_records_a_request_with_a_reference_and_an_agent_event`, `::test_references_are_sequential`, `tests/integration/test_agent_submit_tool_contract.py` (tool config reaches the endpoint, Recorded request with its ref); S `backend/agent/tests/ac1_7_recorded_not_yet_confirmed_with_reference.json` |
 | AC1.8 | Hang-up before confirm → Draft, no Recorded | I, S | #28 | planned | |
 | AC1.9 | Today request → on-duty SMS within 60 s | I, L | #21 | planned | |
 | AC2.1 | Same job + category → asks if it's the existing request | U, S | #18 | planned | |
