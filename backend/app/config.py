@@ -110,6 +110,24 @@ def postmark_api_base() -> str:
     return os.environ.get("POSTMARK_API_BASE") or "https://api.postmarkapp.com"
 
 
+_TRUE = {"1", "true", "yes", "on"}
+_FALSE = {"0", "false", "no", "off"}
+
+
+def scheduler_enabled() -> bool:
+    """Whether the app runs its scheduled jobs (architecture §6) while up. Default true (prod).
+
+    `SCHEDULER_ENABLED=false` turns them off where a clock-driven job would interfere, e.g. the
+    Playwright backend (the 17:00 end-of-day email). Any other value is a typo: refuse to start.
+    """
+    raw = (os.environ.get("SCHEDULER_ENABLED") or "true").strip().lower()
+    if raw in _TRUE:
+        return True
+    if raw in _FALSE:
+        return False
+    raise RuntimeError(f"SCHEDULER_ENABLED must be true or false, not {raw!r}")
+
+
 def frontend_dist() -> Path:
     """Built dashboard (`npm run build` output) served at `/`; defaults to `frontend/dist`."""
     configured = os.environ.get("FRONTEND_DIST")

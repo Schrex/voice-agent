@@ -44,6 +44,8 @@ export default defineConfig({
         ELEVENLABS_API_KEY: elevenLabsKey,
         ELEVENLABS_API_BASE: `http://127.0.0.1:${elevenLabsPort}`,
         OFFICE_MAIN_NUMBER: "585-555-0100",
+        // No clock-driven jobs under test: the 17:00 end-of-day email would fire mid-run.
+        SCHEDULER_ENABLED: "false",
         VITE_SUPABASE_URL: E2E_SUPABASE_URL,
         VITE_SUPABASE_ANON_KEY: "e2e-anon-key",
       },

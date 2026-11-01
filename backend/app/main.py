@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app import jobs
-from app.config import frontend_dist
+from app.config import frontend_dist, scheduler_enabled
 from app.http import (
     api,
     api_admin_roster,
@@ -25,7 +25,8 @@ init_from_env()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    jobs.start_scheduler()  # scheduled jobs, architecture §6 (end-of-day summary, #23)
+    if scheduler_enabled():
+        jobs.start_scheduler()  # scheduled jobs, architecture §6 (end-of-day summary, #23)
     try:
         yield
     finally:
