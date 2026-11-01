@@ -1,0 +1,12 @@
+{
+  "jobs": [
+    { "name": "Route 104 Widening", "active": true, "aliases": ["Route 104", "104 job"] },
+    { "name": "Penfield Sewer Replacement", "active": true, "aliases": ["Penfield sewer"] },
+    { "name": "Lakeside Plaza Site Work", "active": false, "aliases": ["Lakeside"] }
+  ],
+  "foremen": [
+    { "first_name": "Dale", "last_name": "Kramer", "active": true, "phones": ["+15855550101", "+15855550102"] },
+    { "first_name": "Rita", "last_name": "Owens", "active": true, "phones": ["+15855550103"] },
+    { "first_name": "Marco", "last_name": "Bellini", "active": false, "phones": ["+15855550104"] }
+  ]
+}
