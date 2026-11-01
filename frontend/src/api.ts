@@ -77,6 +77,11 @@ export type RequestDetail = {
   source: "ai_call" | "coordinator";
   /** UTC, ISO 8601; null while the request is a Draft. */
   recorded_at: string | null;
+  owner: Owner | null;
+  /** UTC, ISO 8601; null until Acknowledged. */
+  acknowledged_at: string | null;
+  /** The category's default Owner, offered first when acknowledging. */
+  default_owner_id: number | null;
   /** Oldest first. */
   events: RequestEvent[];
   /** Calls that created, looked up or amended the request; oldest first. */
@@ -169,4 +174,31 @@ export async function recordDraft(accessToken: string, ref: string): Promise<voi
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!response.ok) throw new Error(`POST /api/requests/${ref}/record failed: ${response.status}`);
+}
+
+/** The person or team responsible for fulfilling a request. */
+export type Owner = { id: number; name: string };
+
+/** Every Owner, sorted by name (`GET /api/owners`). */
+export async function fetchOwners(accessToken: string): Promise<Owner[]> {
+  const response = await fetch("/api/owners", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(`GET /api/owners failed: ${response.status}`);
+  return ((await response.json()) as { owners: Owner[] }).owners;
+}
+
+/** Recorded → Acknowledged with an Owner; resolves to the updated request. */
+export async function acknowledgeRequest(
+  accessToken: string,
+  ref: string,
+  ownerId: number,
+): Promise<RequestDetail> {
+  const response = await fetch(`/api/requests/${encodeURIComponent(ref)}/acknowledge`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ owner_id: ownerId }),
+  });
+  if (!response.ok) throw new Error(`acknowledge ${ref} failed: ${response.status}`);
+  return (await response.json()) as RequestDetail;
 }

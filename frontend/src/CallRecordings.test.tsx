@@ -31,6 +31,9 @@ const DETAIL: RequestDetail = {
   status: "Recorded",
   source: "ai_call",
   recorded_at: "2026-11-02T01:30:00Z",
+  owner: null,
+  acknowledged_at: null,
+  default_owner_id: null,
   events: [],
   calls: [{ id: 7, started_at: "2026-11-02T01:29:00Z", relation: "created" }],
 };

@@ -9,7 +9,17 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import Call, CallRequest, Foreman, Job, Request, RequestEvent, Staff
+from app.db.models import (
+    Call,
+    CallRequest,
+    CategoryOwnerDefault,
+    Foreman,
+    Job,
+    Owner,
+    Request,
+    RequestEvent,
+    Staff,
+)
 from app.services.queue import as_said
 
 _REF = re.compile(r"^R-(\d{1,18})$")
@@ -43,6 +53,12 @@ class LinkedCall:
 
 
 @dataclass(frozen=True)
+class OwnerRef:
+    id: int
+    name: str
+
+
+@dataclass(frozen=True)
 class RequestDetail:
     ref: str
     foreman: str
@@ -58,6 +74,10 @@ class RequestDetail:
     status: str
     source: str
     recorded_at: datetime | None  # null while the Request is a Draft
+    owner: OwnerRef | None
+    acknowledged_at: datetime | None
+    # The category's default Owner, offered first when acknowledging (null if none is set).
+    default_owner_id: int | None
     events: list[Event]
     calls: list[LinkedCall]  # oldest first
 
@@ -90,6 +110,13 @@ def request_detail(session: Session, ref: str) -> RequestDetail | None:
         status=request.status,
         source=request.source,
         recorded_at=request.recorded_at,
+        owner=_owner(session, request.owner_id),
+        acknowledged_at=request.acknowledged_at,
+        default_owner_id=session.scalar(
+            select(CategoryOwnerDefault.owner_id).where(
+                CategoryOwnerDefault.category == request.category
+            )
+        ),
         events=_events(session, request.id),
         calls=_linked_calls(session, request.id),
     )
@@ -103,6 +130,11 @@ def _linked_calls(session: Session, request_id: int) -> list[LinkedCall]:
         .order_by(Call.started_at, Call.id, CallRequest.relation)
     )
     return [LinkedCall(id=i, started_at=at, relation=rel) for i, at, rel in rows.tuples()]
+
+
+def _owner(session: Session, owner_id: int | None) -> OwnerRef | None:
+    owner = session.get(Owner, owner_id) if owner_id is not None else None
+    return OwnerRef(id=owner.id, name=owner.name) if owner else None
 
 
 def _events(session: Session, request_id: int) -> list[Event]:

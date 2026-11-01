@@ -45,6 +45,7 @@ test("opening a recorded request shows its fields and the Recorded event in its 
     "Monday morning",
     "—",
     "Recorded",
+    "—",
     "AI call",
     /^\w{3}, \w{3} \d{1,2}, \d{1,2}:\d{2} (AM|PM)$/,
   ]);

@@ -16,5 +16,9 @@
       "email": "avery@example.com",
       "role": "admin"
     }
+  ],
+  "owners": [
+    { "name": "Dispatch", "default_for": ["Trucking"] },
+    { "name": "Equipment Manager", "default_for": ["Equipment", "Equipment Repair"] }
   ]
 }

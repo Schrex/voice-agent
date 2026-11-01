@@ -6,7 +6,16 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.db.models import Base, Foreman, ForemanPhone, Job, JobAlias, Staff
+from app.db.models import (
+    Base,
+    CategoryOwnerDefault,
+    Foreman,
+    ForemanPhone,
+    Job,
+    JobAlias,
+    Owner,
+    Staff,
+)
 from app.services.roster import RosterFile, load_roster_file, seed_roster
 
 SAMPLE = Path(__file__).resolve().parents[2] / "backend" / "seed" / "sample_roster.json"
@@ -58,3 +67,57 @@ def test_seed_rejects_unknown_staff_role() -> None:
     entry = {"id": str(uuid.uuid4()), "name": "X", "email": "x@example.com", "role": "owner"}
     with pytest.raises(ValidationError):
         RosterFile.model_validate({"staff": [entry]})
+
+
+def test_seed_upserts_owners_by_name_with_their_default_categories(db_session: Session) -> None:
+    seed_roster(
+        db_session,
+        RosterFile.model_validate(
+            {
+                "owners": [
+                    {"name": "Dispatch", "default_for": ["Trucking", "Material"]},
+                    {"name": "Shop", "default_for": ["Equipment Repair"]},
+                ]
+            }
+        ),
+    )
+    seed_roster(
+        db_session,
+        RosterFile.model_validate(
+            {
+                "owners": [
+                    {"name": "Dispatch", "phone_e164": "+15855550150", "default_for": ["Trucking"]},
+                    {"name": "Shop", "default_for": ["Equipment Repair", "Material"]},
+                ]
+            }
+        ),
+    )
+
+    owners = {o.name: o for o in db_session.scalars(select(Owner)).all()}
+    assert sorted(owners) == ["Dispatch", "Shop"]
+    assert owners["Dispatch"].phone_e164 == "+15855550150"
+    defaults = {
+        d.category: d.owner_id for d in db_session.scalars(select(CategoryOwnerDefault)).all()
+    }
+    assert defaults == {
+        "Trucking": owners["Dispatch"].id,
+        "Material": owners["Shop"].id,
+        "Equipment Repair": owners["Shop"].id,
+    }
+
+
+def test_seed_rejects_an_owner_default_for_an_unknown_category() -> None:
+    with pytest.raises(ValidationError):
+        RosterFile.model_validate({"owners": [{"name": "Dispatch", "default_for": ["Gravel"]}]})
+
+
+def test_seed_rejects_a_category_defaulted_to_two_owners() -> None:
+    with pytest.raises(ValidationError):
+        RosterFile.model_validate(
+            {
+                "owners": [
+                    {"name": "Dispatch", "default_for": ["Trucking"]},
+                    {"name": "Shop", "default_for": ["Trucking"]},
+                ]
+            }
+        )

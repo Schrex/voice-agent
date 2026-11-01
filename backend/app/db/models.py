@@ -141,6 +141,29 @@ CATEGORIES = (
     "Other",
 )
 REQUEST_STATUSES = tuple(s.value for s in Status)
+
+
+class Owner(Base):
+    """The person or team responsible for fulfilling a Request (GLOSSARY "Owner")."""
+
+    __tablename__ = "owners"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), unique=True)
+    phone_e164: Mapped[str | None] = mapped_column(String(16))
+    email: Mapped[str | None] = mapped_column(String(320))
+
+
+class CategoryOwnerDefault(Base):
+    """The Owner a coordinator is offered first when acknowledging a Request of `category`."""
+
+    __tablename__ = "category_owner_defaults"
+    __table_args__ = (CheckConstraint(_one_of("category", CATEGORIES), name="category_values"),)
+
+    category: Mapped[str] = mapped_column(String(32), primary_key=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("owners.id"), index=True)
+
+
 REQUEST_SOURCES = ("ai_call", "coordinator")
 URGENCIES = tuple(u.value for u in Urgency)
 
@@ -180,6 +203,9 @@ class Request(Base):
     source: Mapped[str] = mapped_column(String(20))
     # When the Request became Recorded; null while it is a Draft.
     recorded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set together when a coordinator acknowledges (ticket #11); null while Recorded.
+    owner_id: Mapped[int | None] = mapped_column(ForeignKey("owners.id"), index=True)
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     @property
     def ref_display(self) -> str:

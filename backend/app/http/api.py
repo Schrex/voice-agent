@@ -8,10 +8,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.clock import Clock, get_clock
 from app.db.session import get_session
+from app.domain.lifecycle import OwnerRequired, TransitionNotAllowed
 from app.http.auth import CurrentStaff
+from app.services.owners import list_owners
 from app.services.queue import open_requests
-from app.services.request_detail import request_detail
+from app.services.request_detail import RequestDetail, request_detail
+from app.services.requests import RequestNotFound, UnknownOwner, acknowledge_request
 
 router = APIRouter(prefix="/api")
 
@@ -88,6 +92,11 @@ class LinkedCallOut(BaseModel):
     relation: str  # created | looked_up | amended
 
 
+class OwnerOut(BaseModel):
+    id: int
+    name: str
+
+
 class RequestDetailOut(BaseModel):
     ref: str
     foreman: str
@@ -102,6 +111,9 @@ class RequestDetailOut(BaseModel):
     status: str
     source: str
     recorded_at: str | None  # null while the Request is a Draft
+    owner: OwnerOut | None
+    acknowledged_at: str | None  # UTC, ISO 8601 with "Z"; null until Acknowledged
+    default_owner_id: int | None  # the category's default Owner, offered when acknowledging
     events: list[EventOut]  # oldest first
     calls: list[LinkedCallOut]  # oldest first
 
@@ -114,6 +126,49 @@ def detail(
     found = request_detail(session, ref)
     if found is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such request")
+    return _detail_out(found)
+
+
+class AcknowledgeIn(BaseModel):
+    # Optional here so a missing Owner reaches the lifecycle guard (AC9.1) rather than
+    # FastAPI's validation; either way the answer is 422 and nothing is written.
+    owner_id: int | None = None
+
+
+@router.post("/requests/{ref}/acknowledge")
+def acknowledge(
+    ref: str,
+    body: AcknowledgeIn,
+    staff: CurrentStaff,
+    session: Annotated[Session, Depends(get_session)],
+    clock: Annotated[Clock, Depends(get_clock)],
+) -> RequestDetailOut:
+    """Recorded → Acknowledged with an Owner; returns the updated Request."""
+    try:
+        acknowledge_request(
+            session, ref=ref, owner_id=body.owner_id, staff_id=staff.id, now=clock()
+        )
+    except RequestNotFound as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such request") from exc
+    except (OwnerRequired, TransitionNotAllowed, UnknownOwner) as exc:
+        session.rollback()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+    found = request_detail(session, ref)
+    assert found is not None
+    return _detail_out(found)
+
+
+class OwnersOut(BaseModel):
+    owners: list[OwnerOut]
+
+
+@router.get("/owners")
+def owners(staff: CurrentStaff, session: Annotated[Session, Depends(get_session)]) -> OwnersOut:
+    """Every Owner by name, for the Acknowledge picker."""
+    return OwnersOut(owners=[OwnerOut(id=o.id, name=o.name) for o in list_owners(session)])
+
+
+def _detail_out(found: RequestDetail) -> RequestDetailOut:
     return RequestDetailOut(
         ref=found.ref,
         foreman=found.foreman,
@@ -128,6 +183,9 @@ def detail(
         status=found.status,
         source=found.source,
         recorded_at=None if found.recorded_at is None else _utc(found.recorded_at),
+        owner=OwnerOut(id=found.owner.id, name=found.owner.name) if found.owner else None,
+        acknowledged_at=_utc(found.acknowledged_at) if found.acknowledged_at else None,
+        default_owner_id=found.default_owner_id,
         events=[
             EventOut(
                 at=_utc(e.at),
