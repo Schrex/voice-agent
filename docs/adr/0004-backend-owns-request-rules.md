@@ -1,0 +1,3 @@
+# The voice agent calls coarse tools; the backend owns every rule
+
+The ElevenLabs agent only gathers and confirms details, then calls a small set of coarse tools (submit_requests, amend_request, transfer_to_office…). Lifecycle transitions, duplicate checks, the "no changes once In Progress" rule, time parsing ("tomorrow at seven") and caller identity all live in the FastAPI backend. Tool calls never carry a foreman ID from the LLM; the backend resolves the foreman from the ElevenLabs conversation ID mapped to the verified caller number at call start. This keeps the model unable to act outside policy and makes the voice vendor swappable.
