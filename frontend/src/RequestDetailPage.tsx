@@ -4,22 +4,14 @@ import { Link, useParams } from "react-router-dom";
 import {
   fetchRequestDetail,
   jobText,
+  neededByText,
+  officeTime,
   type Actor,
   type RequestDetail,
   type RequestEvent,
   type Staff,
 } from "./api";
 import { useAuth } from "./App";
-
-/** Every time on the dashboard is shown in the office's zone, whatever the browser's zone. */
-const timeFormat = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/New_York",
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-});
 
 /** Spec §5 "source (AI call / coordinator-logged)". */
 const SOURCES: Record<RequestDetail["source"], string> = {
@@ -67,11 +59,11 @@ function Detail({ request }: { request: RequestDetail }) {
     ["Category", request.category],
     ["Need", request.need],
     ["Quantity", quantity(request)],
-    ["Needed-by", request.needed_by ?? "—"],
+    ["Needed-by", neededByText(request)],
     ["Urgency", request.urgency ?? "—"],
     ["Status", request.status],
     ["Source", SOURCES[request.source]],
-    ["Recorded", timeFormat.format(new Date(request.recorded_at))],
+    ["Recorded", officeTime.format(new Date(request.recorded_at))],
   ];
   return (
     <>
@@ -98,7 +90,7 @@ function Detail({ request }: { request: RequestDetail }) {
           {request.events.map((e, i) => (
             <tr key={i}>
               <td>
-                <time dateTime={e.at}>{timeFormat.format(new Date(e.at))}</time>
+                <time dateTime={e.at}>{officeTime.format(new Date(e.at))}</time>
               </td>
               <td>{who(e.actor)}</td>
               <td>{KINDS[e.kind] ?? e.kind}</td>

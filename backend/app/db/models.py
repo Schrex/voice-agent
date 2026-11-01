@@ -172,9 +172,13 @@ class Request(Base):
     need: Mapped[str] = mapped_column(Text)
     quantity: Mapped[Decimal | None] = mapped_column(Numeric)
     unit: Mapped[str | None] = mapped_column(String(64))
-    # Needed-by as the Foreman said it; parsing into a time comes later (ticket #14).
+    # Needed-by as the Foreman said it; null when they could not say (needed-by unknown).
     needed_by_spoken: Mapped[str | None] = mapped_column(Text)
-    # Null until urgency inference (ticket #14) sets it; the queue shows nulls last.
+    # `needed_by_spoken` resolved to a time (app.domain.timeparse); null when unknown, not
+    # understood, or only a day was said.
+    needed_by: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set from the resolved needed-by's day; null when needed-by is unknown or not understood.
+    # The queue shows nulls last.
     urgency: Mapped[str | None] = mapped_column(String(16))
     status: Mapped[str] = mapped_column(String(20))
     source: Mapped[str] = mapped_column(String(20))

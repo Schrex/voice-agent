@@ -12,7 +12,11 @@ ENV = {
     "hook_secret_id": "s",
     "tool_secret_id": "t",
 }
-TOOL_IDS = {"find_jobs": "tool_find", "submit_requests": "tool_submit"}
+TOOL_IDS = {
+    "find_jobs": "tool_find",
+    "resolve_needed_by": "tool_resolve",
+    "submit_requests": "tool_submit",
+}
 
 
 def _agent() -> dict[str, Any]:
@@ -29,14 +33,14 @@ def test_first_message_is_automated_recorded_and_names_the_foreman() -> None:
     assert "{{foreman_first_name}}" in first
 
 
-def test_tools_are_end_call_find_jobs_and_submit_requests() -> None:
-    """end_call (built-in) hangs up; find_jobs (#13) and submit_requests (#7) are attached by
-    their workspace ids."""
+def test_tools_are_end_call_find_jobs_resolve_needed_by_and_submit_requests() -> None:
+    """end_call (built-in) hangs up; find_jobs (#13), resolve_needed_by (#14) and
+    submit_requests (#7) are attached by their workspace ids."""
     prompt = _agent()["prompt"]
 
     assert set(prompt["built_in_tools"]) == {"end_call"}
     assert prompt["built_in_tools"]["end_call"]["params"] == {"system_tool_type": "end_call"}
-    assert prompt["tool_ids"] == ["tool_find", "tool_submit"]
+    assert prompt["tool_ids"] == ["tool_find", "tool_resolve", "tool_submit"]
     assert not prompt.get("tools")
 
 
@@ -63,3 +67,14 @@ def test_prompt_has_the_job_matched_by_find_jobs_never_picked_by_the_agent() -> 
     assert "`find_jobs`" in prompt
     assert "job_spoken" in prompt
     assert "job_id" in prompt and "(job_id" not in prompt
+
+
+def test_prompt_reads_back_the_needed_by_the_backend_resolved() -> None:
+    """Ticket #14 / ADR 0004: the backend works out the day and time; the agent reads back what
+    `resolve_needed_by` returned, and a needed-by the Foreman cannot give is left out (AC1.5).
+    The S tests check the spoken behavior."""
+    prompt = _agent()["prompt"]["prompt"]
+
+    assert "`resolve_needed_by`" in prompt
+    assert "needed_by_resolved" in prompt
+    assert "leave `needed_by_spoken` out" in prompt

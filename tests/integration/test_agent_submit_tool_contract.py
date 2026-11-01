@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from agent.push import desired_tools
 from app.clock import get_clock
 from app.db.models import Job, Request
-from app.http.tools import Category, FindJobsBody, SubmitItem
+from app.http.tools import Category, FindJobsBody, ResolveNeededByBody, SubmitItem
 from app.main import app
 from app.services.roster import load_roster_file, seed_roster
 
@@ -49,7 +49,7 @@ def _item_schema() -> dict[str, Any]:
     return schema
 
 
-@pytest.mark.parametrize("name", ["find_jobs", "submit_requests"])
+@pytest.mark.parametrize("name", ["find_jobs", "resolve_needed_by", "submit_requests"])
 def test_tool_url_is_the_backend_route(name: str) -> None:
     api = _tool(name)["api_schema"]
     path = api["url"].removeprefix(BACKEND)
@@ -61,6 +61,14 @@ def test_tool_url_is_the_backend_route(name: str) -> None:
 def test_find_jobs_fields_match_what_the_backend_accepts() -> None:
     schema = _tool("find_jobs")["api_schema"]["request_body_schema"]
     fields = FindJobsBody.model_fields
+
+    assert set(schema["properties"]) == set(fields)
+    assert set(schema["required"]) == {name for name, f in fields.items() if f.is_required()}
+
+
+def test_resolve_needed_by_fields_match_what_the_backend_accepts() -> None:
+    schema = _tool("resolve_needed_by")["api_schema"]["request_body_schema"]
+    fields = ResolveNeededByBody.model_fields
 
     assert set(schema["properties"]) == set(fields)
     assert set(schema["required"]) == {name for name, f in fields.items() if f.is_required()}

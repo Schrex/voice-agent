@@ -135,6 +135,7 @@ Audio stays in ElevenLabs (retention set to 90 days); the dashboard streams it v
 | Tool | Input | Output | Rules enforced in backend |
 |---|---|---|---|
 | `find_jobs` | `query` | up to 3 `{job_id, name, score}` | Active jobs only; score threshold → empty = Unmatched |
+| `resolve_needed_by` | `needed_by_spoken` | `{needed_by_resolved, urgency}` | Time parsing for the read-back before submit (added by #14); writes nothing |
 | `find_open_requests` | `job_id?`, `category?` | `[{ref, job, category, need, quantity, unit, needed_by, status, owner, outcome, explanation}]` | Caller's own requests only |
 | `submit_requests` | `items[]: {job_id?, job_spoken, category, need, quantity?, unit?, needed_by_spoken?, urgency_hint?}` | `[{ref, needed_by_resolved, urgency}]` | Time parsing, urgency, default owner, Today SMS alert, Recorded status |
 | `amend_request` | `ref`, `changes` | `{applied: bool, status}` | Applies only before In Progress; else note + Change requested flag |

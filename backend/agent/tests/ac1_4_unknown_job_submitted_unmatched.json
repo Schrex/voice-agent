@@ -45,7 +45,32 @@
     },
     {
       "role": "agent",
-      "message": "I couldn't match the Smith pit to a Job, so I'll record it as you said it. One excavator operator at the Smith pit, tomorrow at 6:30 AM. Should I submit it?",
+      "message": null,
+      "time_in_call_secs": 9,
+      "tool_calls": [
+        {
+          "type": "webhook",
+          "request_id": "resolve_needed_by_0001",
+          "tool_name": "resolve_needed_by",
+          "tool_id": "${tool_resolve_needed_by}",
+          "params_as_json": "{\"needed_by_spoken\": \"tomorrow at 6:30 AM\"}",
+          "tool_has_been_called": true
+        }
+      ],
+      "tool_results": [
+        {
+          "type": "webhook",
+          "request_id": "resolve_needed_by_0001",
+          "tool_name": "resolve_needed_by",
+          "result_value": "{\"needed_by_resolved\": \"Monday, November 2 at 6:30 AM\", \"urgency\": \"Planned\"}",
+          "is_error": false,
+          "tool_has_been_called": true
+        }
+      ]
+    },
+    {
+      "role": "agent",
+      "message": "I couldn't match the Smith pit to a Job, so I'll record it as you said it. One excavator operator at the Smith pit, Monday, November 2 at 6:30 AM. Should I submit it?",
       "time_in_call_secs": 12
     },
     {
@@ -64,7 +89,7 @@
         "path": "items",
         "eval": {
           "type": "llm",
-          "description": "Exactly one item, with no job_id at all (not 12, not 14, not any number), job_spoken naming the Smith pit, category Labor, quantity 1, and needed_by_spoken saying tomorrow at 6:30 AM."
+          "description": "Exactly one item, with no job_id at all (not 12, not 14, not any number), job_spoken naming the Smith pit, category Labor, quantity 1, and needed_by_spoken in the Foreman's words, tomorrow at 6:30 AM (not the resolved Monday date)."
         }
       }
     ]

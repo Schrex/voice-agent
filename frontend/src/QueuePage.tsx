@@ -1,21 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
-import { fetchQueue, type QueueRequest, type Staff } from "./api";
+import { fetchQueue, neededByText, officeTime, type QueueRequest, type Staff } from "./api";
 import { useAuth } from "./App";
 
 /** How often the queue refetches (spec J9 / architecture §1: refresh every 10 s). */
 const REFRESH_MS = 10_000;
-
-/** Every time on the dashboard is shown in the office's zone, whatever the browser's zone. */
-const recordedFormat = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/New_York",
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-});
 
 /** Open requests (spec J9), sorted by the backend: urgency, then oldest first. */
 export function QueuePage({ staff }: { staff: Staff }) {
@@ -79,13 +69,13 @@ function QueueTable({ requests, now }: { requests: QueueRequest[]; now: number }
             </td>
             <td>{r.need}</td>
             <td>{quantity(r)}</td>
-            <td>{r.needed_by ?? "—"}</td>
+            <td>{neededByText(r)}</td>
             <td>{r.urgency ?? "—"}</td>
             <td>{r.status}</td>
             <td>
               {age(now - Date.parse(r.recorded_at))}
               <time className="recorded" dateTime={r.recorded_at}>
-                Recorded {recordedFormat.format(new Date(r.recorded_at))}
+                Recorded {officeTime.format(new Date(r.recorded_at))}
               </time>
             </td>
           </tr>

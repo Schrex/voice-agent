@@ -161,11 +161,11 @@ def _tool_id(el: FakeElevenLabs, name: str) -> str:
     return tool_id
 
 
-@pytest.mark.parametrize("name", ["find_jobs", "submit_requests"])
+@pytest.mark.parametrize("name", ["find_jobs", "resolve_needed_by", "submit_requests"])
 def test_push_creates_each_tool_pointing_at_the_env_backend(el: FakeElevenLabs, name: str) -> None:
     push(ENV, el.client())
 
-    assert len(el.tools) == 2
+    assert len(el.tools) == 3
     config = el.tools[_tool_id(el, name)]["tool_config"]
     assert config["type"] == "webhook"
     assert config["api_schema"]["url"] == f"https://backend.example.test/tools/{name}"
@@ -182,6 +182,7 @@ def test_pushed_agent_uses_the_created_tools_by_id(el: FakeElevenLabs) -> None:
     (agent,) = el.agents.values()
     assert agent["conversation_config"]["agent"]["prompt"]["tool_ids"] == [
         _tool_id(el, "find_jobs"),
+        _tool_id(el, "resolve_needed_by"),
         _tool_id(el, "submit_requests"),
     ]
 
@@ -227,10 +228,13 @@ def test_push_creates_each_repo_test_by_name(el: FakeElevenLabs) -> None:
     assert sorted(t["name"] for t in el.tests.values()) == [
         "AC1.1 first utterance identifies as automated and discloses recording",
         "AC1.2 does not submit before the read-back is confirmed",
+        "AC1.2 needed-by is read back as the weekday and time the backend resolved",
         "AC1.2 reads back Job, quantity, unit and time before asking to submit",
         "AC1.3 a Job alias is read back as the canonical Job name",
         "AC1.4 an unknown Job is read back as said, never as a listed Job",
         "AC1.4 an unknown Job is submitted as Unmatched without a job_id",
+        "AC1.5 an unknown needed-by is submitted without needed_by_spoken",
+        "AC1.5 needed-by asked once, then recorded without it when the Foreman cannot say",
         "AC1.7 says recorded and not yet confirmed and gives the reference",
         "AC8.1 unrostered caller: call ends after the rejection line",
         "AC8.1 unrostered caller: no Job or Request information disclosed",
@@ -330,19 +334,21 @@ def test_cli_prints_one_line_per_object_and_exits_0(
     assert main(["--env", "staging"], client=el.client(), agent_dir=agent_dir) == 0
 
     out = capsys.readouterr().out.splitlines()
-    assert out[:3] == [
+    assert out[:4] == [
         "tool 'find_jobs': created (tool_0001)",
-        "tool 'submit_requests': created (tool_0002)",
+        "tool 'resolve_needed_by': created (tool_0002)",
+        "tool 'submit_requests': created (tool_0003)",
         "agent 'Field Request Assistant (test)': created (agent_0001)",
     ]
     second = out[len(out) // 2 :]
-    assert second[:3] == [
+    assert second[:4] == [
         "tool 'find_jobs': unchanged",
+        "tool 'resolve_needed_by': unchanged",
         "tool 'submit_requests': unchanged",
         "agent 'Field Request Assistant (test)': unchanged",
     ]
-    assert len(second) == 3 + 11 + 1
-    assert all(line.startswith("test '") and line.endswith("': unchanged") for line in second[3:-1])
+    assert len(second) == 4 + len(list((agent_dir / "tests").glob("*.json"))) + 1
+    assert all(line.startswith("test '") and line.endswith("': unchanged") for line in second[4:-1])
     assert second[-1] == "No changes."
 
 
