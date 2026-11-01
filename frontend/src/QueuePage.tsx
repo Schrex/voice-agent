@@ -70,7 +70,13 @@ function QueueTable({ requests, now }: { requests: QueueRequest[]; now: number }
             <td>
               <Link to={`/requests/${r.ref}`}>{r.ref}</Link>
             </td>
-            <td>{r.job}</td>
+            <td>
+              {r.job ?? (
+                <>
+                  <span className="flag">Unmatched</span>: “{r.job_spoken}”
+                </>
+              )}
+            </td>
             <td>{r.need}</td>
             <td>{quantity(r)}</td>
             <td>{r.needed_by ?? "—"}</td>
