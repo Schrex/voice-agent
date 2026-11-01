@@ -1,8 +1,9 @@
 """Request lifecycle guards (architecture §5, GLOSSARY "Lifecycle"). Pure: no I/O.
 
-Statuses are the glossary words, stored verbatim. Only the transitions listed in `_ALLOWED`
-may happen; later tickets add Recorded → Acknowledged, Acknowledged → In Progress and
-→ Resolved, each with its own guard.
+Statuses are the glossary words, stored verbatim. `transition` allows only the guard-free moves
+listed in `_ALLOWED`; a move that needs more than a status has its own function
+(`acknowledge`: Recorded → Acknowledged, Owner required). Later tickets add Acknowledged →
+In Progress and → Resolved.
 """
 
 from enum import StrEnum
@@ -23,6 +24,13 @@ class TransitionNotAllowed(ValueError):
         self.target = target
 
 
+class OwnerRequired(ValueError):
+    """Acknowledged means a coordinator set an Owner (GLOSSARY); there is none (AC9.1)."""
+
+    def __init__(self) -> None:
+        super().__init__("An Owner is required to acknowledge a request")
+
+
 # Statuses of a Request still in the queue: confirmed by the Foreman, not yet Resolved.
 OPEN_STATUSES: frozenset[Status] = frozenset(
     {Status.RECORDED, Status.ACKNOWLEDGED, Status.IN_PROGRESS}
@@ -36,3 +44,12 @@ def transition(current: Status, target: Status) -> Status:
     if (current, target) not in _ALLOWED:
         raise TransitionNotAllowed(current, target)
     return target
+
+
+def acknowledge(current: Status, owner_id: int | None) -> Status:
+    """Recorded → Acknowledged, only with an Owner; from any other status it raises."""
+    if current is not Status.RECORDED:
+        raise TransitionNotAllowed(current, Status.ACKNOWLEDGED)
+    if owner_id is None:
+        raise OwnerRequired()
+    return Status.ACKNOWLEDGED

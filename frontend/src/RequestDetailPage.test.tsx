@@ -32,6 +32,9 @@ const DETAIL: RequestDetail = {
   status: "Recorded",
   source: "ai_call",
   recorded_at: "2026-11-02T01:30:00Z",
+  owner: null,
+  acknowledged_at: null,
+  default_owner_id: null,
   events: [
     {
       at: "2026-11-02T01:30:00Z",
@@ -55,6 +58,7 @@ const DETAIL: RequestDetail = {
       after: { overdue: true },
     },
   ],
+  calls: [],
 };
 
 function serve(detail: RequestDetail | null, queue: QueueRequest[] = []) {
@@ -118,6 +122,7 @@ describe("request detail", () => {
       ["Needed-by", "Mon, Nov 2, 7:00 AM"],
       ["Urgency", "Planned"],
       ["Status", "Recorded"],
+      ["Owner", "—"],
       ["Source", "AI call"],
       ["Recorded", "Sun, Nov 1, 8:30 PM"],
     ]);

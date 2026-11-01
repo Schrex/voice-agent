@@ -5,6 +5,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AdminPage } from "./AdminPage";
 import { fetchMe, type Staff } from "./api";
 import type { AuthClient, AuthSession } from "./auth";
+import { DraftsPage } from "./DraftsPage";
 import { LoginPage } from "./LoginPage";
 import { QueuePage } from "./QueuePage";
 import { RequestDetailPage } from "./RequestDetailPage";
@@ -61,6 +62,10 @@ export function App({ auth }: { auth: AuthClient }) {
               element={
                 <RequireStaff>{(staff) => <AdminPage staff={staff} />}</RequireStaff>
               }
+            />
+            <Route
+              path="/drafts"
+              element={<RequireStaff>{(staff) => <DraftsPage staff={staff} />}</RequireStaff>}
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

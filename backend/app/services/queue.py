@@ -59,10 +59,17 @@ def open_requests(session: Session) -> list[QueueRow]:
             needed_by_spoken=request.needed_by_spoken,
             urgency=request.urgency,
             status=request.status,
-            recorded_at=request.recorded_at,
+            recorded_at=_recorded_at(request),
         )
         for request, job_name in rows
     ]
+
+
+def _recorded_at(request: Request) -> datetime:
+    """Every open status comes after Recorded, so `recorded_at` is always set here."""
+    if request.recorded_at is None:
+        raise ValueError(f"{request.ref_display} is open but was never Recorded")
+    return request.recorded_at
 
 
 def as_said(quantity: Decimal | None) -> str | None:

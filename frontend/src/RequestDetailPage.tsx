@@ -11,7 +11,9 @@ import {
   type RequestEvent,
   type Staff,
 } from "./api";
+import { AcknowledgeAction } from "./AcknowledgeAction";
 import { useAuth } from "./App";
+import { CallRecordings } from "./CallRecordings";
 
 /** Spec §5 "source (AI call / coordinator-logged)". */
 const SOURCES: Record<RequestDetail["source"], string> = {
@@ -20,7 +22,11 @@ const SOURCES: Record<RequestDetail["source"], string> = {
 };
 
 /** Event kinds shown as their glossary word; any other kind is shown as stored. */
-const KINDS: Record<string, string> = { recorded: "Recorded" };
+const KINDS: Record<string, string> = {
+  recorded: "Recorded",
+  drafted: "Draft",
+  acknowledged: "Acknowledged",
+};
 
 /** One request's fields and its full audit history: who, when, what changed. */
 export function RequestDetailPage({ staff }: { staff: Staff }) {
@@ -62,8 +68,9 @@ function Detail({ request }: { request: RequestDetail }) {
     ["Needed-by", neededByText(request)],
     ["Urgency", request.urgency ?? "—"],
     ["Status", request.status],
+    ["Owner", request.owner?.name ?? "—"],
     ["Source", SOURCES[request.source]],
-    ["Recorded", officeTime.format(new Date(request.recorded_at))],
+    ["Recorded", request.recorded_at ? officeTime.format(new Date(request.recorded_at)) : "—"],
   ];
   return (
     <>
@@ -76,6 +83,7 @@ function Detail({ request }: { request: RequestDetail }) {
           </div>
         ))}
       </dl>
+      <AcknowledgeAction request={request} />
       <h2 id="history">History</h2>
       <table className="history" aria-labelledby="history">
         <thead>
@@ -101,6 +109,7 @@ function Detail({ request }: { request: RequestDetail }) {
           ))}
         </tbody>
       </table>
+      <CallRecordings calls={request.calls} />
     </>
   );
 }

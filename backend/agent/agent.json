@@ -32,6 +32,33 @@
     }
   },
   "platform_settings": {
+    "data_collection": {
+      "need": {
+        "type": "string",
+        "description": "What the foreman said they need on this call (for example \"tri-axle dump trucks\" or \"move the excavator\"), in their words, whether or not it was confirmed or submitted. Leave empty if they asked for nothing, only checked on an existing request, or only asked for the office."
+      },
+      "job_spoken": {
+        "type": "string",
+        "description": "The job the need is for, exactly as the foreman or the agent's read-back named it (for example \"Route 104 Widening\"). Leave empty if no job was named."
+      },
+      "category": {
+        "type": "string",
+        "enum": ["Trucking", "Equipment", "Equipment Repair", "Material", "Labor", "Information", "Callback", "Other"],
+        "description": "The category of the need. Use Other if none fits. Leave empty if there is no need."
+      },
+      "quantity": {
+        "type": "number",
+        "description": "How many of the need the foreman asked for, as a number. Leave empty if no number was said."
+      },
+      "unit": {
+        "type": "string",
+        "description": "The unit of the quantity as said (for example \"trucks\", \"loads\", \"tons\"). Leave empty if none was said."
+      },
+      "needed_by_spoken": {
+        "type": "string",
+        "description": "When the foreman needs it, in their words (for example \"tomorrow at 7 AM\"). Leave empty if not said."
+      }
+    },
     "overrides": {
       "enable_conversation_initiation_client_data_from_webhook": true,
       "conversation_config_override": {

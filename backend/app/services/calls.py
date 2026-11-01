@@ -18,7 +18,9 @@ from sqlalchemy.orm import Session
 
 from app.db.models import Call, CallRequest, Foreman, ForemanPhone, Job
 from app.domain.call_outcome import call_outcome
+from app.domain.draft import DraftItem
 from app.domain.local_time import speakable_local_time
+from app.services.drafts import save_draft
 
 
 @dataclass(frozen=True)
@@ -130,6 +132,8 @@ class PostCall:
     # Used only when no call-start created the Call for this conversation.
     caller_e164: str | None = None
     call_sid: str | None = None
+    # The need the call analysis found, if any; saved as a Draft when nothing was submitted.
+    draft: DraftItem | None = None
 
 
 class PostCallResult(StrEnum):
@@ -138,11 +142,13 @@ class PostCallResult(StrEnum):
     UNKNOWN_CALL = "unknown_call"  # no Call and no caller number to create one; nothing written
 
 
-def record_post_call(session: Session, post_call: PostCall) -> PostCallResult:
+def record_post_call(session: Session, post_call: PostCall, *, now: datetime) -> PostCallResult:
     """Store the post-call record and outcome on the Call. Idempotent: the first delivery wins.
 
     A conversation without a Call (its call-start never arrived) gets one here, bound to the
-    caller's Foreman by the same roster rule as call start.
+    caller's Foreman by the same roster rule as call start. When a rostered Foreman's call
+    submitted no Request but the analysis found a need, a Draft linked to the call is saved in
+    the same transaction (architecture §3.4 step 4).
     """
     if post_call.caller_e164 is not None:
         _bind_call(
@@ -169,10 +175,17 @@ def record_post_call(session: Session, post_call: PostCall) -> PostCallResult:
     submitted = session.scalar(
         select(exists().where(CallRequest.call_id == call.id, CallRequest.relation == "created"))
     )
+    drafted = False
+    if not submitted and call.foreman_id is not None and post_call.draft is not None:
+        save_draft(
+            session, call_id=call.id, foreman_id=call.foreman_id, item=post_call.draft, now=now
+        )
+        drafted = True
     call.outcome = call_outcome(
         rejected=call.outcome == "rejected",
         submitted=bool(submitted),
         tools_called=post_call.tools_called,
+        drafted=drafted,
     )
     session.commit()
     return PostCallResult.RECORDED

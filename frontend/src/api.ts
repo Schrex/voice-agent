@@ -104,11 +104,61 @@ export type RequestDetail = {
   urgency: "Emergency" | "Today" | "Planned" | null;
   status: "Draft" | "Recorded" | "Acknowledged" | "In Progress" | "Resolved";
   source: "ai_call" | "coordinator";
-  /** UTC, ISO 8601. */
-  recorded_at: string;
+  /** UTC, ISO 8601; null while the request is a Draft. */
+  recorded_at: string | null;
+  owner: Owner | null;
+  /** UTC, ISO 8601; null until Acknowledged. */
+  acknowledged_at: string | null;
+  /** The category's default Owner, offered first when acknowledging. */
+  default_owner_id: number | null;
   /** Oldest first. */
   events: RequestEvent[];
+  /** Calls that created, looked up or amended the request; oldest first. */
+  calls: LinkedCall[];
 };
+
+/** A call linked to a request (`call_requests`). */
+export type LinkedCall = {
+  id: number;
+  /** UTC, ISO 8601. */
+  started_at: string;
+  relation: "created" | "looked_up" | "amended";
+};
+
+/** One turn of a call's transcript: what the Foreman ("user") or the agent said. */
+export type TranscriptTurn = { role: "agent" | "user"; message: string; at_s: number };
+
+/** A call's post-call record (`GET /api/calls/{id}`); empty transcript until it arrives. */
+export type CallRecord = {
+  id: number;
+  /** UTC, ISO 8601. */
+  started_at: string;
+  ended_at: string | null;
+  duration_s: number | null;
+  /** What was said, in order. */
+  transcript: TranscriptTurn[];
+};
+
+export async function fetchCall(accessToken: string, id: number): Promise<CallRecord> {
+  const response = await fetch(`/api/calls/${id}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(`GET /api/calls/${id} failed: ${response.status}`);
+  return (await response.json()) as CallRecord;
+}
+
+/**
+ * The call's recording, streamed by the backend from ElevenLabs. Fetched with the token (an
+ * <audio src> could not send it); null when there is no recording (any more).
+ */
+export async function fetchCallAudio(accessToken: string, id: number): Promise<Blob | null> {
+  const response = await fetch(`/api/calls/${id}/audio`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`GET /api/calls/${id}/audio failed: ${response.status}`);
+  return await response.blob();
+}
 
 /** The request rendered `ref` ("R-1000"), or null if there is none. */
 export async function fetchRequestDetail(
@@ -120,5 +170,64 @@ export async function fetchRequestDetail(
   });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`GET /api/requests/${ref} failed: ${response.status}`);
+  return (await response.json()) as RequestDetail;
+}
+
+/** A Request the Foreman did not confirm (`GET /api/drafts`); never part of the queue. */
+export type Draft = {
+  ref: string;
+  foreman: string;
+  job: string | null;
+  job_spoken: string; // "" when no Job was said
+  category: string;
+  need: string;
+  quantity: string | null;
+  unit: string | null;
+  needed_by_spoken: string | null;
+  call_started_at: string | null;
+  call_summary: string | null;
+};
+
+export async function fetchDrafts(accessToken: string): Promise<Draft[]> {
+  const response = await fetch("/api/drafts", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(`GET /api/drafts failed: ${response.status}`);
+  return ((await response.json()) as { drafts: Draft[] }).drafts;
+}
+
+/** Promote a Draft to Recorded. */
+export async function recordDraft(accessToken: string, ref: string): Promise<void> {
+  const response = await fetch(`/api/requests/${encodeURIComponent(ref)}/record`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(`POST /api/requests/${ref}/record failed: ${response.status}`);
+}
+
+/** The person or team responsible for fulfilling a request. */
+export type Owner = { id: number; name: string };
+
+/** Every Owner, sorted by name (`GET /api/owners`). */
+export async function fetchOwners(accessToken: string): Promise<Owner[]> {
+  const response = await fetch("/api/owners", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(`GET /api/owners failed: ${response.status}`);
+  return ((await response.json()) as { owners: Owner[] }).owners;
+}
+
+/** Recorded → Acknowledged with an Owner; resolves to the updated request. */
+export async function acknowledgeRequest(
+  accessToken: string,
+  ref: string,
+  ownerId: number,
+): Promise<RequestDetail> {
+  const response = await fetch(`/api/requests/${encodeURIComponent(ref)}/acknowledge`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ owner_id: ownerId }),
+  });
+  if (!response.ok) throw new Error(`acknowledge ${ref} failed: ${response.status}`);
   return (await response.json()) as RequestDetail;
 }

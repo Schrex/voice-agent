@@ -1,20 +1,30 @@
 """Roster and job list loading (seed). Idempotent: re-running a file changes nothing.
 
 Matching keys: a Job by its name, a Foreman by any of their phone numbers (numbers are unique),
-a Staff member by their Supabase Auth user id.
-Rows are created or updated from the file; nothing absent from the file is removed.
+a Staff member by their Supabase Auth user id, an Owner by their name.
+Rows are created or updated from the file; nothing absent from the file is removed. An Owner's
+`default_for` categories make them that category's default Owner (one Owner per category).
 """
 
 import json
 import uuid
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import Foreman, ForemanPhone, Job, JobAlias, Staff
+from app.db.models import (
+    CATEGORIES,
+    CategoryOwnerDefault,
+    Foreman,
+    ForemanPhone,
+    Job,
+    JobAlias,
+    Owner,
+    Staff,
+)
 
 
 class JobEntry(BaseModel):
@@ -39,10 +49,33 @@ class StaffEntry(BaseModel):
     role: Literal["coordinator", "admin"]
 
 
+class OwnerEntry(BaseModel):
+    name: str = Field(min_length=1)
+    phone_e164: str | None = None
+    email: str | None = None
+    default_for: list[str] = []
+
+    @model_validator(mode="after")
+    def _known_categories(self) -> Self:
+        unknown = [c for c in self.default_for if c not in CATEGORIES]
+        if unknown:
+            raise ValueError(f"Unknown categories: {unknown}")
+        return self
+
+
 class RosterFile(BaseModel):
     jobs: list[JobEntry] = []
     foremen: list[ForemanEntry] = []
     staff: list[StaffEntry] = []
+    owners: list[OwnerEntry] = []
+
+    @model_validator(mode="after")
+    def _one_default_owner_per_category(self) -> Self:
+        categories = [c for o in self.owners for c in o.default_for]
+        twice = sorted({c for c in categories if categories.count(c) > 1})
+        if twice:
+            raise ValueError(f"Categories with more than one default Owner: {twice}")
+        return self
 
 
 def load_roster_file(path: Path) -> RosterFile:
@@ -50,14 +83,32 @@ def load_roster_file(path: Path) -> RosterFile:
 
 
 def seed_roster(session: Session, roster: RosterFile) -> None:
-    """Upsert jobs (with aliases), foremen (with phones) and staff, then commit."""
+    """Upsert jobs (with aliases), foremen (with phones), staff and owners, then commit."""
     for job_entry in roster.jobs:
         _upsert_job(session, job_entry)
     for foreman_entry in roster.foremen:
         _upsert_foreman(session, foreman_entry)
     for staff_entry in roster.staff:
         _upsert_staff(session, staff_entry)
+    for owner_entry in roster.owners:
+        _upsert_owner(session, owner_entry)
     session.commit()
+
+
+def _upsert_owner(session: Session, entry: OwnerEntry) -> None:
+    owner = session.scalars(select(Owner).where(Owner.name == entry.name)).first()
+    if owner is None:
+        owner = Owner(name=entry.name)
+        session.add(owner)
+    owner.phone_e164 = entry.phone_e164
+    owner.email = entry.email
+    session.flush()
+    for category in entry.default_for:
+        default = session.get(CategoryOwnerDefault, category)
+        if default is None:
+            session.add(CategoryOwnerDefault(category=category, owner_id=owner.id))
+        else:
+            default.owner_id = owner.id
 
 
 def _upsert_staff(session: Session, entry: StaffEntry) -> None:
