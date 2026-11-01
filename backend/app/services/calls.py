@@ -27,8 +27,8 @@ class CallStart:
 
     rejected: bool
     foreman_first_name: str = ""
-    jobs: list[tuple[int, str]] = field(default_factory=list)
-    """Active Jobs as (id, name), sorted by name."""
+    jobs: list[str] = field(default_factory=list)
+    """Active Job names, sorted."""
     now_local: str = ""
 
 
@@ -88,11 +88,11 @@ def start_call(
     call = session.scalars(select(Call).where(Call.conversation_id == conversation_id)).one()
     if call.foreman is None:
         return CallStart(rejected=True)
-    jobs = session.execute(select(Job.id, Job.name).where(Job.active).order_by(Job.name)).all()
+    jobs = session.scalars(select(Job.name).where(Job.active).order_by(Job.name)).all()
     return CallStart(
         rejected=False,
         foreman_first_name=call.foreman.first_name,
-        jobs=[(job_id, name) for job_id, name in jobs],
+        jobs=list(jobs),
         now_local=speakable_local_time(now),
     )
 

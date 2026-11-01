@@ -156,16 +156,19 @@ def test_first_push_creates_the_agent_and_second_push_changes_nothing(
     assert second[-1] == "No changes."
 
 
-def test_push_creates_the_submit_requests_tool_pointing_at_the_env_backend(
-    el: FakeElevenLabs,
-) -> None:
+def _tool_id(el: FakeElevenLabs, name: str) -> str:
+    (tool_id,) = [i for i, t in el.tools.items() if t["tool_config"]["name"] == name]
+    return tool_id
+
+
+@pytest.mark.parametrize("name", ["find_jobs", "submit_requests"])
+def test_push_creates_each_tool_pointing_at_the_env_backend(el: FakeElevenLabs, name: str) -> None:
     push(ENV, el.client())
 
-    (tool,) = el.tools.values()
-    config = tool["tool_config"]
+    assert len(el.tools) == 2
+    config = el.tools[_tool_id(el, name)]["tool_config"]
     assert config["type"] == "webhook"
-    assert config["name"] == "submit_requests"
-    assert config["api_schema"]["url"] == "https://backend.example.test/tools/submit_requests"
+    assert config["api_schema"]["url"] == f"https://backend.example.test/tools/{name}"
     assert config["api_schema"]["method"] == "POST"
     assert config["api_schema"]["request_headers"] == {
         "X-Tool-Secret": {"secret_id": "secret_tool_0001"},
@@ -173,40 +176,46 @@ def test_push_creates_the_submit_requests_tool_pointing_at_the_env_backend(
     }
 
 
-def test_pushed_agent_uses_the_created_tool_by_id(el: FakeElevenLabs) -> None:
+def test_pushed_agent_uses_the_created_tools_by_id(el: FakeElevenLabs) -> None:
     push(ENV, el.client())
 
-    (tool_id,) = el.tools
     (agent,) = el.agents.values()
-    assert agent["conversation_config"]["agent"]["prompt"]["tool_ids"] == [tool_id]
+    assert agent["conversation_config"]["agent"]["prompt"]["tool_ids"] == [
+        _tool_id(el, "find_jobs"),
+        _tool_id(el, "submit_requests"),
+    ]
 
 
-def test_tests_that_mock_submit_requests_reference_the_created_tool_id(
+def test_tests_that_mock_the_tools_reference_the_created_tool_ids(
     el: FakeElevenLabs,
 ) -> None:
     push(ENV, el.client())
 
-    (tool_id,) = el.tools
+    tool_ids = sorted(el.tools)
     mocking = [t for t in el.tests.values() if t.get("tool_mock_config")]
     assert mocking
     for test in mocking:
-        assert test["tool_mock_config"]["mocked_tool_ids"] == [tool_id]
-        assert list(test["tool_mock_overrides"]) == [tool_id]
+        # Every simulation that can reach a tool mocks both, so it never writes to a backend.
+        assert sorted(test["tool_mock_config"]["mocked_tool_ids"]) == tool_ids
+        assert sorted(test["tool_mock_overrides"]) == tool_ids
     referencing = [t for t in el.tests.values() if t.get("type") == "tool"]
-    assert {t["tool_call_parameters"]["referenced_tool"]["id"] for t in referencing} >= {tool_id}
+    assert {t["tool_call_parameters"]["referenced_tool"]["id"] for t in referencing} >= {
+        _tool_id(el, "submit_requests")
+    }
     assert not any("${" in json.dumps(t) for t in el.tests.values())
 
 
 def test_edit_to_the_tool_in_the_web_ui_is_overwritten_then_stable(el: FakeElevenLabs) -> None:
     push(ENV, el.client())
-    (tool_id,) = el.tools
+    tool_id = _tool_id(el, "submit_requests")
     el.tools[tool_id]["tool_config"]["api_schema"]["url"] = "https://elsewhere.example.test/x"
     el.writes.clear()
 
     lines = push(ENV, el.client())
 
     assert el.writes == [f"PATCH /v1/convai/tools/{tool_id}"]
-    assert "tool_config.api_schema.url" in lines[0]
+    (tool_line,) = [line for line in lines if line.startswith("tool 'submit_requests'")]
+    assert "tool_config.api_schema.url" in tool_line
     el.writes.clear()
     assert push(ENV, el.client())[-1] == "No changes."
     assert el.writes == []
@@ -219,6 +228,9 @@ def test_push_creates_each_repo_test_by_name(el: FakeElevenLabs) -> None:
         "AC1.1 first utterance identifies as automated and discloses recording",
         "AC1.2 does not submit before the read-back is confirmed",
         "AC1.2 reads back Job, quantity, unit and time before asking to submit",
+        "AC1.3 a Job alias is read back as the canonical Job name",
+        "AC1.4 an unknown Job is read back as said, never as a listed Job",
+        "AC1.4 an unknown Job is submitted as Unmatched without a job_id",
         "AC1.7 says recorded and not yet confirmed and gives the reference",
         "AC8.1 unrostered caller: call ends after the rejection line",
         "AC8.1 unrostered caller: no Job or Request information disclosed",
@@ -318,17 +330,19 @@ def test_cli_prints_one_line_per_object_and_exits_0(
     assert main(["--env", "staging"], client=el.client(), agent_dir=agent_dir) == 0
 
     out = capsys.readouterr().out.splitlines()
-    assert out[:2] == [
-        "tool 'submit_requests': created (tool_0001)",
+    assert out[:3] == [
+        "tool 'find_jobs': created (tool_0001)",
+        "tool 'submit_requests': created (tool_0002)",
         "agent 'Field Request Assistant (test)': created (agent_0001)",
     ]
     second = out[len(out) // 2 :]
-    assert second[:2] == [
+    assert second[:3] == [
+        "tool 'find_jobs': unchanged",
         "tool 'submit_requests': unchanged",
         "agent 'Field Request Assistant (test)': unchanged",
     ]
-    assert len(second) == 2 + 8 + 1
-    assert all(line.startswith("test '") and line.endswith("': unchanged") for line in second[2:-1])
+    assert len(second) == 3 + 11 + 1
+    assert all(line.startswith("test '") and line.endswith("': unchanged") for line in second[3:-1])
     assert second[-1] == "No changes."
 
 

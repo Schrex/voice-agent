@@ -1,8 +1,9 @@
-"""The agent's `submit_requests` tool fits POST /tools/submit_requests (tickets #6, #7).
+"""The agent's tools fit the backend's `/tools/*` routes (tickets #6, #7, #13).
 
-ElevenLabs builds the tool call from `backend/agent/tools/submit_requests.json`: URL, headers
-and a body shaped by its schema, with the job id taken from the call-start `jobs` variable.
-These tests drive the backend exactly that way, so the config and the endpoint cannot drift.
+ElevenLabs builds each tool call from `backend/agent/tools/<name>.json`: URL, headers and a body
+shaped by its schema. The Job id comes from what `find_jobs` returned, never from the call-start
+variables. These tests drive the backend exactly that way, so the config and the endpoints
+cannot drift.
 """
 
 import json
@@ -19,8 +20,8 @@ from sqlalchemy.orm import Session
 
 from agent.push import desired_tools
 from app.clock import get_clock
-from app.db.models import Request
-from app.http.tools import Category, SubmitItem
+from app.db.models import Job, Request
+from app.http.tools import Category, FindJobsBody, SubmitItem
 from app.main import app
 from app.services.roster import load_roster_file, seed_roster
 
@@ -34,27 +35,38 @@ ENV = {"agent_name": "x", "backend_url": BACKEND, "hook_secret_id": "s", "tool_s
 ROSTERED = json.loads((FIXTURES / "call_start_rostered.json").read_text())
 
 
-def _tool() -> dict[str, Any]:
-    (tool,) = [t for t in desired_tools(ENV) if t["tool_config"]["name"] == "submit_requests"]
+def _tool(name: str) -> dict[str, Any]:
+    (tool,) = [t for t in desired_tools(ENV) if t["tool_config"]["name"] == name]
     config: dict[str, Any] = tool["tool_config"]
     return config
 
 
 def _item_schema() -> dict[str, Any]:
-    items: dict[str, Any] = _tool()["api_schema"]["request_body_schema"]["properties"]["items"]
+    body = _tool("submit_requests")["api_schema"]["request_body_schema"]
+    items: dict[str, Any] = body["properties"]["items"]
     assert items["type"] == "array"
     schema: dict[str, Any] = items["items"]
     return schema
 
 
-def test_tool_url_is_the_backend_submit_route() -> None:
-    api = _tool()["api_schema"]
+@pytest.mark.parametrize("name", ["find_jobs", "submit_requests"])
+def test_tool_url_is_the_backend_route(name: str) -> None:
+    api = _tool(name)["api_schema"]
     path = api["url"].removeprefix(BACKEND)
 
+    assert path == f"/tools/{name}"
     assert api["method"].lower() in app.openapi()["paths"][path]
 
 
-def test_tool_item_fields_match_what_the_backend_accepts() -> None:
+def test_find_jobs_fields_match_what_the_backend_accepts() -> None:
+    schema = _tool("find_jobs")["api_schema"]["request_body_schema"]
+    fields = FindJobsBody.model_fields
+
+    assert set(schema["properties"]) == set(fields)
+    assert set(schema["required"]) == {name for name, f in fields.items() if f.is_required()}
+
+
+def test_submit_item_fields_match_what_the_backend_accepts() -> None:
     schema = _item_schema()
     fields = SubmitItem.model_fields
 
@@ -79,41 +91,71 @@ def started_call(
     yield client, response.json()["dynamic_variables"]
 
 
-def test_tool_call_built_from_the_config_records_the_job_the_agent_was_given(
-    started_call: tuple[TestClient, dict[str, Any]], db_session: Session
-) -> None:
-    client, variables = started_call
-    # The agent picks the Job from the `jobs` variable and passes its id.
-    jobs = dict(re.findall(r"\s*([^;]+?) \(job_id (\d+)\)", variables["jobs"]))
-    assert set(jobs) == {"Penfield Sewer Replacement", "Route 104 Widening"}
-    # Headers as ElevenLabs resolves them: the secret's value and system__conversation_id.
+def _call_tool(client: TestClient, name: str, body: dict[str, Any]) -> Any:
+    """POST as ElevenLabs would: resolved header locators, URL from the config."""
+    api = _tool(name)["api_schema"]
     resolved = {"secret_id": TOOL_SECRET, "variable_name": ROSTERED["conversation_id"]}
     headers = {
-        name: resolved[next(iter(locator))]
-        for name, locator in _tool()["api_schema"]["request_headers"].items()
+        header: resolved[next(iter(locator))] for header, locator in api["request_headers"].items()
     }
-    body = {
-        "items": [
-            {
-                "job_id": int(jobs["Route 104 Widening"]),
-                "category": "Trucking",
-                "need": "tri-axle dump trucks",
-                "quantity": 2,
-                "unit": "trucks",
-                "needed_by_spoken": "tomorrow at 7 AM",
-            }
-        ]
+    response = client.post(api["url"].removeprefix(BACKEND), json=body, headers=headers)
+    assert response.status_code == 200
+    return response.json()
+
+
+def _item(**job: Any) -> dict[str, Any]:
+    return {
+        **job,
+        "category": "Trucking",
+        "need": "tri-axle dump trucks",
+        "quantity": 2,
+        "unit": "trucks",
+        "needed_by_spoken": "tomorrow at 7 AM",
     }
 
-    response = client.post(
-        _tool()["api_schema"]["url"].removeprefix(BACKEND), json=body, headers=headers
+
+def test_call_start_jobs_are_names_only_so_the_agent_cannot_pick_an_id(
+    started_call: tuple[TestClient, dict[str, Any]],
+) -> None:
+    _, variables = started_call
+
+    assert variables["jobs"] == "Penfield Sewer Replacement; Route 104 Widening"
+
+
+def test_alias_found_by_find_jobs_is_submitted_on_its_canonical_job(
+    started_call: tuple[TestClient, dict[str, Any]], db_session: Session
+) -> None:
+    client, _ = started_call
+
+    [match] = _call_tool(client, "find_jobs", {"query": "the 104 job"})
+    assert match["name"] == "Route 104 Widening"
+    [result] = _call_tool(
+        client,
+        "submit_requests",
+        {"items": [_item(job_id=match["job_id"], job_spoken="the 104 job")]},
     )
 
-    assert response.status_code == 200
-    [result] = response.json()
     assert re.fullmatch(r"R-\d{4,}", result["ref"])
     request = db_session.scalars(select(Request)).one()
     assert request.ref_display == result["ref"]
     assert request.status == "Recorded"
-    assert request.job_id == int(jobs["Route 104 Widening"])
+    route_104 = db_session.scalars(select(Job.id).where(Job.name == "Route 104 Widening")).one()
+    assert (request.job_id, request.job_spoken) == (route_104, "the 104 job")
     assert request.quantity == 2
+
+
+def test_unknown_job_is_submitted_unmatched_with_what_the_foreman_said(
+    started_call: tuple[TestClient, dict[str, Any]], db_session: Session
+) -> None:
+    client, _ = started_call
+
+    assert _call_tool(client, "find_jobs", {"query": "the Smith pit"}) == []
+    [result] = _call_tool(client, "submit_requests", {"items": [_item(job_spoken="the Smith pit")]})
+
+    request = db_session.scalars(select(Request)).one()
+    assert request.ref_display == result["ref"]
+    assert (request.job_id, request.job_spoken, request.status) == (
+        None,
+        "the Smith pit",
+        "Recorded",
+    )

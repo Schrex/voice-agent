@@ -36,7 +36,7 @@
             "request_id": "submit_requests_0001",
             "tool_name": "submit_requests",
             "tool_id": "tool_synthetic_submit_requests",
-            "params_as_json": "{\"items\": [{\"job_id\": 2, \"category\": \"Material\", \"need\": \"#2 stone\", \"quantity\": 2, \"unit\": \"loads\", \"needed_by_spoken\": \"tomorrow morning\"}]}",
+            "params_as_json": "{\"items\": [{\"job_id\": 2, \"job_spoken\": \"Route 104\", \"category\": \"Material\", \"need\": \"#2 stone\", \"quantity\": 2, \"unit\": \"loads\", \"needed_by_spoken\": \"tomorrow morning\"}]}",
             "tool_has_been_called": true,
             "tool_details": null
           }

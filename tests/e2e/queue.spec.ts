@@ -33,6 +33,7 @@ test("a request recorded by the agent appears in the open queue within 10 s, wit
   const need = `e2e dump trucks ${Date.now()}`;
   const ref = await recordRequestByCall(api, DALE_PHONE, {
     job_id: jobId("Route 104 Widening"),
+    job_spoken: "the 104 job",
     category: "Trucking",
     need,
     quantity: 3,

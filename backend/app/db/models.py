@@ -149,7 +149,7 @@ request_ref_seq = Sequence("request_ref_seq", start=1000, metadata=Base.metadata
 
 
 class Request(Base):
-    """One actionable need from a Foreman, tied to one Job. Never hard-deleted."""
+    """One actionable need from a Foreman, tied to one Job (or Unmatched). Never hard-deleted."""
 
     __tablename__ = "requests"
     __table_args__ = (
@@ -164,7 +164,10 @@ class Request(Base):
         request_ref_seq, server_default=request_ref_seq.next_value(), unique=True
     )
     foreman_id: Mapped[int] = mapped_column(ForeignKey("foremen.id"), index=True)
-    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"), index=True)
+    # Null = Unmatched: no confident match for what the Foreman said (spec J1 step 3).
+    job_id: Mapped[int | None] = mapped_column(ForeignKey("jobs.id"), index=True)
+    # The Job as the Foreman said it, kept whether or not it matched.
+    job_spoken: Mapped[str] = mapped_column(Text)
     category: Mapped[str] = mapped_column(String(32))
     need: Mapped[str] = mapped_column(Text)
     quantity: Mapped[Decimal | None] = mapped_column(Numeric)

@@ -44,7 +44,7 @@ def headers(staff: Staff) -> dict[str, str]:
     return {"Authorization": f"Bearer {jwt.encode(claims, SECRET, algorithm='HS256')}"}
 
 
-def _record_by_call(session: Session) -> str:
+def _record_by_call(session: Session, *, unmatched: bool = False) -> str:
     """A Request recorded the way the agent records one: through the submit service."""
     dale = session.scalars(select(Foreman).where(Foreman.first_name == "Dale")).one()
     call = Call(
@@ -55,13 +55,18 @@ def _record_by_call(session: Session) -> str:
     )
     session.add(call)
     session.flush()
-    job_id = session.scalars(select(Job.id).where(Job.name == "Route 104 Widening")).one()
+    job_id = (
+        None
+        if unmatched
+        else session.scalars(select(Job.id).where(Job.name == "Route 104 Widening")).one()
+    )
     [ref] = submit_requests(
         session,
         caller=Caller(call_id=call.id, foreman_id=dale.id),
         items=[
             NewItem(
                 job_id=job_id,
+                job_spoken="the Smith pit" if unmatched else "the 104 job",
                 category="Trucking",
                 need="tri-axle dump trucks",
                 quantity=None,
@@ -99,6 +104,7 @@ def test_detail_returns_the_request_fields(
         "ref": ref,
         "foreman": "Dale Kramer",
         "job": "Route 104 Widening",
+        "job_spoken": "the 104 job",
         "category": "Trucking",
         "need": "tri-axle dump trucks",
         "quantity": None,
@@ -180,3 +186,14 @@ def test_events_of_other_requests_are_not_shown(
 
     assert [e["after"]["ref"] for e in events] == [ref]
     assert other != ref
+
+
+def test_unmatched_request_has_no_job_and_keeps_what_the_foreman_said(
+    client: TestClient, db_session: Session, headers: dict[str, str]
+) -> None:
+    ref = _record_by_call(db_session, unmatched=True)
+
+    response = client.get(f"/api/requests/{ref}", headers=headers)
+
+    assert response.status_code == 200
+    assert (response.json()["job"], response.json()["job_spoken"]) == (None, "the Smith pit")

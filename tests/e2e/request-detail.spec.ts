@@ -18,6 +18,7 @@ test("opening a recorded request shows its fields and the Recorded event in its 
   const need = `e2e excavator ${Date.now()}`;
   const ref = await recordRequestByCall(api, DALE_PHONE, {
     job_id: jobId("Route 104 Widening"),
+    job_spoken: "the 104 job",
     category: "Equipment",
     need,
     quantity: 1,
