@@ -70,7 +70,7 @@
     },
     {
       "role": "agent",
-      "message": "I couldn't match the Smith pit to a Job, so I'll record it as you said it. One excavator operator at the Smith pit, Monday, November 2 at 6:30 AM, marked Planned. Should I submit it?",
+      "message": "I couldn't match the Smith pit to a Job, so I'll record it as you said it. One excavator operator at the Smith pit, Monday, November 2 at 6:30 AM, marked Planned. Should I record it?",
       "time_in_call_secs": 12
     },
     {

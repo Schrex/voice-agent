@@ -133,6 +133,17 @@ def test_prompt_poor_connection_asks_to_repeat_once_then_offers_transfer_or_call
     assert '"J5: Talking to the office"' in rules and '"J5: Callback Request"' in rules
 
 
+def test_read_back_asks_whether_to_record_never_to_submit() -> None:
+    """GLOSSARY "Recorded" _Avoid_: submitted. The spoken confirm question uses the glossary
+    word; `submit_requests` stays the tool's name."""
+    prompt = _agent()["prompt"]["prompt"]
+
+    assert "Should I submit" not in prompt
+    assert "whether to submit" not in prompt
+    assert '7:00 AM, marked Planned. Should I record it?"' in prompt
+    assert "Should I record them?" in prompt
+
+
 def test_llm_is_claude_sonnet_5_5_in_english() -> None:
     agent = _agent()
 

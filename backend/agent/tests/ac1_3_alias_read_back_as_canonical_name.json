@@ -7,7 +7,7 @@
     "jobs": "Penfield Sewer Replacement; Route 104 Widening",
     "now_local": "Sunday, November 1, 2026, 3:04 PM"
   },
-  "simulation_scenario": "You are Dale, a foreman on the Roster. When the assistant asks what you need, say in one sentence: you need two tri-axle dump trucks at the 104 job tomorrow at 7 AM. Always call the job 'the 104 job', never its full name. Answer any question briefly and truthfully with those facts. When the assistant reads the details back and asks whether to submit, say yes. After it gives you a reference number, say that's all and goodbye.",
+  "simulation_scenario": "You are Dale, a foreman on the Roster. When the assistant asks what you need, say in one sentence: you need two tri-axle dump trucks at the 104 job tomorrow at 7 AM. Always call the job 'the 104 job', never its full name. Answer any question briefly and truthfully with those facts. When the assistant reads the details back and asks whether to record it, say yes. After it gives you a reference number, say that's all and goodbye.",
   "simulation_max_turns": 8,
   "success_conditions": [
     "The agent calls find_jobs with the Job as the caller said it (the 104 job) before reading the details back.",

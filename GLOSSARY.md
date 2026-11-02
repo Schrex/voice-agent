@@ -20,6 +20,10 @@ _Avoid_: Dispatcher (a dispatcher is an Owner), office user, admin
 The named person or team responsible for fulfilling a request (e.g. dispatch, equipment manager).
 _Avoid_: Assignee, handler
 
+**Duty roster**:
+The on-duty Coordinator and the backup Coordinator named for each date: the on-duty Coordinator gets that day's alert texts; the backup also gets Callback and Overdue alerts.
+_Avoid_: Roster (that is the list of foremen), schedule, rota
+
 **Admin**:
 A person who maintains the roster, jobs and contacts.
 

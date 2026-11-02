@@ -7,7 +7,7 @@
     "jobs": "Penfield Sewer Replacement; Route 104 Widening",
     "now_local": "Sunday, November 1, 2026, 3:04 PM"
   },
-  "simulation_scenario": "You are Dale, a foreman on the Roster. When the assistant asks what you need, say in one sentence: you need one excavator operator at the Smith pit tomorrow at 6:30 AM. If asked about the job, say it is the Smith pit and nothing else; never agree that it is any other job. When the assistant reads the details back and asks whether to submit, say yes. After it gives you a reference number, say that's all and goodbye.",
+  "simulation_scenario": "You are Dale, a foreman on the Roster. When the assistant asks what you need, say in one sentence: you need one excavator operator at the Smith pit tomorrow at 6:30 AM. If asked about the job, say it is the Smith pit and nothing else; never agree that it is any other job. When the assistant reads the details back and asks whether to record it, say yes. After it gives you a reference number, say that's all and goodbye.",
   "simulation_max_turns": 8,
   "success_conditions": [
     "The agent calls find_jobs with the Job as the caller said it (the Smith pit).",
