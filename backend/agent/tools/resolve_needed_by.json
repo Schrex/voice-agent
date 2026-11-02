@@ -2,7 +2,7 @@
   "tool_config": {
     "type": "webhook",
     "name": "resolve_needed_by",
-    "description": "Work out the day and time from when the Foreman said the need is needed. Call it as soon as the Foreman says when, with their words, before the read-back. Returns {\"needed_by_resolved\": \"Monday, November 2 at 7:00 AM\", \"urgency\": \"Planned\"}; needed_by_resolved is null when the words could not be worked out. Returns {\"error\": \"...\"} if it failed.",
+    "description": "Work out the day and time from when the Foreman said the need is needed, and its urgency. Call it as soon as the Foreman says when (or says he does not know), with their words and the need, before the read-back. Returns {\"needed_by_resolved\": \"Monday, November 2 at 7:00 AM\", \"urgency\": \"Planned\"}; needed_by_resolved is null when the words could not be worked out; urgency is \"Today\", \"Planned\" or null. Returns {\"error\": \"...\"} if it failed.",
     "api_schema": {
       "url": "${backend_url}/tools/resolve_needed_by",
       "method": "POST",
@@ -18,6 +18,10 @@
           "needed_by_spoken": {
             "type": "string",
             "description": "When it is needed, exactly as the Foreman said it, for example 'tomorrow at seven' or 'first thing'. Do not convert it."
+          },
+          "need": {
+            "type": "string",
+            "description": "What is needed, in the Foreman's words, including anything he said about work being stopped or waiting on it, for example 'a trash pump, we're stopped'."
           }
         }
       }

@@ -283,3 +283,67 @@ def test_provider_error_is_a_failed_alert_and_the_request_is_still_recorded(
     assert (alert.to_staff_id, alert.status) == (pat.id, "failed")
     assert alert.detail == "SMS not sent: Twilio answered 400"
     assert db_session.scalars(select(Request)).one().status == "Recorded"
+
+
+def _submit_one(client: TestClient, session: Session, need: str, spoken: str | None) -> Any:
+    job_id = session.scalars(select(Job.id).where(Job.name == "Route 104 Widening")).one()
+    item: dict[str, Any] = {
+        "job_id": job_id,
+        "job_spoken": "the 104 job",
+        "category": "Equipment",
+        "need": need,
+    }
+    if spoken is not None:
+        item["needed_by_spoken"] = spoken
+    response = client.post(
+        "/tools/submit_requests",
+        json={"items": [item]},
+        headers={"X-Tool-Secret": TOOL_SECRET, "X-Conversation-Id": CONVERSATION},
+    )
+    assert response.status_code == 200
+    [result] = response.json()
+    return result
+
+
+def test_needed_now_is_today_at_the_call_time_and_texts_the_on_duty_coordinator(
+    tools: TestClient, db_session: Session, sms: FakeSms
+) -> None:
+    """Spec §5: Today = "needed today or work stopped"; "need it now" is AC1.9's Today."""
+    _on_duty(db_session, TODAY_NY, _staff(db_session, "Pat Lee", "+15855550199"))
+
+    result = _submit_one(tools, db_session, "a trash pump", "right now")
+
+    assert result["urgency"] == "Today"
+    assert result["needed_by_resolved"] == "Sunday, November 1 at 3:04 PM"
+    request = db_session.scalars(select(Request)).one()
+    assert request.needed_by == NOW
+    assert request.ack_due_at is not None
+    [(_, body)] = sms.sent
+    assert body.startswith(f"Today request {result['ref']} from Dale Kramer")
+
+
+def test_work_stopped_without_a_needed_by_is_today_and_texts_the_on_duty_coordinator(
+    tools: TestClient, db_session: Session, sms: FakeSms
+) -> None:
+    """Spec §5: urgency "infers from needed-by and keywords"."""
+    _on_duty(db_session, TODAY_NY, _staff(db_session, "Pat Lee", "+15855550199"))
+
+    result = _submit_one(tools, db_session, "a trash pump, we're stopped", None)
+
+    assert result["urgency"] == "Today"
+    assert result["needed_by_resolved"] is None
+    request = db_session.scalars(select(Request)).one()
+    assert (request.urgency, request.needed_by) == ("Today", None)
+    assert request.ack_due_at is not None
+    assert len(sms.sent) == 1
+
+
+def test_a_said_needed_by_wins_over_work_stopped_keywords(
+    tools: TestClient, db_session: Session, sms: FakeSms
+) -> None:
+    _on_duty(db_session, TODAY_NY, _staff(db_session, "Pat Lee", "+15855550199"))
+
+    result = _submit_one(tools, db_session, "a trash pump, we're stopped", "tomorrow at seven")
+
+    assert result["urgency"] == "Planned"
+    assert sms.sent == []

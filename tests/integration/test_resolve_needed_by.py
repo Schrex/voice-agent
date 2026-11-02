@@ -106,6 +106,17 @@ def test_the_read_back_is_what_submit_stores(tools: TestClient, db_session: Sess
     assert submitted[0]["urgency"] == read_back["urgency"]
 
 
+def test_the_need_lets_work_stopped_keywords_set_the_urgency_read_back(
+    tools: TestClient,
+) -> None:
+    """Spec §5: urgency "infers from needed-by and keywords and states it back"."""
+    stopped = _resolve(tools, {"needed_by_spoken": "not sure", "need": "a pump, we're stopped"})
+    plain = _resolve(tools, {"needed_by_spoken": "not sure", "need": "a pump"})
+
+    assert stopped.json() == {"needed_by_resolved": None, "urgency": "Today"}
+    assert plain.json() == {"needed_by_resolved": None, "urgency": None}
+
+
 def test_nothing_is_written(tools: TestClient, db_session: Session) -> None:
     _resolve(tools, {"needed_by_spoken": "tomorrow at seven"})
 

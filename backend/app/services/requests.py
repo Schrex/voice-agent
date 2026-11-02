@@ -23,6 +23,7 @@ from app.domain.lifecycle import (
 )
 from app.domain.ref import parse_ref
 from app.domain.timeparse import NeededBy, parse_needed_by, speakable, urgency_for
+from app.domain.urgency import infer_urgency
 from app.services.ack_window import set_ack_due_at
 from app.services.calls import Caller
 from app.services.events import agent_event, iso, staff_event
@@ -57,9 +58,10 @@ class Recorded:
     needed_by: ResolvedNeededBy
 
 
-def resolve_needed_by(spoken: str | None, now: datetime) -> ResolvedNeededBy:
-    """What the backend makes of a spoken needed-by at `now` (America/New_York; ADR 0004)."""
-    return _readback(_parse(spoken, now), now)
+def resolve_needed_by(spoken: str | None, now: datetime, need: str = "") -> ResolvedNeededBy:
+    """What the backend makes of a spoken needed-by at `now` (America/New_York; ADR 0004), and
+    the Urgency it gives with the need's work-stopped keywords (spec §5)."""
+    return _readback(_parse(spoken, now), now, need, spoken)
 
 
 def submit_requests(
@@ -68,8 +70,9 @@ def submit_requests(
     """Record the confirmed items as Requests of the caller's Foreman.
 
     The Foreman comes from the call (ADR 0004), never from the agent's input. The spoken
-    needed-by is resolved to a time and sets the Urgency; a missing one is stored as unknown
-    (null) and does not block the Request (spec J1 step 7). Everything is written in one
+    needed-by is resolved to a time and sets the Urgency; without one, work-stopped keywords in
+    the need make it Today (`domain.urgency.infer_urgency`). A missing needed-by is stored as
+    unknown (null) and does not block the Request (spec J1 step 7). Everything is written in one
     transaction: each Request with a `recorded` event by the agent and a `created` link to
     the call.
     """
@@ -86,7 +89,7 @@ def submit_requests(
             unit=item.unit,
             needed_by_spoken=item.needed_by_spoken,
             needed_by=None if needed_by is None else needed_by.at,
-            urgency=None if needed_by is None else urgency_for(needed_by, now).value,
+            urgency=_urgency(needed_by, now, item.need, item.needed_by_spoken),
             status=status.value,
             source="ai_call",
             recorded_at=now,
@@ -102,8 +105,11 @@ def submit_requests(
         session.add(CallRequest(call_id=caller.call_id, request_id=request.id, relation="created"))
     session.commit()
     return [
-        Recorded(ref=request.ref_display, needed_by=_readback(needed_by, now))
-        for request, needed_by in zip(requests, resolved, strict=True)
+        Recorded(
+            ref=request.ref_display,
+            needed_by=_readback(needed_by, now, item.need, item.needed_by_spoken),
+        )
+        for request, item, needed_by in zip(requests, items, resolved, strict=True)
     ]
 
 
@@ -111,11 +117,21 @@ def _parse(spoken: str | None, now: datetime) -> NeededBy | None:
     return None if spoken is None else parse_needed_by(spoken, now)
 
 
-def _readback(needed_by: NeededBy | None, now: datetime) -> ResolvedNeededBy:
-    if needed_by is None:
-        return ResolvedNeededBy(needed_by_resolved=None, urgency=None)
+def _urgency(
+    needed_by: NeededBy | None, now: datetime, need: str, spoken: str | None
+) -> str | None:
+    """The Urgency stored and read back: from the needed-by, else from the Foreman's words."""
+    from_needed_by = None if needed_by is None else urgency_for(needed_by, now)
+    urgency = infer_urgency(from_needed_by, f"{need} {spoken or ''}")
+    return None if urgency is None else urgency.value
+
+
+def _readback(
+    needed_by: NeededBy | None, now: datetime, need: str, spoken: str | None
+) -> ResolvedNeededBy:
     return ResolvedNeededBy(
-        needed_by_resolved=speakable(needed_by), urgency=urgency_for(needed_by, now).value
+        needed_by_resolved=None if needed_by is None else speakable(needed_by),
+        urgency=_urgency(needed_by, now, need, spoken),
     )
 
 
@@ -328,7 +344,7 @@ def log_request(
         unit=entry.unit,
         needed_by_spoken=entry.needed_by_spoken,
         needed_by=None if needed_by is None else needed_by.at,
-        urgency=None if needed_by is None else urgency_for(needed_by, now).value,
+        urgency=_urgency(needed_by, now, entry.need, entry.needed_by_spoken),
         status=recorded.value,
         source="coordinator",
         recorded_at=now,

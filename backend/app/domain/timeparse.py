@@ -9,7 +9,9 @@ What it understands (filler such as "by", "at", "on", "around", "the", "in" is i
 - a clock time: "7", "7:30", "19:00", "seven", "seven thirty", "seven forty-five", with "am"/"pm"
   or "in the morning"/"in the afternoon"/"in the evening";
 - a named time: "first thing" and "morning" = FIRST_THING, "noon"/"midday" = NOON,
-  "afternoon" = AFTERNOON ("this morning"/"this afternoon" mean today).
+  "afternoon" = AFTERNOON ("this morning"/"this afternoon" mean today);
+- needed at once, said on its own: "now", "right now", "ASAP", "as soon as possible",
+  "immediately" = the call's own day and minute (so Today, spec §5).
 
 An hour said without am/pm is read as a work-day hour: 6–11 morning, 12 and 1–5 afternoon
 (WORK_DAY_AM_HOURS). A time without a day is the next time it comes round: today if it is still
@@ -66,6 +68,11 @@ _PARTS: dict[str, tuple[str, time | None]] = {
     "evening": ("pm", None),
 }
 _CLOCK = re.compile(r"^(\d{1,2})(?::(\d{2}))?$")
+# Needed at once (spec §5 Today: "needed today or work stopped"): the call's own minute. Said
+# alone only; "now" with any other time word is not understood.
+_NOW_PHRASES = frozenset(
+    {"now", "right now", "asap", "a s a p", "as soon as possible", "immediately"}
+)
 
 
 @dataclass(frozen=True)
@@ -129,8 +136,11 @@ def parse_needed_by(spoken: str, now: datetime) -> NeededBy | None:
     if now.tzinfo is None:
         raise ValueError("now must be timezone-aware")
     local_now = now.astimezone(LOCAL_TZ)
+    words = _words(spoken)
+    if " ".join(words) in _NOW_PHRASES:
+        return NeededBy(local_now.date(), time(local_now.hour, local_now.minute))
     try:
-        said = _read(_words(spoken), local_now.date())
+        said = _read(words, local_now.date())
         clock = _clock_time(said)
     except _Unclear:
         return None

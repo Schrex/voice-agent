@@ -104,6 +104,7 @@ class FindJobsBody(BaseModel):
 
 class ResolveNeededByBody(BaseModel):
     needed_by_spoken: str
+    need: str = ""
 
 
 @router.post("/find_jobs")
@@ -182,7 +183,7 @@ def resolve_needed_by_tool(
     except ValidationError:
         log.warning("resolve_needed_by_invalid", extra=log_ctx)
         return {"error": TIME_NOT_READ}
-    resolved = resolve_needed_by(parsed.needed_by_spoken, clock())
+    resolved = resolve_needed_by(parsed.needed_by_spoken, clock(), parsed.need)
     log.info("resolve_needed_by", extra={**log_ctx, "resolved": resolved.urgency is not None})
     return {"needed_by_resolved": resolved.needed_by_resolved, "urgency": resolved.urgency}
 

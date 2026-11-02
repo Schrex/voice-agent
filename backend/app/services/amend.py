@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from app.db.models import CallRequest, Request
 from app.domain.lifecycle import Status, may_amend
 from app.domain.timeparse import parse_needed_by, speakable, speakable_at, urgency_for
-from app.domain.urgency import Urgency
+from app.domain.urgency import Urgency, infer_urgency
 from app.services.ack_window import set_ack_due_at
 from app.services.calls import Caller
 from app.services.events import agent_event, iso
@@ -108,7 +108,9 @@ def _apply(
         request.needed_by = None if needed_by is None else needed_by.at
         # Urgency follows the needed-by as on submit; Emergency is about danger, not time.
         if request.urgency != Urgency.EMERGENCY.value:
-            request.urgency = None if needed_by is None else urgency_for(needed_by, now).value
+            from_needed_by = None if needed_by is None else urgency_for(needed_by, now)
+            urgency = infer_urgency(from_needed_by, f"{request.need} {spoken}")
+            request.urgency = None if urgency is None else urgency.value
         set_ack_due_at(session, request)
         readback = None if needed_by is None else speakable(needed_by)
     after = _snapshot(request)
