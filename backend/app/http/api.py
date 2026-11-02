@@ -14,6 +14,7 @@ from app.domain.lifecycle import (
     AlreadyInformed,
     ExplanationRequired,
     MergeIntoItself,
+    NotReassignable,
     NotResolved,
     Outcome,
     OutcomeRequired,
@@ -22,6 +23,7 @@ from app.domain.lifecycle import (
 )
 from app.http.auth import CurrentStaff
 from app.services.merges import merge_request
+from app.services.notes import BlankNote, add_staff_note
 from app.services.owners import list_owners
 from app.services.queue import open_requests
 from app.services.request_detail import RequestDetail, request_detail
@@ -30,6 +32,7 @@ from app.services.requests import (
     UnknownOwner,
     acknowledge_request,
     mark_foreman_informed,
+    reassign_owner,
     resolve_request,
     start_request,
 )
@@ -251,6 +254,51 @@ def start(
     except RequestNotFound as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such request") from exc
     except TransitionNotAllowed as exc:
+        session.rollback()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+    return _updated(session, ref, now)
+
+
+@router.post("/requests/{ref}/owner")
+def reassign(
+    ref: str,
+    body: AcknowledgeIn,
+    staff: CurrentStaff,
+    session: Annotated[Session, Depends(get_session)],
+    clock: Annotated[Clock, Depends(get_clock)],
+) -> RequestDetailOut:
+    """Reassign owner (spec J9) of an Acknowledged or In Progress Request; returns it updated."""
+    now = clock()
+    try:
+        reassign_owner(session, ref=ref, owner_id=body.owner_id, staff_id=staff.id, now=now)
+    except RequestNotFound as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such request") from exc
+    except (OwnerRequired, NotReassignable, UnknownOwner) as exc:
+        session.rollback()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+    return _updated(session, ref, now)
+
+
+class NoteIn(BaseModel):
+    # Optional so a missing text reaches the service's blank check: 422 either way.
+    text: str | None = None
+
+
+@router.post("/requests/{ref}/notes")
+def add_note(
+    ref: str,
+    body: NoteIn,
+    staff: CurrentStaff,
+    session: Annotated[Session, Depends(get_session)],
+    clock: Annotated[Clock, Depends(get_clock)],
+) -> RequestDetailOut:
+    """Add note (spec J9): appended as typed, by the signed-in staff member; returns the Request."""
+    now = clock()
+    try:
+        add_staff_note(session, ref=ref, text=body.text, staff_id=staff.id, now=now)
+    except RequestNotFound as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such request") from exc
+    except BlankNote as exc:
         session.rollback()
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
     return _updated(session, ref, now)

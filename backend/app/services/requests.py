@@ -17,6 +17,7 @@ from app.domain.lifecycle import (
     Status,
     acknowledge,
     mark_informed,
+    reassign,
     resolve,
     start,
     transition,
@@ -263,6 +264,25 @@ def mark_foreman_informed(
         {"foreman_informed_at": None},
         {"foreman_informed_at": iso(now)},
     )
+    session.commit()
+
+
+def reassign_owner(
+    session: Session, *, ref: str, owner_id: int | None, staff_id: uuid.UUID, now: datetime
+) -> None:
+    """A coordinator gives the Request rendered `ref` another Owner (spec J9 "Reassign owner").
+
+    Acknowledged or In Progress only, Owner required (`domain.lifecycle.reassign`); the Owner
+    must exist. Writes an `owner_reassigned` event by the staff member in the same transaction;
+    a refused reassign raises and writes nothing.
+    """
+    request = locked_request(session, ref)
+    reassign(Status(request.status), owner_id)
+    if owner_id is None or session.get(Owner, owner_id) is None:
+        raise UnknownOwner()
+    before = {"owner_id": request.owner_id}
+    request.owner_id = owner_id
+    staff_event(session, request, staff_id, now, "owner_reassigned", before, {"owner_id": owner_id})
     session.commit()
 
 

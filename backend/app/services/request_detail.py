@@ -182,7 +182,7 @@ def _notes(session: Session, request_id: int) -> list[DetailNote]:
     names: dict[uuid.UUID, str] = {}
     if staff_ids:
         rows = session.execute(select(Staff.id, Staff.name).where(Staff.id.in_(staff_ids)))
-        names = dict(rows.tuples())
+        names = {staff_id: name for staff_id, name in rows}
     return [
         DetailNote(
             at=n.at,

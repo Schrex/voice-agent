@@ -12,9 +12,11 @@ import {
   type Staff,
 } from "./api";
 import { AcknowledgeAction } from "./AcknowledgeAction";
+import { AddNoteAction } from "./AddNoteAction";
 import { useAuth } from "./App";
 import { CallRecordings } from "./CallRecordings";
 import { MergeAction } from "./MergeAction";
+import { ReassignOwnerAction } from "./ReassignOwnerAction";
 import { EditFieldsAction } from "./EditFieldsAction";
 import { ForemanInformedAction } from "./ForemanInformedAction";
 import { RequestNotes } from "./RequestNotes";
@@ -115,11 +117,13 @@ function Detail({ request }: { request: RequestDetail }) {
       </dl>
       <EditFieldsAction request={request} />
       <AcknowledgeAction request={request} />
+      <ReassignOwnerAction request={request} />
       <StartAction request={request} />
       <ResolveAction request={request} />
       <MergeAction request={request} />
       <ForemanInformedAction request={request} />
       <RequestNotes notes={request.notes ?? []} />
+      <AddNoteAction request={request} />
       <h2 id="history">History</h2>
       <table className="history" aria-labelledby="history">
         <thead>

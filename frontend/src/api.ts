@@ -308,6 +308,32 @@ export async function acknowledgeRequest(
   return (await response.json()) as RequestDetail;
 }
 
+/** Reassign owner (spec J9) of an Acknowledged or In Progress request; resolves to it updated. */
+export async function reassignOwner(
+  accessToken: string,
+  ref: string,
+  ownerId: number,
+): Promise<RequestDetail> {
+  const response = await fetch(`/api/requests/${encodeURIComponent(ref)}/owner`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ owner_id: ownerId }),
+  });
+  if (!response.ok) throw new Error(`reassign ${ref} failed: ${response.status}`);
+  return (await response.json()) as RequestDetail;
+}
+
+/** Add note (spec J9): a coordinator's note, as typed; resolves to the updated request. */
+export async function addNote(accessToken: string, ref: string, text: string): Promise<RequestDetail> {
+  const response = await fetch(`/api/requests/${encodeURIComponent(ref)}/notes`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!response.ok) throw new Error(`note on ${ref} failed: ${response.status}`);
+  return (await response.json()) as RequestDetail;
+}
+
 /** How a Resolved request ended (glossary "Outcome"). */
 export const OUTCOMES = ["Fulfilled", "Partially Fulfilled", "Denied", "Withdrawn"] as const;
 export type Outcome = (typeof OUTCOMES)[number];

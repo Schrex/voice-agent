@@ -5,6 +5,7 @@ a `note_added` event in the same transaction. #18/#19 reuse `add_note`.
 """
 
 import logging
+import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -19,6 +20,7 @@ from app.services.alerts import alert_urgent_note
 from app.services.calls import Caller
 from app.services.events import add_event
 from app.services.merges import final_target
+from app.services.requests import locked_request
 
 log = logging.getLogger(__name__)
 
@@ -71,6 +73,35 @@ def add_note_for_caller(
         except Exception:
             session.rollback()
             log.exception("urgent_note_alert_failed", extra={"ref": request.ref_display})
+
+
+class BlankNote(ValueError):
+    def __init__(self) -> None:
+        super().__init__("A note needs some text")
+
+
+def add_staff_note(
+    session: Session, *, ref: str, text: str | None, staff_id: uuid.UUID, now: datetime
+) -> None:
+    """A coordinator adds a note to the Request rendered `ref` (spec J9 "Add note").
+
+    The note is appended as typed, never urgent (urgent notes are the Foreman's, AC3.5) and
+    texts nobody; it changes no field. Unknown ref → `RequestNotFound`; blank → `BlankNote`;
+    either way nothing is written.
+    """
+    request = locked_request(session, ref)
+    if text is None or not text.strip():
+        raise BlankNote()
+    add_note(
+        session,
+        request=request,
+        author_type="staff",
+        author_id=str(staff_id),
+        text=text,
+        urgent=False,
+        now=now,
+    )
+    session.commit()
 
 
 def add_note(
