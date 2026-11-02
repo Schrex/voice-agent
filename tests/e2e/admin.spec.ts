@@ -79,11 +79,8 @@ test("admin adds a foreman, then deactivates him: his number is rejected at call
   expect(await callStart(page, phone)).toMatchObject({ rejected: true, foreman_first_name: "" });
 });
 
-test("a coordinator gets no admin screens", async ({ page }) => {
+test("every staff member gets the admin screens (one Staff role, ADR 0006)", async ({ page }) => {
   await logIn(page, COORDINATOR);
-  await expect(page.getByRole("link", { name: "Admin" })).toHaveCount(0);
-
-  await page.goto("/admin");
-  await expect(page.getByRole("alert")).toContainText("Admins only");
-  await expect(page.getByRole("heading", { name: "Foremen" })).toHaveCount(0);
+  await page.getByRole("link", { name: "Admin" }).click();
+  await expect(page.getByRole("heading", { name: "Foremen" })).toBeVisible();
 });

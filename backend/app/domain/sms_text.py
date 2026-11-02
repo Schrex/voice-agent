@@ -43,12 +43,15 @@ def today_request_text(facts: TodayRequestFacts) -> str:
     return f"Today request {request_line(facts)}"
 
 
-def overdue_request_text(facts: TodayRequestFacts, *, urgency: str, recorded_at: datetime) -> str:
+def overdue_request_text(
+    facts: TodayRequestFacts, *, urgency: str | None, recorded_at: datetime
+) -> str:
     """E.g. "Overdue: Today request R-1000 from Dale Kramer, Route 104 Widening: tri-axle dump
     trucks, 3 trucks, needed by Sun, Nov 1, 5:00 PM. Recorded Sun, Nov 1, 3:04 PM, not
-    Acknowledged" (ticket #22)."""
+    Acknowledged" (ticket #22). A Request with no Urgency reads "Overdue: request R-1000 …"."""
+    kind = f"{urgency} request" if urgency else "request"
     return (
-        f"Overdue: {urgency} request {request_line(facts)}. "
+        f"Overdue: {kind} {request_line(facts)}. "
         f"Recorded {short_time(recorded_at)}, not Acknowledged"
     )
 

@@ -1,4 +1,4 @@
-export type Staff = { id: string; name: string; email: string; role: "coordinator" | "admin" };
+export type Staff = { id: string; name: string; email: string };
 
 /** Outcome of asking the backend who the token belongs to (`GET /api/me`). */
 export type MeResult =

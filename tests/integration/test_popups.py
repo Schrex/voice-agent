@@ -76,7 +76,7 @@ def api(
 
 @pytest.fixture
 def coordinator(db_session: Session) -> dict[str, str]:
-    staff = Staff(id=uuid.uuid4(), name="Casey", email="casey@example.com", role="coordinator")
+    staff = Staff(id=uuid.uuid4(), name="Casey", email="casey@example.com")
     db_session.add(staff)
     db_session.flush()
     claims = {"sub": str(staff.id), "aud": "authenticated", "exp": int(time.time()) + 3600}

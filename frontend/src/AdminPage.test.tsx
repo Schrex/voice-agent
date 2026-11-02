@@ -24,7 +24,7 @@ const signedIn: AuthClient = {
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
 /** In-memory `/api` for the admin screens; records every write it receives. */
-function fakeApi(role: "admin" | "coordinator") {
+function fakeApi() {
   const foremen: Foreman[] = [
     { id: 1, first_name: "Dale", last_name: "Kramer", active: true, phones: [{ id: 11, e164: "+15855550101" }] },
   ];
@@ -40,8 +40,7 @@ function fakeApi(role: "admin" | "coordinator") {
     if (method !== "GET") writes.push({ method, url, body });
     expect(new Headers(init.headers).get("Authorization")).toBe("Bearer tok");
 
-    if (url === "/api/me") return json({ id: "u", name: "Ali Admin", email: "a@x", role });
-    if (role !== "admin") return json({ detail: "Admins only" }, 403);
+    if (url === "/api/me") return json({ id: "u", name: "Ali Admin", email: "a@x" });
     if (url === "/api/admin/foremen" && method === "GET") return json(foremen);
     if (url === "/api/admin/jobs" && method === "GET") return json(jobs);
 
@@ -104,19 +103,8 @@ const row = (name: string) => screen.getByRole("row", { name: new RegExp(name) }
 describe("admin: roster and jobs", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("refuses a coordinator and shows no Admin link on the queue", async () => {
-    fakeApi("coordinator");
-    renderAt("/admin");
-    expect(await screen.findByRole("alert")).toHaveTextContent("Admins only");
-    expect(screen.queryByRole("heading", { name: "Foremen" })).not.toBeInTheDocument();
-
-    renderAt("/");
-    await screen.findAllByRole("heading", { name: "Queue" });
-    expect(screen.queryByRole("link", { name: "Admin" })).not.toBeInTheDocument();
-  });
-
-  it("takes an admin from the queue to the roster and job list", async () => {
-    fakeApi("admin");
+  it("takes any staff member from the queue to the roster and job list (one Staff role)", async () => {
+    fakeApi();
     renderAt("/");
 
     await userEvent.click(await screen.findByRole("link", { name: "Admin" }));
@@ -129,7 +117,7 @@ describe("admin: roster and jobs", () => {
   });
 
   it("adds a foreman with a phone number", async () => {
-    const { writes } = fakeApi("admin");
+    const { writes } = fakeApi();
     renderAt("/admin");
     const form = await screen.findByRole("form", { name: "Add foreman" });
 
@@ -149,7 +137,7 @@ describe("admin: roster and jobs", () => {
   });
 
   it("deactivates a foreman", async () => {
-    const { writes } = fakeApi("admin");
+    const { writes } = fakeApi();
     renderAt("/admin");
     await screen.findByText("+15855550101");
 
@@ -161,7 +149,7 @@ describe("admin: roster and jobs", () => {
   });
 
   it("shows the reason when a number is already on the roster", async () => {
-    fakeApi("admin");
+    fakeApi();
     renderAt("/admin");
     await screen.findByText("+15855550101");
 
@@ -172,7 +160,7 @@ describe("admin: roster and jobs", () => {
   });
 
   it("adds and removes a job alias", async () => {
-    const { writes } = fakeApi("admin");
+    const { writes } = fakeApi();
     renderAt("/admin");
     await screen.findByText("+15855550101");
 
@@ -193,7 +181,7 @@ describe("admin: roster and jobs", () => {
   });
 
   it("adds a job and deactivates it", async () => {
-    const { writes } = fakeApi("admin");
+    const { writes } = fakeApi();
     renderAt("/admin");
     const form = await screen.findByRole("form", { name: "Add job" });
 

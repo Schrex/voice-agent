@@ -1,7 +1,7 @@
 """Admin API for the Roster and Job list: `/api/admin/foremen`, `/api/admin/jobs` (#34).
 
-Admin role only (coordinators get 403). Foremen and Jobs have no DELETE: they are deactivated
-with `PATCH {"active": false}`.
+Open to every staff member (one Staff role, ADR 0006). Foremen and Jobs have no DELETE: they
+are deactivated with `PATCH {"active": false}`.
 """
 
 from collections.abc import Iterator
@@ -14,11 +14,11 @@ from sqlalchemy.orm import Session
 
 from app.db.models import Foreman, Job
 from app.db.session import get_session
-from app.http.auth import current_admin
+from app.http.auth import current_staff
 from app.services import roster_admin
 from app.services.roster_admin import Conflict, NotFound
 
-router = APIRouter(prefix="/api/admin", dependencies=[Depends(current_admin)])
+router = APIRouter(prefix="/api/admin", dependencies=[Depends(current_staff)])
 
 DbSession = Annotated[Session, Depends(get_session)]
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]

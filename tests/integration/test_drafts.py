@@ -323,9 +323,7 @@ def test_draft_job_matching_two_jobs_is_unmatched(hook: TestClient, db_session: 
 
 
 def _coordinator(session: Session) -> dict[str, str]:
-    staff = Staff(
-        id=uuid.uuid4(), name="Pat Coordinator", email="pat@example.com", role="coordinator"
-    )
+    staff = Staff(id=uuid.uuid4(), name="Pat Coordinator", email="pat@example.com")
     session.add(staff)
     session.flush()
     claims = {"sub": str(staff.id), "aud": "authenticated", "exp": int(time.time()) + 3600}
@@ -406,7 +404,7 @@ class _FakeSms:
 
 
 def _pat_on_duty(session: Session) -> None:
-    pat = Staff(id=uuid.uuid4(), name="Pat Lee", email="lee@example.com", role="coordinator")
+    pat = Staff(id=uuid.uuid4(), name="Pat Lee", email="lee@example.com")
     pat.phone_e164 = "+15855550199"
     session.add(pat)
     session.flush()
@@ -474,8 +472,13 @@ def test_coordinator_promotes_a_draft_to_recorded_with_an_audit_event(
         str(staff_id),
         LATER,
     )
-    assert event.before == {"status": "Draft", "recorded_at": None}
-    assert event.after == {"status": "Recorded", "recorded_at": "2026-11-01T21:00:00+00:00"}
+    # A Draft has no Urgency, so it gets the Today window (product owner decision on #22).
+    assert event.before == {"status": "Draft", "recorded_at": None, "ack_due_at": None}
+    assert event.after == {
+        "status": "Recorded",
+        "recorded_at": "2026-11-01T21:00:00+00:00",
+        "ack_due_at": "2026-11-01T21:15:00+00:00",
+    }
 
 
 def test_promoting_a_request_that_is_not_a_draft_is_refused_and_writes_nothing(

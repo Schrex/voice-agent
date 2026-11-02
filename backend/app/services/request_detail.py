@@ -150,6 +150,7 @@ def request_detail(session: Session, ref: str, now: datetime) -> RequestDetail |
             foreman_informed_at=request.foreman_informed_at,
             now=now,
             after=uninformed_after(session),
+            merged=request.merged_into_id is not None,
         ),
         allowed_actions=allowed_actions(
             Status(request.status), foreman_informed_at=request.foreman_informed_at

@@ -9,7 +9,7 @@ import json
 import time
 import uuid
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -44,6 +44,7 @@ from app.services.requests import (
     submit_requests,
 )
 from app.services.roster import load_roster_file, seed_roster
+from app.services.uninformed import uninformed_requests
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "tests" / "fixtures" / "elevenlabs"
@@ -167,7 +168,7 @@ def _fields(request: Request) -> dict[str, Any]:
 
 
 def _staff_headers(session: Session) -> dict[str, str]:
-    staff = Staff(id=STAFF_ID, name="Pat Lee", email="pat@example.com", role="coordinator")
+    staff = Staff(id=STAFF_ID, name="Pat Lee", email="pat@example.com")
     session.add(staff)
     session.flush()
     claims = {"sub": str(staff.id), "aud": "authenticated", "exp": int(time.time()) + 3600}
@@ -194,6 +195,8 @@ def test_ac4_1_a_recorded_request_is_resolved_as_withdrawn_with_an_agent_event(
         NOW,
     )
     assert request.change_requested is False
+    # The Foreman withdrew it on the call, so they are informed (product owner, #20/#32).
+    assert request.foreman_informed_at == NOW
     *_, event = _events(db_session, ref)
     assert (event.kind, event.actor_type, event.actor_id, event.at) == (
         "resolved",
@@ -206,12 +209,14 @@ def test_ac4_1_a_recorded_request_is_resolved_as_withdrawn_with_an_agent_event(
         "outcome": None,
         "explanation": None,
         "resolved_at": None,
+        "foreman_informed_at": None,
     }
     assert event.after == {
         "status": "Resolved",
         "outcome": "Withdrawn",
         "explanation": "Withdrawn by foreman",
         "resolved_at": "2026-11-01T20:04:00Z",
+        "foreman_informed_at": "2026-11-01T20:04:00Z",
     }
     assert _notes(db_session) == []
 
@@ -394,3 +399,11 @@ def test_bad_secret_is_401_and_unknown_conversation_is_403(
     assert _withdraw(tools, body, conversation_id="conv_unknown").status_code == 403
     assert _withdraw(tools, body, conversation_id=None).status_code == 403
     assert _request(db_session, ref).status == "Recorded"
+
+
+def test_a_withdrawn_request_never_shows_uninformed(tools: TestClient, db_session: Session) -> None:
+    """The Foreman withdrew it on the call, so it is Foreman Informed (product owner, #20/#32)."""
+    ref = _record(db_session)
+    assert _withdraw(tools, {"ref": ref}).json() == {"applied": True}
+
+    assert uninformed_requests(db_session, NOW + timedelta(hours=3)) == []

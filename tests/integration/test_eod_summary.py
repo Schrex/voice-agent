@@ -52,8 +52,8 @@ def roster(db_session: Session) -> Session:
     return db_session
 
 
-def _staff(session: Session, name: str, email: str, role: str = "coordinator") -> Staff:
-    staff = Staff(id=uuid.uuid4(), name=name, email=email, role=role)
+def _staff(session: Session, name: str, email: str) -> Staff:
+    staff = Staff(id=uuid.uuid4(), name=name, email=email)
     session.add(staff)
     session.flush()
     return staff
@@ -201,13 +201,14 @@ def test_a_restart_after_five_pm_still_sends_that_days_summary(
     assert [subject for _, subject, _ in email.sent] == ["End-of-day summary, Mon, Nov 2"]
 
 
-def test_only_coordinators_get_it(roster: Session, email: FakeEmail) -> None:
+def test_every_staff_member_gets_it(roster: Session, email: FakeEmail) -> None:
+    """One Staff role (ADR 0006): everyone on the staff list is a Coordinator."""
     _staff(roster, "Pat Lee", "pat@example.com")
-    _staff(roster, "Alex Admin", "alex@example.com", role="admin")
+    _staff(roster, "Alex Admin", "alex@example.com")
 
     send_end_of_day_summary(roster, email, now=FIVE_PM)
 
-    assert [to for to, _, _ in email.sent] == ["pat@example.com"]
+    assert sorted(to for to, _, _ in email.sent) == ["alex@example.com", "pat@example.com"]
 
 
 def test_a_provider_error_is_a_failed_alert_and_is_not_retried(

@@ -45,10 +45,10 @@ def start_emergency(
     """Record the Emergency Request and alert the office; returns its ref ("R-1042").
 
     In one transaction: the Request (urgency Emergency, Recorded, by the agent), its `recorded`
-    event, its `created` link to the call, the pop-up and one `emergency` SMS alert per
-    Coordinator (`staff.role = 'coordinator'`, as #23). Committed before any SMS is sent, then
-    each SMS is sent and marked sent or failed. Once per call: asking again returns the same
-    ref and writes and sends nothing (the Call row is locked).
+    event, its `created` link to the call, the pop-up and one `emergency` SMS alert per staff
+    member (one Staff role, ADR 0006: everyone on the staff list is a Coordinator). Committed
+    before any SMS is sent, then each SMS is sent and marked sent or failed. Once per call:
+    asking again returns the same ref and writes and sends nothing (the Call row is locked).
     """
     session.execute(select(Call.id).where(Call.id == caller.call_id).with_for_update())
     already = session.scalar(
@@ -97,9 +97,7 @@ def start_emergency(
         return row
 
     alert(channel="popup", status="sent", detail=text)
-    coordinators = session.scalars(
-        select(Staff).where(Staff.role == "coordinator").order_by(Staff.name, Staff.id)
-    ).all()
+    coordinators = session.scalars(select(Staff).order_by(Staff.name, Staff.id)).all()
     to_send: list[tuple[Alert, str]] = []
     if not coordinators:
         alert(channel="sms", status="failed", detail=NO_COORDINATOR)

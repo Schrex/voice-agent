@@ -74,7 +74,6 @@ def _alert_overdue(
     now: datetime,
 ) -> None:
     assert request.ack_due_at is not None and request.recorded_at is not None
-    assert request.urgency is not None
     staff, reason = backup_coordinator(session, request.ack_due_at)
     if staff is not None and not staff.phone_e164:
         reason = f"{staff.name} has no phone number"

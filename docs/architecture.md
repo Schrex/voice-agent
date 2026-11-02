@@ -151,6 +151,8 @@ Tool contract: tools return short, speakable facts; errors return `{error: "<spe
 
 ### 4.3 Dashboard API (`/api/*`, `Authorization: Bearer <Supabase JWT>`)
 
+Pilot: one Staff role ([ADR 0006](adr/0006-one-staff-role-for-the-pilot.md)). Every route below is open to anyone on the staff list; the Role column says whose work it is, not who is allowed. The backend checks the token with the project's JWKS (ES256/RS256, new Supabase signing keys) or its legacy JWT secret (HS256), whichever signed it.
+
 | Method & path | Role | Purpose |
 |---|---|---|
 | `GET /api/requests?status&flag&job&q` | coordinator | Queue (sorted urgency, age) + counts |
@@ -183,7 +185,7 @@ All timestamps `timestamptz` (UTC); displayed and parsed in `America/New_York`.
 | `job_aliases` | id, job_id, alias |
 | `owners` | id, name, phone_e164?, email? |
 | `category_owner_defaults` | category (pk), owner_id |
-| `staff` | id = Supabase auth user id, name, phone_e164, email, role (`coordinator` \| `admin`) |
+| `staff` | id = Supabase auth user id, name, phone_e164, email (no role: ADR 0006) |
 | `duty_roster` | date (pk), on_duty_staff_id, backup_staff_id |
 | `settings` | singleton: office_line_e164, ack_window_today_min (15), ack_window_planned_min (120), uninformed_after_min (120), timezone |
 | `requests` | id, ref (seq from 1000, rendered R-1042), foreman_id, job_id?, job_spoken, category, need, quantity?, unit?, needed_by?, needed_by_spoken?, urgency, status, owner_id?, outcome?, explanation?, foreman_informed_at?, source (`ai_call` \| `coordinator`), flags (unverified fields, change_requested), merged_into_id?, recorded_at, acknowledged_at, ack_due_at, resolved_at |

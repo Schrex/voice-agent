@@ -255,7 +255,7 @@ def test_the_office_line_the_admin_sets_is_the_one_call_start_sends(
     Transfer dials (one source, `settings.office_line_e164`); clearing it sends it empty."""
     jwt_secret = "test-jwt-secret-at-least-32-bytes-long"
     monkeypatch.setenv("SUPABASE_JWT_SECRET", jwt_secret)
-    admin = Staff(id=uuid.uuid4(), name="Avery Admin", email="avery@example.com", role="admin")
+    admin = Staff(id=uuid.uuid4(), name="Avery Admin", email="avery@example.com")
     db_session.add(admin)
     db_session.flush()
     claims = {"sub": str(admin.id), "aud": "authenticated", "exp": int(time.time()) + 3600}

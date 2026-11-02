@@ -111,9 +111,7 @@ def tools(
 
 
 def _staff(session: Session, name: str, phone: str | None) -> Staff:
-    staff = Staff(
-        id=uuid.uuid4(), name=name, email=f"{uuid.uuid4().hex}@example.com", role="coordinator"
-    )
+    staff = Staff(id=uuid.uuid4(), name=name, email=f"{uuid.uuid4().hex}@example.com")
     staff.phone_e164 = phone
     session.add(staff)
     session.flush()
@@ -349,7 +347,6 @@ def test_the_admin_changing_the_today_window_moves_when_a_new_request_goes_overd
     """Ticket #35 DoD: `PATCH /api/admin/settings` changes the Today ack window (default 15 min),
     and a Request Recorded after that goes Overdue at the new boundary."""
     admin = _staff(db_session, "Avery Admin", None)
-    admin.role = "admin"
     db_session.flush()
     changed = tools.patch(
         "/api/admin/settings", json={"ack_window_today_min": 30}, headers=_headers(admin)
@@ -375,17 +372,22 @@ def test_the_admin_changing_the_today_window_moves_when_a_new_request_goes_overd
     assert len(_overdue_alerts(db_session)) == 1
 
 
-def test_a_request_with_no_urgency_has_no_ack_window(
+def test_a_request_with_no_urgency_goes_overdue_on_the_today_window(
     tools: TestClient, db_session: Session, sms: FakeSms, clock: MovableClock, team: Team
 ) -> None:
-    """Needed-by unknown → no Urgency → the spec gives no window (open question on #22)."""
+    """Needed-by unknown → no Urgency → the Today window (product owner decision on #22)."""
     ref = _submit(tools, db_session, None)
 
-    clock.now = NOW + timedelta(days=1)
+    clock.now = NOW + timedelta(minutes=14)
     _sweep(db_session, sms, clock)
-
     assert _queue(tools, team.on_duty) == {ref: False}
-    assert _overdue_alerts(db_session) == []
+
+    clock.now = NOW + timedelta(minutes=16)
+    _sweep(db_session, sms, clock)
+    assert _queue(tools, team.on_duty) == {ref: True}
+    [body] = _sms_to(sms, team.backup.phone_e164 or "")
+    assert body.startswith(f"Overdue: request {ref} from Dale Kramer")
+    assert len(_overdue_alerts(db_session)) == 1
 
 
 def test_a_coordinator_logged_request_also_goes_overdue(

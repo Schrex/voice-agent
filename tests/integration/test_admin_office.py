@@ -1,4 +1,5 @@
-"""Admin: owners, category defaults, staff, duty roster, settings (#35). Admin role only."""
+"""Admin: owners, category defaults, staff, duty roster, settings (#35). Open to every staff member
+(one Staff role, ADR 0006)."""
 
 import time
 import uuid
@@ -28,10 +29,8 @@ def env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     yield
 
 
-def _staff(session: Session, role: str, name: str | None = None) -> Staff:
-    staff = Staff(
-        id=uuid.uuid4(), name=name or f"Pat {role}", email=f"{uuid.uuid4().hex}@x.com", role=role
-    )
+def _staff(session: Session, label: str, name: str | None = None) -> Staff:
+    staff = Staff(id=uuid.uuid4(), name=name or f"Pat {label}", email=f"{uuid.uuid4().hex}@x.com")
     session.add(staff)
     session.flush()
     return staff
@@ -82,11 +81,12 @@ ADMIN_CALLS = [
 
 
 @pytest.mark.parametrize(("method", "path", "body"), ADMIN_CALLS)
-def test_coordinator_cannot_use_admin_office_endpoints(
+def test_every_staff_member_can_use_admin_office_endpoints(
     client: TestClient, coordinator: dict[str, str], method: str, path: str, body: Any
 ) -> None:
+    """One Staff role (ADR 0006): no staff member gets 403 here."""
     response = client.request(method, path, json=body, headers=coordinator)
-    assert response.status_code == 403
+    assert response.status_code not in (401, 403)
 
 
 @pytest.mark.parametrize(("method", "path", "body"), ADMIN_CALLS)
@@ -297,7 +297,6 @@ def test_admin_adds_staff_who_can_then_sign_in(client: TestClient, admin: dict[s
         "id": str(user_id),
         "name": "Casey Coordinator",
         "email": "casey@x.com",
-        "role": "coordinator",
         "phone_e164": "+15855550123",
     }
     response = client.post("/api/admin/staff", json=body, headers=admin)
@@ -312,36 +311,33 @@ def test_admin_adds_staff_who_can_then_sign_in(client: TestClient, admin: dict[s
     token = jwt.encode(claims, SECRET, algorithm="HS256")
     me = client.get("/api/me", headers={"Authorization": f"Bearer {token}"})
     assert me.status_code == 200
-    assert me.json()["role"] == "coordinator"
 
     names = [s["name"] for s in client.get("/api/admin/staff", headers=admin).json()]
     assert names == ["Avery Admin", "Casey Coordinator"]
 
 
-def test_staff_role_defaults_to_coordinator(client: TestClient, admin: dict[str, str]) -> None:
+def test_staff_phone_defaults_to_none(client: TestClient, admin: dict[str, str]) -> None:
     body = {"id": str(uuid.uuid4()), "name": "Jo", "email": "jo@x.com"}
     response = client.post("/api/admin/staff", json=body, headers=admin)
-    assert response.json()["role"] == "coordinator"
-    assert response.json()["phone_e164"] is None
+    assert response.json() == {**body, "phone_e164": None}
 
 
-def test_admin_edits_staff_role_and_phone(
+def test_admin_edits_staff_name_and_phone(
     client: TestClient, admin: dict[str, str], db_session: Session
 ) -> None:
     staff = _staff(db_session, "coordinator", "Jo")
     response = client.patch(
         f"/api/admin/staff/{staff.id}",
-        json={"role": "admin", "phone_e164": "+15855550124", "name": "Jo Smith"},
+        json={"phone_e164": "+15855550124", "name": "Jo Smith"},
         headers=admin,
     )
     assert response.status_code == 200
-    assert response.json()["role"] == "admin"
     assert response.json()["phone_e164"] == "+15855550124"
     assert response.json()["name"] == "Jo Smith"
 
     cleared = client.patch(f"/api/admin/staff/{staff.id}", json={"phone_e164": None}, headers=admin)
     assert cleared.json()["phone_e164"] is None
-    assert cleared.json()["role"] == "admin"
+    assert cleared.json()["name"] == "Jo Smith"
 
 
 def test_staff_id_already_on_the_list_is_409(
@@ -358,12 +354,6 @@ def test_staff_id_already_on_the_list_is_409(
         {"id": "not-a-uuid", "name": "A", "email": "a@x.com"},
         {"id": "00000000-0000-0000-0000-000000000001", "name": " ", "email": "a@x.com"},
         {"id": "00000000-0000-0000-0000-000000000001", "name": "A", "email": "nope"},
-        {
-            "id": "00000000-0000-0000-0000-000000000001",
-            "name": "A",
-            "email": "a@x.com",
-            "role": "owner",
-        },
         {
             "id": "00000000-0000-0000-0000-000000000001",
             "name": "A",

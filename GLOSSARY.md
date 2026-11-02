@@ -25,7 +25,7 @@ The on-duty Coordinator and the backup Coordinator named for each date: the on-d
 _Avoid_: Roster (that is the list of foremen), schedule, rota
 
 **Admin**:
-A person who maintains the roster, jobs and contacts.
+A person who maintains the roster, jobs and contacts. In the pilot this is work, not an account type: every staff member can do it ([ADR 0006](docs/adr/0006-one-staff-role-for-the-pilot.md)).
 
 ## Requests
 

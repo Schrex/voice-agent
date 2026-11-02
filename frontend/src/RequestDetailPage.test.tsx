@@ -8,7 +8,7 @@ import { App } from "./App";
 import type { AuthClient } from "./auth";
 import type { QueueRequest, RequestDetail } from "./api";
 
-const STAFF = { id: "u-1", name: "Pat Lee", email: "pat@example.com", role: "coordinator" };
+const STAFF = { id: "u-1", name: "Pat Lee", email: "pat@example.com" };
 
 const signedIn: AuthClient = {
   getSession: async () => ({ accessToken: "tok-pat" }),

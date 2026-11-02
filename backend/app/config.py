@@ -67,12 +67,21 @@ def sentry_dsn() -> str | None:
     return os.environ.get("SENTRY_DSN") or None
 
 
-def supabase_jwt_secret() -> str:
-    """Supabase project's JWT secret (HS256); the backend verifies dashboard tokens with it."""
-    secret = os.environ.get("SUPABASE_JWT_SECRET")
-    if not secret:
-        raise RuntimeError("SUPABASE_JWT_SECRET is not set")
-    return secret
+def supabase_jwt_secret() -> str | None:
+    """Supabase project's legacy JWT secret: checks HS256 dashboard tokens. Unset: none accepted."""
+    return os.environ.get("SUPABASE_JWT_SECRET") or None
+
+
+def supabase_jwks_url() -> str | None:
+    """Where the Supabase project publishes its token-signing public keys (ES256/RS256 tokens).
+
+    From `SUPABASE_URL`, or else `VITE_SUPABASE_URL` (the same project URL the dashboard build
+    gets). Unset: no asymmetric token is accepted.
+    """
+    url = os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
+    if not url:
+        return None
+    return f"{url.rstrip('/')}/auth/v1/.well-known/jwks.json"
 
 
 def twilio_account_sid() -> str | None:

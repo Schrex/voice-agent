@@ -117,7 +117,7 @@ def _request_count(session: Session) -> int:
 
 
 def _staff_headers(session: Session) -> dict[str, str]:
-    staff = Staff(id=STAFF_ID, name="Pat Lee", email="pat@example.com", role="coordinator")
+    staff = Staff(id=STAFF_ID, name="Pat Lee", email="pat@example.com")
     session.add(staff)
     session.flush()
     claims = {"sub": str(staff.id), "aud": "authenticated", "exp": int(time.time()) + 3600}

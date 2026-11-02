@@ -11,7 +11,7 @@ import datetime
 import json
 import uuid
 from pathlib import Path
-from typing import Literal, Self
+from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
@@ -49,7 +49,6 @@ class StaffEntry(BaseModel):
     id: uuid.UUID
     name: str = Field(min_length=1)
     email: str = Field(min_length=3)
-    role: Literal["coordinator", "admin"]
     phone_e164: str | None = Field(default=None, pattern=r"^\+[1-9][0-9]{1,14}$")
     """Where alert SMS reach them; omitted = no texts."""
 
@@ -154,7 +153,6 @@ def _upsert_staff(session: Session, entry: StaffEntry) -> None:
         session.add(staff)
     staff.name = entry.name
     staff.email = entry.email
-    staff.role = entry.role
     staff.phone_e164 = entry.phone_e164
 
 

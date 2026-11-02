@@ -18,15 +18,14 @@ export function AdminPage({ staff }: { staff: Staff }) {
   const foremen = useQuery({
     queryKey: ["admin", "foremen"],
     queryFn: () => adminFetch<Foreman[]>(token, "/foremen"),
-    enabled: staff.role === "admin",
   });
   const jobs = useQuery({
     queryKey: ["admin", "jobs"],
     queryFn: () => adminFetch<Job[]>(token, "/jobs"),
-    enabled: staff.role === "admin",
   });
   const write = useMutation({
-    mutationFn: ({ path, method, body }: Write) => adminFetch<unknown>(token, path, method, body),
+    mutationFn: ({ path, method, body }: Write) =>
+      adminFetch<unknown>(token, path, method, body),
     onMutate: () => setError(null),
     onError: (e: Error) => setError(e.message),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["admin"] }),
@@ -49,27 +48,19 @@ export function AdminPage({ staff }: { staff: Staff }) {
       </header>
       <main>
         <h1>Admin</h1>
-        {staff.role === "admin" && (
-          <p>
-            <Link to="/admin/office">Owners, staff, duty roster, settings</Link>
-          </p>
+        <p>
+          <Link to="/admin/office">Owners, staff, duty roster, settings</Link>
+        </p>
+        {error && <p role="alert">{error}</p>}
+        {(foremen.isError || jobs.isError) && (
+          <p role="alert">Could not load the roster. Reload to try again.</p>
         )}
-        {staff.role !== "admin" ? (
-          <p role="alert">Admins only.</p>
-        ) : (
-          <>
-            {error && <p role="alert">{error}</p>}
-            {(foremen.isError || jobs.isError) && (
-              <p role="alert">Could not load the roster. Reload to try again.</p>
-            )}
-            <h2>Foremen</h2>
-            <ForemenTable foremen={foremen.data ?? []} save={save} />
-            <AddForeman save={save} />
-            <h2>Jobs</h2>
-            <JobsTable jobs={jobs.data ?? []} save={save} />
-            <AddJob save={save} />
-          </>
-        )}
+        <h2>Foremen</h2>
+        <ForemenTable foremen={foremen.data ?? []} save={save} />
+        <AddForeman save={save} />
+        <h2>Jobs</h2>
+        <JobsTable jobs={jobs.data ?? []} save={save} />
+        <AddJob save={save} />
       </main>
     </>
   );
@@ -102,7 +93,10 @@ function ForemenTable({ foremen, save }: { foremen: Foreman[]; save: Save }) {
                       type="button"
                       aria-label={`Remove phone ${p.e164}`}
                       onClick={() =>
-                        void save({ method: "DELETE", path: `/foremen/${f.id}/phones/${p.id}` })
+                        void save({
+                          method: "DELETE",
+                          path: `/foremen/${f.id}/phones/${p.id}`,
+                        })
                       }
                     >
                       Remove
@@ -115,7 +109,11 @@ function ForemenTable({ foremen, save }: { foremen: Foreman[]; save: Save }) {
                 button="Add phone"
                 placeholder="+15855550123"
                 onAdd={(e164) =>
-                  save({ method: "POST", path: `/foremen/${f.id}/phones`, body: { e164 } })
+                  save({
+                    method: "POST",
+                    path: `/foremen/${f.id}/phones`,
+                    body: { e164 },
+                  })
                 }
               />
             </td>
@@ -123,7 +121,11 @@ function ForemenTable({ foremen, save }: { foremen: Foreman[]; save: Save }) {
               <ActiveToggle
                 active={f.active}
                 onToggle={() =>
-                  save({ method: "PATCH", path: `/foremen/${f.id}`, body: { active: !f.active } })
+                  save({
+                    method: "PATCH",
+                    path: `/foremen/${f.id}`,
+                    body: { active: !f.active },
+                  })
                 }
               />
             </td>
@@ -157,7 +159,10 @@ function JobsTable({ jobs, save }: { jobs: Job[]; save: Save }) {
                       type="button"
                       aria-label={`Remove alias ${a.alias}`}
                       onClick={() =>
-                        void save({ method: "DELETE", path: `/jobs/${j.id}/aliases/${a.id}` })
+                        void save({
+                          method: "DELETE",
+                          path: `/jobs/${j.id}/aliases/${a.id}`,
+                        })
                       }
                     >
                       Remove
@@ -169,7 +174,11 @@ function JobsTable({ jobs, save }: { jobs: Job[]; save: Save }) {
                 label="New alias"
                 button="Add alias"
                 onAdd={(alias) =>
-                  save({ method: "POST", path: `/jobs/${j.id}/aliases`, body: { alias } })
+                  save({
+                    method: "POST",
+                    path: `/jobs/${j.id}/aliases`,
+                    body: { alias },
+                  })
                 }
               />
             </td>
@@ -177,7 +186,11 @@ function JobsTable({ jobs, save }: { jobs: Job[]; save: Save }) {
               <ActiveToggle
                 active={j.active}
                 onToggle={() =>
-                  save({ method: "PATCH", path: `/jobs/${j.id}`, body: { active: !j.active } })
+                  save({
+                    method: "PATCH",
+                    path: `/jobs/${j.id}`,
+                    body: { active: !j.active },
+                  })
                 }
               />
             </td>
@@ -188,7 +201,13 @@ function JobsTable({ jobs, save }: { jobs: Job[]; save: Save }) {
   );
 }
 
-function ActiveToggle({ active, onToggle }: { active: boolean; onToggle: () => void }) {
+function ActiveToggle({
+  active,
+  onToggle,
+}: {
+  active: boolean;
+  onToggle: () => void;
+}) {
   return (
     <span className="inline">
       <span>{active ? "Active" : "Inactive"}</span>
@@ -243,11 +262,19 @@ function AddForeman({ save }: { save: Save }) {
     <form aria-label="Add foreman" className="add" onSubmit={submit}>
       <label>
         First name
-        <input required value={first} onChange={(e) => setFirst(e.target.value)} />
+        <input
+          required
+          value={first}
+          onChange={(e) => setFirst(e.target.value)}
+        />
       </label>
       <label>
         Last name
-        <input required value={last} onChange={(e) => setLast(e.target.value)} />
+        <input
+          required
+          value={last}
+          onChange={(e) => setLast(e.target.value)}
+        />
       </label>
       <label>
         Phone
@@ -266,7 +293,13 @@ function AddJob({ save }: { save: Save }) {
   const [name, setName] = useState("");
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (await save({ method: "POST", path: "/jobs", body: { name: name.trim(), aliases: [] } })) {
+    if (
+      await save({
+        method: "POST",
+        path: "/jobs",
+        body: { name: name.trim(), aliases: [] },
+      })
+    ) {
       setName("");
     }
   }
@@ -274,7 +307,11 @@ function AddJob({ save }: { save: Save }) {
     <form aria-label="Add job" className="add" onSubmit={submit}>
       <label>
         Job name
-        <input required value={name} onChange={(e) => setName(e.target.value)} />
+        <input
+          required
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
       </label>
       <button type="submit">Add job</button>
     </form>

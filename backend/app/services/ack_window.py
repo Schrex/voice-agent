@@ -10,7 +10,7 @@ from app.services.settings import ack_windows
 
 def set_ack_due_at(session: Session, request: Request) -> None:
     """Start the ack window of a Request just Recorded: its `recorded_at` plus the office's
-    window for its Urgency; none for Emergency or no Urgency (`domain.sla.ack_due_at`).
+    window for its Urgency; Emergency and no Urgency get the Today window (`domain.sla.ack_due_at`).
 
     Does not commit: the caller writes it with the Request's `recorded` event.
     """

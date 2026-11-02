@@ -58,3 +58,11 @@ def test_requests_resolved_before_the_cutoff_are_uninformed_now() -> None:
     now = datetime(2026, 11, 1, 16, 0, 1, tzinfo=UTC)
 
     assert uninformed_cutoff(now) == datetime(2026, 11, 1, 14, 0, 1, tzinfo=UTC)
+
+
+def test_a_request_merged_into_another_is_never_uninformed() -> None:
+    """Product owner decision on #32/#33: the surviving Request carries the flag."""
+    now = RESOLVED_AT + timedelta(days=1)
+    assert not is_uninformed(
+        Status.RESOLVED, resolved_at=RESOLVED_AT, foreman_informed_at=None, now=now, merged=True
+    )

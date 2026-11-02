@@ -79,9 +79,7 @@ def tools(
 
 
 def _on_duty(session: Session, phone: str | None = "+15855550190") -> Staff:
-    staff = Staff(
-        id=uuid.uuid4(), name="Pat Lee", email=f"{uuid.uuid4().hex}@example.com", role="coordinator"
-    )
+    staff = Staff(id=uuid.uuid4(), name="Pat Lee", email=f"{uuid.uuid4().hex}@example.com")
     staff.phone_e164 = phone
     session.add(staff)
     session.flush()

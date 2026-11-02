@@ -1,14 +1,14 @@
 """Admin API for Owners, category defaults, staff, the duty roster and settings (#35).
 
-`/api/admin/{owners,category-defaults,staff,duty,settings}`, admin role only (coordinators get
-403), following #34's `/api/admin/{foremen,jobs}`. Owners and staff have no DELETE.
+`/api/admin/{owners,category-defaults,staff,duty,settings}`, open to every staff member (one
+Staff role, ADR 0006), following #34's `/api/admin/{foremen,jobs}`. Owners and staff have no DELETE.
 """
 
 import datetime
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Annotated, Any, Literal, cast
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field, StringConstraints
@@ -17,13 +17,13 @@ from sqlalchemy.orm import Session
 from app.clock import Clock, get_clock
 from app.db.models import DutyRoster, Owner, Settings, Staff
 from app.db.session import get_session
-from app.http.auth import current_admin
+from app.http.auth import current_staff
 from app.services import office_admin
 from app.services.office_admin import Invalid
 from app.services.roster_admin import Conflict, NotFound
 from app.services.settings import SettingsChanges, office_settings, update_office_settings
 
-router = APIRouter(prefix="/api/admin", dependencies=[Depends(current_admin)])
+router = APIRouter(prefix="/api/admin", dependencies=[Depends(current_staff)])
 
 DbSession = Annotated[Session, Depends(get_session)]
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
@@ -31,7 +31,6 @@ E164 = Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^\+[1-9
 Email = Annotated[
     str, StringConstraints(strip_whitespace=True, max_length=320, pattern=r"^[^@\s]+@[^@\s]+$")
 ]
-Role = Literal["coordinator", "admin"]
 # An acknowledgment window in minutes: at least 1 minute, at most a week.
 Minutes = Annotated[int, Field(ge=1, le=7 * 24 * 60)]
 
@@ -141,7 +140,6 @@ class StaffOut(BaseModel):
     id: uuid.UUID
     name: str
     email: str
-    role: Role
     phone_e164: str | None
 
     @classmethod
@@ -150,7 +148,6 @@ class StaffOut(BaseModel):
             id=staff.id,
             name=staff.name,
             email=staff.email,
-            role="admin" if staff.role == "admin" else "coordinator",
             phone_e164=staff.phone_e164,
         )
 
@@ -160,14 +157,12 @@ class StaffIn(BaseModel):
     """The person's Supabase Auth user id (the account is created in Supabase first)."""
     name: Name
     email: Email
-    role: Role = "coordinator"
     phone_e164: E164 | None = None
 
 
 class StaffPatch(BaseModel):
     name: Name = ""
     email: Email = ""
-    role: Role = "coordinator"
     phone_e164: E164 | None = None
 
 
@@ -184,7 +179,6 @@ def add_staff(body: StaffIn, session: DbSession) -> StaffOut:
             staff_id=body.id,
             name=body.name,
             email=body.email,
-            role=body.role,
             phone_e164=body.phone_e164,
         )
     return StaffOut.of(staff)

@@ -320,15 +320,11 @@ class Staff(Base):
     """A dashboard user. `id` is the Supabase Auth user id (the access token's `sub`)."""
 
     __tablename__ = "staff"
-    __table_args__ = (
-        CheckConstraint("role IN ('coordinator', 'admin')", name="role"),
-        CheckConstraint(rf"phone_e164 {E164_MATCH}", name="phone_e164_format"),
-    )
+    __table_args__ = (CheckConstraint(rf"phone_e164 {E164_MATCH}", name="phone_e164_format"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
     email: Mapped[str] = mapped_column(String(320))
-    role: Mapped[str] = mapped_column(String(20))
     # Where alert SMS reach them (ticket #21); null = no texts possible.
     phone_e164: Mapped[str | None] = mapped_column(String(16))
 

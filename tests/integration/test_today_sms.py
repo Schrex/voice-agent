@@ -78,9 +78,7 @@ def tools(
 
 
 def _staff(session: Session, name: str, phone: str | None) -> Staff:
-    staff = Staff(
-        id=uuid.uuid4(), name=name, email=f"{uuid.uuid4().hex}@example.com", role="coordinator"
-    )
+    staff = Staff(id=uuid.uuid4(), name=name, email=f"{uuid.uuid4().hex}@example.com")
     staff.phone_e164 = phone
     session.add(staff)
     session.flush()
