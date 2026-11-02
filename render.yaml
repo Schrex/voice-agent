@@ -5,8 +5,12 @@ services:
     name: voice-agent-staging
     runtime: python
     rootDir: backend
-    # Paid instance: free instances spin down, and the call-start webhook can't wait for a cold start.
-    plan: starter
+    # FREE FOR THE PROTOTYPE WEEK (product owner, 2026-11-02). A free instance sleeps after ~15 min
+    # idle and takes 30-60 s to wake: the call-start webhook times out (the call fails) and the
+    # Overdue sweep and 17:00 email don't run while it sleeps. An uptime ping on /healthz every
+    # 5 min keeps it awake. Before any Foreman calls in (#37), set `plan: starter` and restore the
+    # preDeployCommand below (docs/staging.md "Free plan").
+    plan: free
     region: virginia
     numInstances: 1
     # Deploys come from .github/workflows/deploy-staging.yml after CI passes on main, not on every push.
@@ -14,8 +18,9 @@ services:
     # Builds the dashboard too (served by the backend at /); the repo is checked out whole, so
     # ../frontend is reachable from rootDir. VITE_* vars are read at build time.
     buildCommand: (cd ../frontend && npm ci && npm run build && npm run check-bundle) && pip install uv==0.11.32 && uv sync --locked --no-dev
-    preDeployCommand: .venv/bin/alembic upgrade head
-    startCommand: .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers
+    # Free instances have no pre-deploy step, so migrations run at start. On Starter, move
+    # `alembic upgrade head` back to `preDeployCommand:` so a failed migration never goes live.
+    startCommand: .venv/bin/alembic upgrade head && exec .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers
     healthCheckPath: /healthz
     envVars:
       - key: PYTHON_VERSION
