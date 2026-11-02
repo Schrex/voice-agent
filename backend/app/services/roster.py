@@ -154,6 +154,7 @@ def _upsert_staff(session: Session, entry: StaffEntry) -> None:
     staff.name = entry.name
     staff.email = entry.email
     staff.phone_e164 = entry.phone_e164
+    staff.removed_at = None  # listed in the seed file = on the staff list
 
 
 def _upsert_job(session: Session, entry: JobEntry) -> None:

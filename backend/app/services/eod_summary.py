@@ -39,7 +39,9 @@ def send_end_of_day_summary(session: Session, email: EmailSender, *, now: dateti
     if not is_due(now):
         return
     day = summary_day(now)
-    coordinators = session.scalars(select(Staff).order_by(Staff.name, Staff.id)).all()
+    coordinators = session.scalars(
+        select(Staff).where(Staff.removed_at.is_(None)).order_by(Staff.name, Staff.id)
+    ).all()
     pending: list[tuple[int, str]] = []
     for staff in coordinators:
         alert_id = session.scalar(

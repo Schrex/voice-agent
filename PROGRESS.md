@@ -213,11 +213,14 @@ docs/task-dependencies.md is the original layer-based plan, superseded by the is
   - Emergency requests and requests with no Urgency (needed-by unknown, promoted Drafts) get the Today ack window, so they go Overdue and text the backup. The Overdue SMS for a no-Urgency request reads "Overdue: request R-… ".
   - Named times confirmed: "first thing"/"morning" 7:00 AM, "afternoon" 1:00 PM (no code change).
   - A phone withdrawal sets Foreman Informed in the same `resolved` event; a request merged into another never shows Uninformed (list and detail).
+- 2026-11-02 (product owner, second round):
+  - Several matching Jobs: the agent keeps asking the Foreman to choose (no change, #13).
+  - Overnight Overdue SMS: send immediately (spec §12 default kept, no change, #22).
+  - Staff removal: `DELETE /api/admin/staff/{id}` sets `staff.removed_at` (migration `0021`). A removed person gets 403 at once, leaves the staff list, the duty-roster choices, the Emergency SMS and the end-of-day email; the row stays so the audit history keeps their name. Refused (409) for yourself and for anyone on the duty roster today or later. `POST /api/admin/staff` with the same user id restores them; a seed file listing them does too. Office setup page: "Remove", then "Yes, remove" (no browser dialog).
 
 ## Open items
 
 - Office line behavior for overnight transfers (rings where? voicemail?).
-- Overnight Overdue SMS: send immediately (current default, built in #22 per spec §12 "Default v1") or hold until morning.
 - Safety-lead approval of the emergency line (`backend/agent/safety_line.txt` holds the spec placeholder, marked PLACEHOLDER; #26).
 - Draft Urgency (review S8): should a Draft's spoken needed-by be resolved (and its Urgency set) when it is promoted, and against which time — the call's or the promotion's? Until decided, promoted Drafts have no Urgency, so no Today SMS; since 2026-11-02 they get the Today ack window (no-Urgency rule) and so can go Overdue.
 - J9 "Needs action" count: which Requests count (review S10)? Not built.

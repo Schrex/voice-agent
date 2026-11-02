@@ -97,7 +97,9 @@ def start_emergency(
         return row
 
     alert(channel="popup", status="sent", detail=text)
-    coordinators = session.scalars(select(Staff).order_by(Staff.name, Staff.id)).all()
+    coordinators = session.scalars(
+        select(Staff).where(Staff.removed_at.is_(None)).order_by(Staff.name, Staff.id)
+    ).all()
     to_send: list[tuple[Alert, str]] = []
     if not coordinators:
         alert(channel="sms", status="failed", detail=NO_COORDINATOR)

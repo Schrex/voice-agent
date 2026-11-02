@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -58,6 +58,13 @@ function fakeApi() {
       const s = staff.find((x) => x.id === m![1])!;
       Object.assign(s, body);
       return json(s);
+    }
+    if (m && method === "DELETE") {
+      if (duty.some((d) => d.on_duty.id === m![1] || d.backup?.id === m![1])) {
+        return json({ detail: "Casey Coordinator is on the duty roster for Mon, Nov 2. Change the duty roster first." }, 409);
+      }
+      staff.splice(staff.findIndex((x) => x.id === m![1]), 1);
+      return new Response(null, { status: 204 });
     }
     if (url === "/api/admin/owners" && method === "GET") return json(owners);
     if (url === "/api/admin/owners" && method === "POST") {
@@ -185,6 +192,41 @@ describe("admin: owners, staff, duty roster, settings", () => {
         body: { id: "s-3", name: "Lee Office", email: "lee@x.com", phone_e164: "+15855550130" },
       },
     ]);
+  });
+
+  it("removes a person only after a second click, and Cancel keeps them", async () => {
+    const { writes } = fakeApi();
+    renderAt("/admin/office");
+    const row = await screen.findByRole("row", { name: /Jo Backup/ });
+
+    await userEvent.click(within(row).getByRole("button", { name: "Remove" }));
+    expect(row).toHaveTextContent("Remove Jo Backup? They lose access at once.");
+    await userEvent.click(within(row).getByRole("button", { name: "Cancel" }));
+    expect(writes).toEqual([]);
+
+    await userEvent.click(within(row).getByRole("button", { name: "Remove" }));
+    await userEvent.click(within(row).getByRole("button", { name: "Yes, remove" }));
+
+    await waitFor(() => expect(screen.queryByRole("row", { name: /Jo Backup/ })).not.toBeInTheDocument());
+    expect(writes).toEqual([{ method: "DELETE", url: "/api/admin/staff/s-2", body: undefined }]);
+  });
+
+  it("shows why a person on the duty roster cannot be removed", async () => {
+    fakeApi();
+    renderAt("/admin/office");
+    const form = await screen.findByRole("form", { name: "Set duty day" });
+    await within(within(form).getByLabelText("On duty")).findByRole("option", { name: "Casey Coordinator" });
+    await userEvent.type(within(form).getByLabelText("Date"), "2026-11-02");
+    await userEvent.selectOptions(within(form).getByLabelText("On duty"), "Casey Coordinator");
+    await userEvent.click(within(form).getByRole("button", { name: "Save duty day" }));
+    await screen.findByRole("row", { name: /Mon, Nov 2/ });
+
+    const row = screen.getByRole("row", { name: /casey@x.com/ });
+    await userEvent.click(within(row).getByRole("button", { name: "Remove" }));
+    await userEvent.click(within(row).getByRole("button", { name: "Yes, remove" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Change the duty roster first.");
+    expect(screen.getByRole("row", { name: /casey@x.com/ })).toBeInTheDocument();
   });
 
   it("adds an Owner and makes it a category's default", async () => {

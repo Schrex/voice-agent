@@ -281,6 +281,6 @@ Day-30 decision: expand coverage / fix office workflow first / stop — per pilo
 
 ## 12. Open items
 
-- Overnight Overdue SMS alerts: send immediately (may wake coordinators) or hold until morning? Default v1: send immediately; coordinators may silence phones.
+- Overnight Overdue SMS alerts: send immediately. Decided by the product owner 2026-11-02 (the v1 default); coordinators may silence phones.
 - Ack-window and Uninformed thresholds are placeholders pending baseline.
 - Exact Today-vs-Planned inference rules (e.g. cut-off hour for "tomorrow morning" requests made late at night).

@@ -11,4 +11,4 @@ Consequences:
 - `staff.role` is dropped (migration `0020`). The admin screens, the staff list and `/api/me` no longer show a role. Old seed files that still carry `role` load; the field is ignored.
 - "Every Coordinator" now means every staff member: the Emergency SMS (J6) and the end-of-day email (J1 step 8) go to everyone on the staff list.
 - Coordinator and Admin stay as glossary words for the work a person does, not for an account type.
-- Not handled yet: removing a person's access (there is no DELETE on staff). Revisit roles before a second company or a larger office uses the system.
+- Any staff member can remove another from the staff list (`DELETE /api/admin/staff/{id}`, sets `staff.removed_at`): they lose access at once and get no alerts, and the audit history keeps their name. Nobody can remove themselves, or someone on the duty roster for today or later. Revisit roles before a second company or a larger office uses the system.

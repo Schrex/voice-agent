@@ -327,6 +327,9 @@ class Staff(Base):
     email: Mapped[str] = mapped_column(String(320))
     # Where alert SMS reach them (ticket #21); null = no texts possible.
     phone_e164: Mapped[str | None] = mapped_column(String(16))
+    # Set when an admin removes them: no dashboard access, no alerts, not offered for duty.
+    # The row stays so the audit history keeps their name; adding them again clears it.
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class DutyRoster(Base):
