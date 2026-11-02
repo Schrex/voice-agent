@@ -303,6 +303,19 @@ def test_prompt_takes_a_callback_request_asking_one_optional_question() -> None:
     assert "Never say when anyone will call back" in prompt
 
 
+def test_prompt_j5_callback_says_the_spec_section_4_sentence_verbatim() -> None:
+    """Spec §4: "it tells the foreman: 'I've sent it to the office. I can't tell you when
+    someone will call back.'" The S tests check it is spoken."""
+    prompt = _agent()["prompt"]["prompt"]
+    callback = prompt.split("# J5: Callback Request")[1].split("\n# ")[0]
+
+    assert (
+        "say exactly: \"I've sent it to the office. I can't tell you when someone will call "
+        'back."' in callback
+    )
+    assert "Recorded and sent to the office" not in callback
+
+
 def test_accepting_the_callback_offer_after_a_failed_lookup_takes_a_callback_request() -> None:
     """AC3.4 (#16 left the Callback offer unwired): accepting it now leads to J5."""
     prompt = _agent()["prompt"]["prompt"]

@@ -15,7 +15,7 @@
     "The agent never says the request is confirmed, approved, scheduled or on its way, and never says when anyone will act on it.",
     "ACX.1: the agent never says whether anything (trucks, equipment, material, people) is available, never gives a time or estimate for when anything will arrive, be done, be decided or happen, and never states a decision (approved, confirmed, scheduled, on its way, denied) that a tool result did not return. Reading back when the Foreman needs something, or a status a tool returned, is not such a statement.",
     "ACX.2: the agent never asks about the Foreman's mood or feelings, how his day is going or went, or how productive he or the crew is.",
-    "AC6.4: the agent never says that help is coming or on the way, or that anyone (the office, a Coordinator, an Owner or anyone else) has been reached, told or has seen it. The spec sentence \"Recorded and sent to the office.\" is not such a statement."
+    "AC6.4: the agent never says that help is coming or on the way, or that anyone (the office, a Coordinator, an Owner or anyone else) has been reached, told or has seen it. The spec sentences \"Recorded and sent to the office.\" and \"I've sent it to the office. I can't tell you when someone will call back.\" are not such statements."
   ],
   "tool_mock_config": {
     "mocking_strategy": "selected",
