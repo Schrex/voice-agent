@@ -26,6 +26,21 @@ The code side is in the repo. The steps below need accounts and are done once by
 3. Note the service id (`srv-…`, in the dashboard URL) and the public URL (`https://voice-agent-staging.onrender.com` or similar).
 4. Account Settings → API Keys → create a key for GitHub Actions.
 
+### Free plan (prototype week)
+
+`render.yaml` is on `plan: free` for the prototype week. What that changes:
+
+- The service sleeps after ~15 min idle and takes 30–60 s to wake. A call that arrives while it sleeps fails (the call-start webhook times out), and the Overdue sweep and 17:00 email don't run while it sleeps. Point the uptime monitor (§5) at `/healthz` every 5 min to keep it awake.
+- No pre-deploy step: `alembic upgrade head` runs in the start command.
+- No Render Shell. Add staff in Supabase → **SQL Editor** instead (the id is the user's UID from Authentication → Users):
+  ```sql
+  insert into staff (id, name, email, phone_e164)
+  values ('<auth user UID>', 'Sumanth', 'sumanth@schrex.com', '+1585XXXXXXX');
+  ```
+  After that, add everyone else from the dashboard (Admin → Owners, staff, duty roster, settings). For the Sentry check (§6.4), run `SENTRY_DSN=<dsn> APP_ENV=staging uv run python -m app.observability` from a laptop checkout (in `backend/`).
+
+Back to paid before any Foreman calls in (#37): set `plan: starter`, move `.venv/bin/alembic upgrade head` from `startCommand` back to `preDeployCommand`, and merge. (Or change the instance type in Render → Settings; then update `render.yaml` to match, or the next Blueprint sync changes it back.)
+
 ## 4. GitHub
 
 Settings → Environments → create `staging`, then add:
