@@ -1,0 +1,26 @@
+{
+  "tool_config": {
+    "type": "webhook",
+    "name": "find_jobs",
+    "description": "Look up the Job the Foreman named. Call it as soon as the Foreman names a Job, with their words. Returns up to three matching active Jobs as [{\"job_id\": 14, \"name\": \"Route 104 Widening\", \"score\": 95}], best first. An empty list [] means no Job matches: the Job is Unmatched. Returns {\"error\": \"...\"} if the Job list could not be searched.",
+    "api_schema": {
+      "url": "${backend_url}/tools/find_jobs",
+      "method": "POST",
+      "request_headers": {
+        "X-Tool-Secret": { "secret_id": "${tool_secret_id}" },
+        "X-Conversation-Id": { "variable_name": "system__conversation_id" }
+      },
+      "request_body_schema": {
+        "type": "object",
+        "description": "The Job as the Foreman said it.",
+        "required": ["query"],
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The Job exactly as the Foreman said it, for example 'the 104 job' or 'Penfield'."
+          }
+        }
+      }
+    }
+  }
+}

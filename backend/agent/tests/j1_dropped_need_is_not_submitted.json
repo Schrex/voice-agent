@@ -1,0 +1,107 @@
+{
+  "name": "J1 a need dropped during the numbered summary is not submitted",
+  "type": "tool",
+  "dynamic_variables": {
+    "rejected": false,
+    "foreman_first_name": "Dale",
+    "jobs": "Penfield Sewer Replacement; Route 104 Widening",
+    "now_local": "Sunday, November 1, 2026, 3:04 PM"
+  },
+  "chat_history": [
+    {
+      "role": "agent",
+      "message": "Hi Dale, this is the Schreiber Excavating automated assistant. This call is recorded. What do you need?",
+      "time_in_call_secs": 0
+    },
+    {
+      "role": "user",
+      "message": "I need two tri-axle dump trucks and forty tons of number 2 stone at Route 104 tomorrow at 7 AM.",
+      "time_in_call_secs": 6
+    },
+    {
+      "role": "agent",
+      "message": null,
+      "time_in_call_secs": 8,
+      "tool_calls": [
+        {
+          "type": "webhook",
+          "request_id": "find_jobs_0001",
+          "tool_name": "find_jobs",
+          "tool_id": "${tool_find_jobs}",
+          "params_as_json": "{\"query\": \"Route 104\"}",
+          "tool_has_been_called": true
+        }
+      ],
+      "tool_results": [
+        {
+          "type": "webhook",
+          "request_id": "find_jobs_0001",
+          "tool_name": "find_jobs",
+          "result_value": "[{\"job_id\": 14, \"name\": \"Route 104 Widening\", \"score\": 95}]",
+          "is_error": false,
+          "tool_has_been_called": true
+        }
+      ]
+    },
+    {
+      "role": "agent",
+      "message": null,
+      "time_in_call_secs": 9,
+      "tool_calls": [
+        {
+          "type": "webhook",
+          "request_id": "resolve_needed_by_0001",
+          "tool_name": "resolve_needed_by",
+          "tool_id": "${tool_resolve_needed_by}",
+          "params_as_json": "{\"needed_by_spoken\": \"tomorrow at 7 AM\"}",
+          "tool_has_been_called": true
+        }
+      ],
+      "tool_results": [
+        {
+          "type": "webhook",
+          "request_id": "resolve_needed_by_0001",
+          "tool_name": "resolve_needed_by",
+          "result_value": "{\"needed_by_resolved\": \"Monday, November 2 at 7:00 AM\", \"urgency\": \"Planned\"}",
+          "is_error": false,
+          "tool_has_been_called": true
+        }
+      ]
+    },
+    {
+      "role": "agent",
+      "message": "I have two requests. Number 1: two tri-axle dump trucks at Route 104 Widening, Monday, November 2 at 7:00 AM, marked Planned. Number 2: forty tons of number 2 stone at Route 104 Widening, Monday, November 2 at 7:00 AM, marked Planned. Should I record them?",
+      "time_in_call_secs": 13
+    },
+    {
+      "role": "user",
+      "message": "Actually, forget number 2, I've got stone.",
+      "time_in_call_secs": 20
+    },
+    {
+      "role": "agent",
+      "message": "Two tri-axle dump trucks at Route 104 Widening, Monday, November 2 at 7:00 AM, marked Planned. Should I record it?",
+      "time_in_call_secs": 24
+    },
+    {
+      "role": "user",
+      "message": "Yes.",
+      "time_in_call_secs": 27
+    }
+  ],
+  "tool_call_parameters": {
+    "referenced_tool": {
+      "id": "${tool_submit_requests}",
+      "type": "webhook"
+    },
+    "parameters": [
+      {
+        "path": "items",
+        "eval": {
+          "type": "llm",
+          "description": "Exactly one item: job_id 14, job_spoken naming Route 104, category Trucking, quantity 2, a unit naming trucks, and needed_by_spoken in the Foreman's words, tomorrow at 7 AM. No item for stone or any Material."
+        }
+      }
+    ]
+  }
+}

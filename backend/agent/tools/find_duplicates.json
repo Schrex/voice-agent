@@ -1,0 +1,31 @@
+{
+  "tool_config": {
+    "type": "webhook",
+    "name": "find_duplicates",
+    "description": "Check whether a new need duplicates one of the calling Foreman's open Requests: same Job and same Category, not Resolved. Call it for each new need once find_jobs has matched its Job and you know its Category, before the read-back. Returns the duplicates newest first as [{\"ref\": \"R-1042\", \"job\": \"Route 104 Widening\", \"category\": \"Trucking\", \"need\": \"tri-axle dump trucks\", \"quantity\": 3, \"unit\": \"trucks\", \"needed_by\": \"Monday, November 2 at 7:00 AM\", \"recorded_at\": \"Saturday, October 31 at 6:45 AM\"}]. recorded_at is when the Foreman made that Request. An empty list [] means it duplicates none. Writes nothing. Returns {\"error\": \"...\"} if the check could not be done.",
+    "api_schema": {
+      "url": "${backend_url}/tools/find_duplicates",
+      "method": "POST",
+      "request_headers": {
+        "X-Tool-Secret": { "secret_id": "${tool_secret_id}" },
+        "X-Conversation-Id": { "variable_name": "system__conversation_id" }
+      },
+      "request_body_schema": {
+        "type": "object",
+        "description": "The new need's Job and Category. Do not call it for an Unmatched Job.",
+        "properties": {
+          "job_id": {
+            "type": "integer",
+            "description": "The job_id find_jobs returned for the Job of the new need, once it is the one Job the Foreman means."
+          },
+          "category": {
+            "type": "string",
+            "enum": ["Trucking", "Equipment", "Equipment Repair", "Material", "Labor", "Information", "Callback", "Other"],
+            "description": "The Category of the new need."
+          }
+        },
+        "required": ["job_id", "category"]
+      }
+    }
+  }
+}

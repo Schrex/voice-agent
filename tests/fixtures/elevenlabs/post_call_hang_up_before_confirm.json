@@ -1,0 +1,84 @@
+{
+  "type": "post_call_transcription",
+  "event_timestamp": 1793564000,
+  "data": {
+    "agent_id": "agent_synthetic_0001",
+    "conversation_id": "conv_synthetic_hang_up_0001",
+    "status": "done",
+    "transcript": [
+      {
+        "role": "agent",
+        "message": "Hi Dale, this is the Schreiber Excavating automated assistant. This call is recorded. What do you need?",
+        "time_in_call_secs": 0
+      },
+      {
+        "role": "user",
+        "message": "I need two tri-axle dump trucks at the Route 104 job tomorrow at 7 AM.",
+        "time_in_call_secs": 6
+      },
+      {
+        "role": "agent",
+        "message": "Two tri-axle dump trucks, Route 104 Widening, tomorrow at 7 AM. Should I record it?",
+        "time_in_call_secs": 12
+      }
+    ],
+    "metadata": {
+      "start_time_unix_secs": 1793563900,
+      "call_duration_secs": 15,
+      "termination_reason": "Client disconnected",
+      "phone_call": {
+        "type": "twilio",
+        "direction": "inbound",
+        "phone_number_id": "phnum_synthetic_0001",
+        "agent_number": "+15855550199",
+        "external_number": "+15855550102",
+        "call_sid": "CA00000000000000000000000000000004",
+        "stream_sid": "MZ00000000000000000000000000000004"
+      }
+    },
+    "analysis": {
+      "call_successful": "failure",
+      "transcript_summary": "Dale asked for two tri-axle dump trucks at Route 104 for tomorrow at 7 AM and hung up before confirming.",
+      "call_summary_title": "Trucks for Route 104",
+      "data_collection_results": {
+        "need": {
+          "data_collection_id": "need",
+          "value": "tri-axle dump trucks",
+          "rationale": "synthetic"
+        },
+        "job_spoken": {
+          "data_collection_id": "job_spoken",
+          "value": "Route 104",
+          "rationale": "synthetic"
+        },
+        "category": {
+          "data_collection_id": "category",
+          "value": "Trucking",
+          "rationale": "synthetic"
+        },
+        "quantity": {
+          "data_collection_id": "quantity",
+          "value": 2,
+          "rationale": "synthetic"
+        },
+        "unit": {
+          "data_collection_id": "unit",
+          "value": "trucks",
+          "rationale": "synthetic"
+        },
+        "needed_by_spoken": {
+          "data_collection_id": "needed_by_spoken",
+          "value": "tomorrow at 7 AM",
+          "rationale": "synthetic"
+        }
+      },
+      "evaluation_criteria_results": {}
+    },
+    "conversation_initiation_client_data": {
+      "dynamic_variables": {
+        "rejected": false,
+        "foreman_first_name": "Dale"
+      }
+    }
+  }
+}

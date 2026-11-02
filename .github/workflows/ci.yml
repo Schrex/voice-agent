@@ -11,8 +11,23 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: voice_agent_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       TZ: America/New_York
+      TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/voice_agent_test
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -28,3 +43,80 @@ jobs:
         run: uv run mypy
       - name: Tests
         run: uv run pytest
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      TZ: America/New_York
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Type-check
+        run: npm run typecheck
+      - name: Tests
+        run: npm test
+      - name: Build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: https://ci-project.supabase.co
+          VITE_SUPABASE_ANON_KEY: ci-anon-key
+          # Sentinels: server-only secrets present at build time must not end up in the bundle.
+          SUPABASE_SERVICE_ROLE_KEY: sb_secret_ci_sentinel_service_role_key
+          SUPABASE_JWT_SECRET: ci-sentinel-jwt-secret-value
+      - name: Bundle has no service key
+        run: npm run check-bundle
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: sb_secret_ci_sentinel_service_role_key
+          SUPABASE_JWT_SECRET: ci-sentinel-jwt-secret-value
+
+  # Playwright runs on main (architecture §9-§10), against the real backend and a real build.
+  e2e:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: voice_agent_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TZ: America/New_York
+      E2E_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/voice_agent_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: Install backend
+        working-directory: backend
+        run: uv sync --locked
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend
+        working-directory: frontend
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: Playwright
+        working-directory: frontend
+        run: npm run e2e

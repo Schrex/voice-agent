@@ -1,6 +1,52 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
-from app.http import health
+from app import jobs
+from app.config import frontend_dist, scheduler_enabled
+from app.http import (
+    api,
+    api_admin_office,
+    api_admin_roster,
+    api_alerts,
+    api_calls,
+    api_drafts,
+    api_popups,
+    api_quick_entry,
+    api_request_edit,
+    health,
+    hooks,
+    spa,
+    tools,
+)
+from app.observability import init_from_env
 
-app = FastAPI(title="Voice Agent")
+init_from_env()
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    if scheduler_enabled():
+        jobs.start_scheduler()  # architecture §6: end-of-day summary (#23), Overdue sweep (#22)
+    try:
+        yield
+    finally:
+        jobs.stop_scheduler()
+
+
+app = FastAPI(title="Voice Agent", lifespan=lifespan)
 app.include_router(health.router)
+app.include_router(hooks.router)
+app.include_router(tools.router)
+app.include_router(api.router)
+app.include_router(api_drafts.router)
+app.include_router(api_admin_roster.router)
+app.include_router(api_admin_office.router)
+app.include_router(api_calls.router)
+app.include_router(api_quick_entry.router)
+app.include_router(api_request_edit.router)
+app.include_router(api_alerts.router)
+app.include_router(api_popups.router)
+# Last: the dashboard's catch-all route must not shadow the API.
+spa.mount(app, frontend_dist())

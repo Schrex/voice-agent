@@ -1,0 +1,30 @@
+{
+  "tool_config": {
+    "type": "webhook",
+    "name": "find_open_requests",
+    "description": "Look up the calling Foreman's own Requests when they ask about the status of one. Returns them newest first as [{\"ref\": \"R-1042\", \"job\": \"Route 104 Widening\", \"category\": \"Trucking\", \"need\": \"tri-axle dump trucks\", \"quantity\": 3, \"unit\": \"trucks\", \"needed_by\": \"Monday, November 2 at 7:00 AM\", \"status\": \"Acknowledged\", \"owner\": \"Dispatch\", \"outcome\": null, \"explanation\": null}]. status is one of Recorded, Acknowledged, In Progress, Resolved; outcome and explanation are set only when Resolved. An empty list [] means no Request matches. Returns {\"error\": \"...\"} if the Requests could not be looked up.",
+    "api_schema": {
+      "url": "${backend_url}/tools/find_open_requests",
+      "method": "POST",
+      "request_headers": {
+        "X-Tool-Secret": { "secret_id": "${tool_secret_id}" },
+        "X-Conversation-Id": { "variable_name": "system__conversation_id" }
+      },
+      "request_body_schema": {
+        "type": "object",
+        "description": "Optional filters from what the Foreman said. Send none of them when he did not name a Job or a kind of need.",
+        "properties": {
+          "job_id": {
+            "type": "integer",
+            "description": "The job_id find_jobs returned for the Job the Foreman named. Leave it out unless find_jobs returned exactly one Job."
+          },
+          "category": {
+            "type": "string",
+            "enum": ["Trucking", "Equipment", "Equipment Repair", "Material", "Labor", "Information", "Callback", "Other"],
+            "description": "The Category of the need the Foreman asks about, for example Trucking for 'that truck'. Leave it out when unclear."
+          }
+        }
+      }
+    }
+  }
+}

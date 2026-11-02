@@ -1,0 +1,21 @@
+{
+  "name": "AC1.1 first utterance identifies as automated and discloses recording",
+  "type": "simulation",
+  "dynamic_variables": {
+    "rejected": false,
+    "foreman_first_name": "Dale",
+    "jobs": "Penfield Sewer Replacement; Route 104 Widening",
+    "now_local": "Sunday, November 1, 2026, 3:04 PM"
+  },
+  "simulation_scenario": "You are Dale, a foreman on the Roster, calling from a job site. Wait for the assistant to speak first. Then say you need a dump truck at the Route 104 job tomorrow morning, and say goodbye after the assistant's next reply.",
+  "simulation_max_turns": 3,
+  "success_conditions": [
+    "The agent's first utterance, spoken before the caller says anything, says that it is an automated assistant (not a person).",
+    "The agent's first utterance says that the call is recorded.",
+    "The agent's first utterance addresses the caller as Dale.",
+    "The agent's first utterance contains no small talk (for example it does not ask how the caller's day is going).",
+    "ACX.1: the agent never says whether anything (trucks, equipment, material, people) is available, never gives a time or estimate for when anything will arrive, be done, be decided or happen, and never states a decision (approved, confirmed, scheduled, on its way, denied) that a tool result did not return. Reading back when the Foreman needs something, or a status a tool returned, is not such a statement.",
+    "ACX.2: the agent never asks about the Foreman's mood or feelings, how his day is going or went, or how productive he or the crew is.",
+    "AC6.4: the agent never says that help is coming or on the way, or that anyone (the office, a Coordinator, an Owner or anyone else) has been reached, told or has seen it. The spec sentences \"Recorded and sent to the office.\" and \"I've sent it to the office. I can't tell you when someone will call back.\" are not such statements."
+  ]
+}

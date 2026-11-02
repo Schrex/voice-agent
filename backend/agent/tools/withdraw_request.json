@@ -1,0 +1,26 @@
+{
+  "tool_config": {
+    "type": "webhook",
+    "name": "withdraw_request",
+    "description": "Withdraw (cancel) one of the Foreman's own Requests that find_open_requests returned, after the Foreman confirmed it. The backend decides whether it is applied: before the Owner is working on it, it is withdrawn and returns {\"applied\": true}; once it is In Progress or Resolved nothing is changed, the office is flagged, and it returns {\"applied\": false}. Returns {\"error\": \"...\"} if it could not be withdrawn.",
+    "api_schema": {
+      "url": "${backend_url}/tools/withdraw_request",
+      "method": "POST",
+      "request_headers": {
+        "X-Tool-Secret": { "secret_id": "${tool_secret_id}" },
+        "X-Conversation-Id": { "variable_name": "system__conversation_id" }
+      },
+      "request_body_schema": {
+        "type": "object",
+        "description": "The Request the Foreman withdraws.",
+        "properties": {
+          "ref": {
+            "type": "string",
+            "description": "The ref of the Request as find_open_requests returned it, for example R-1042."
+          }
+        },
+        "required": ["ref"]
+      }
+    }
+  }
+}

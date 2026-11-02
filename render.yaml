@@ -1,0 +1,44 @@
+# Render Blueprint for the staging backend (docs/staging.md). Prod gets its own service later.
+# Secrets are `sync: false`: Render asks for them when the Blueprint is applied; never commit values.
+services:
+  - type: web
+    name: voice-agent-staging
+    runtime: python
+    rootDir: backend
+    # Paid instance: free instances spin down, and the call-start webhook can't wait for a cold start.
+    plan: starter
+    region: virginia
+    numInstances: 1
+    # Deploys come from .github/workflows/deploy-staging.yml after CI passes on main, not on every push.
+    autoDeploy: false
+    # Builds the dashboard too (served by the backend at /); the repo is checked out whole, so
+    # ../frontend is reachable from rootDir. VITE_* vars are read at build time.
+    buildCommand: (cd ../frontend && npm ci && npm run build && npm run check-bundle) && pip install uv==0.11.32 && uv sync --locked --no-dev
+    preDeployCommand: .venv/bin/alembic upgrade head
+    startCommand: .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: APP_ENV
+        value: staging
+      - key: DATABASE_URL
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: HOOK_SECRET
+        sync: false
+      - key: TOOL_SECRET
+        sync: false
+      - key: ELEVENLABS_WEBHOOK_SECRET
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: OFFICE_MAIN_NUMBER
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false

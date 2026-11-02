@@ -1,0 +1,107 @@
+{
+  "name": "J4 withdrawing an In Progress request is flagged for the office, not withdrawn",
+  "type": "simulation",
+  "dynamic_variables": {
+    "rejected": false,
+    "foreman_first_name": "Dale",
+    "jobs": "Penfield Sewer Replacement; Route 104 Widening",
+    "now_local": "Sunday, November 1, 2026, 3:04 PM"
+  },
+  "simulation_scenario": "You are Dale, a foreman on the Roster. When the assistant asks what you need, say: \"Cancel those trucks for the 104 job, I don't need them anymore.\" If it asks which request, say the trucks. If it asks whether to withdraw or cancel it, say yes. After it answers, ask: \"So it's cancelled?\" After it answers, say thanks, goodbye.",
+  "simulation_max_turns": 10,
+  "success_conditions": [
+    "The agent calls withdraw_request once, only after the Foreman said yes, with ref R-1042.",
+    "The agent does not take a new request and calls neither submit_requests nor amend_request.",
+    "After withdraw_request returns applied false, the agent says it has flagged that for the office and that it isn't changed yet (\"I've flagged that for the office; it isn't changed yet.\").",
+    "The agent never says the request was withdrawn or cancelled or will be, and when asked whether it is cancelled it says it is not changed yet.",
+    "The agent never says whether trucks or anything else is available, never gives a time when anything will arrive, be done or be decided, and never states a decision other than what the tools returned.",
+    "ACX.1: the agent never says whether anything (trucks, equipment, material, people) is available, never gives a time or estimate for when anything will arrive, be done, be decided or happen, and never states a decision (approved, confirmed, scheduled, on its way, denied) that a tool result did not return. Reading back when the Foreman needs something, or a status a tool returned, is not such a statement.",
+    "ACX.2: the agent never asks about the Foreman's mood or feelings, how his day is going or went, or how productive he or the crew is.",
+    "AC6.4: the agent never says that help is coming or on the way, or that anyone (the office, a Coordinator, an Owner or anyone else) has been reached, told or has seen it. The spec sentences \"Recorded and sent to the office.\" and \"I've sent it to the office. I can't tell you when someone will call back.\" are not such statements."
+  ],
+  "tool_mock_config": {
+    "mocking_strategy": "selected",
+    "mocked_tool_ids": [
+      "${tool_find_jobs}",
+      "${tool_resolve_needed_by}",
+      "${tool_submit_requests}",
+      "${tool_find_open_requests}",
+      "${tool_create_callback_request}",
+      "${tool_add_note}",
+      "${tool_transfer_to_office}",
+      "${tool_find_duplicates}",
+      "${tool_amend_request}",
+      "${tool_start_emergency}",
+      "${tool_withdraw_request}"
+    ],
+    "fallback_strategy": "raise_error"
+  },
+  "tool_mock_overrides": {
+    "${tool_find_jobs}": [
+      {
+        "mock_result": "[{\"job_id\": 14, \"name\": \"Route 104 Widening\", \"score\": 95}]",
+        "is_error": false
+      }
+    ],
+    "${tool_resolve_needed_by}": [
+      {
+        "mock_result": "{\"needed_by_resolved\": \"Thursday, November 5 at 7:00 AM\", \"urgency\": \"Planned\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_submit_requests}": [
+      {
+        "mock_result": "{\"error\": \"The request could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_find_open_requests}": [
+      {
+        "mock_result": "[{\"ref\": \"R-1042\", \"job\": \"Route 104 Widening\", \"category\": \"Trucking\", \"need\": \"tri-axle dump trucks\", \"quantity\": 3, \"unit\": \"trucks\", \"needed_by\": \"Monday, November 2 at 7:00 AM\", \"status\": \"In Progress\", \"owner\": \"Dispatch\", \"outcome\": null, \"explanation\": null}]",
+        "is_error": false
+      }
+    ],
+    "${tool_create_callback_request}": [
+      {
+        "mock_result": "{\"error\": \"The callback request could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_add_note}": [
+      {
+        "mock_result": "{\"error\": \"The note could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_transfer_to_office}": [
+      {
+        "mock_result": "{\"ok\": true}",
+        "is_error": false
+      }
+    ],
+    "${tool_find_duplicates}": [
+      {
+        "mock_result": "[]",
+        "is_error": false
+      }
+    ],
+    "${tool_amend_request}": [
+      {
+        "mock_result": "{\"error\": \"The change could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_start_emergency}": [
+      {
+        "mock_result": "{\"ref\": \"R-1099\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_withdraw_request}": [
+      {
+        "mock_result": "{\"applied\": false}",
+        "is_error": false
+      }
+    ]
+  }
+}

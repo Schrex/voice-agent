@@ -1,0 +1,71 @@
+{
+  "tool_config": {
+    "type": "webhook",
+    "name": "submit_requests",
+    "description": "Record the Foreman's confirmed needs, each as its own Request. Call it once, only after you have read back the Job, quantity, unit and needed-by time of every need (as a numbered summary when there are several) and the Foreman said yes. Returns one {\"ref\": \"R-1042\", \"needed_by_resolved\": \"Monday, November 2 at 7:00 AM\", \"urgency\": \"Planned\"} per item, in the order the items were sent, or {\"error\": \"...\"} if the requests could not be saved; then none of them was recorded.",
+    "api_schema": {
+      "url": "${backend_url}/tools/submit_requests",
+      "method": "POST",
+      "request_headers": {
+        "X-Tool-Secret": { "secret_id": "${tool_secret_id}" },
+        "X-Conversation-Id": { "variable_name": "system__conversation_id" }
+      },
+      "request_body_schema": {
+        "type": "object",
+        "description": "The confirmed needs.",
+        "required": ["items"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "Send one item per need the Foreman confirmed, in the order of the read-back. Leave out any need the Foreman dropped.",
+            "items": {
+              "type": "object",
+              "description": "One confirmed need.",
+              "required": ["job_spoken", "category", "need"],
+              "properties": {
+                "job_id": {
+                  "type": "integer",
+                  "description": "The job_id that find_jobs returned for the Job the Foreman confirmed. Leave it out when find_jobs found no Job (Unmatched). Never spoken."
+                },
+                "job_spoken": {
+                  "type": "string",
+                  "description": "The Job exactly as the Foreman said it, for example 'the 104 job'. Always sent, matched or not."
+                },
+                "category": {
+                  "type": "string",
+                  "description": "The category of the need.",
+                  "enum": [
+                    "Trucking",
+                    "Equipment",
+                    "Equipment Repair",
+                    "Material",
+                    "Labor",
+                    "Information",
+                    "Callback",
+                    "Other"
+                  ]
+                },
+                "need": {
+                  "type": "string",
+                  "description": "What is needed, in the Foreman's words, for example 'tri-axle dump truck'."
+                },
+                "quantity": {
+                  "type": "number",
+                  "description": "How many, as a number, if the Foreman gave one."
+                },
+                "unit": {
+                  "type": "string",
+                  "description": "The unit of the quantity, for example 'trucks', 'loads', 'tons'."
+                },
+                "needed_by_spoken": {
+                  "type": "string",
+                  "description": "When it is needed, exactly as the Foreman said it, for example 'tomorrow at seven'. Do not convert it. Leave it out when the Foreman could not say when (needed-by unknown)."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

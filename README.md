@@ -27,15 +27,20 @@ Prerequisites: [uv](https://docs.astral.sh/uv/getting-started/installation/) (it
 git clone https://github.com/Schrex/voice-agent.git
 cd voice-agent/backend
 uv sync
+export DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/voice_agent
+uv run alembic upgrade head        # schema
+uv run python -m app.seed          # sample roster + jobs (seed/sample_roster.json); safe to re-run
 uv run uvicorn app.main:app --reload
 ```
 
-Then `curl localhost:8000/healthz` returns `{"status":"ok"}`.
+Needs a Postgres reachable at `DATABASE_URL` (Supabase local, or plain Postgres). Then `curl localhost:8000/healthz` returns `{"status":"ok","db":"ok"}` (503 if the database is unreachable).
 
 Checks (the same ones CI runs on every PR), from `backend/`:
 
 ```bash
 uv run ruff check . ../tests && uv run ruff format --check . ../tests
 uv run mypy
-uv run pytest
+TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/voice_agent_test uv run pytest
 ```
+
+Integration tests (`tests/integration/`) wipe and migrate the database named by `TEST_DATABASE_URL`; point it at a disposable database.

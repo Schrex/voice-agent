@@ -108,7 +108,7 @@ The agent passes `conversation_id` (from `system__conversation_id`) as a header;
 ### 3.3 Transfer / Emergency
 
 1. Agent calls `transfer_to_office` (or `start_emergency`) server tool → backend writes alerts (dashboard pop-up row + SMS to on-duty coordinator; emergency: SMS to all coordinators, Emergency request created) and returns `{ok:true}`.
-2. Agent says "Connecting you to the office now." and invokes ElevenLabs system tool `transfer_to_number` (conference) to the office line.
+2. Agent says "Connecting you to the office now." and invokes ElevenLabs system tool `transfer_to_number` (conference) to the office line. The number is `settings.office_line_e164`, sent at call start as the dynamic variable `office_line_e164` (transfer destination type `phone_dynamic_variable`), so the agent config holds no copy of it.
 3. Outcome of the transfer is not observable ([ADR 0003](adr/0003-elevenlabs-native-telephony.md)).
 
 ### 3.4 Post-call
@@ -135,14 +135,15 @@ Audio stays in ElevenLabs (retention set to 90 days); the dashboard streams it v
 | Tool | Input | Output | Rules enforced in backend |
 |---|---|---|---|
 | `find_jobs` | `query` | up to 3 `{job_id, name, score}` | Active jobs only; score threshold → empty = Unmatched |
+| `resolve_needed_by` | `needed_by_spoken` | `{needed_by_resolved, urgency}` | Time parsing for the read-back before submit (added by #14); writes nothing |
 | `find_open_requests` | `job_id?`, `category?` | `[{ref, job, category, need, quantity, unit, needed_by, status, owner, outcome, explanation}]` | Caller's own requests only |
 | `submit_requests` | `items[]: {job_id?, job_spoken, category, need, quantity?, unit?, needed_by_spoken?, urgency_hint?}` | `[{ref, needed_by_resolved, urgency}]` | Time parsing, urgency, default owner, Today SMS alert, Recorded status |
 | `amend_request` | `ref`, `changes` | `{applied: bool, status}` | Applies only before In Progress; else note + Change requested flag |
 | `withdraw_request` | `ref` | `{applied: bool}` | Before In Progress → Resolved/Withdrawn; else flag |
 | `add_note` | `ref`, `text`, `urgent?` | `{ok}` | Alerts coordinator when urgent |
 | `create_callback_request` | `reason?` | `{ref}` | Callback category, Today urgency, SMS on-duty + backup |
-| `transfer_to_office` | `reason?` | `{ok}` | Pop-up + SMS to on-duty coordinator |
-| `start_emergency` | `summary` | `{ref}` | Emergency request, SMS all coordinators, pop-up |
+| `transfer_to_office` | `reason?`, `job_id?`, `job_spoken?` | `{ok}` | Pop-up + SMS to on-duty coordinator, once per call; the agent transfers even on `error` |
+| `start_emergency` | `summary`, `job_id?`, `job_spoken?` | `{ref}` | Emergency request, SMS all coordinators, pop-up, once per call; the agent transfers even on `error` |
 
 Plus ElevenLabs system tools: `transfer_to_number` (office line, conference), `end_call`.
 
@@ -155,6 +156,7 @@ Tool contract: tools return short, speakable facts; errors return `{error: "<spe
 | `GET /api/requests?status&flag&job&q` | coordinator | Queue (sorted urgency, age) + counts |
 | `GET /api/requests/{ref}` | coordinator | Detail, events, notes, linked calls |
 | `POST /api/requests` | coordinator | Quick-entry (J7) |
+| `GET /api/quick-entry` | coordinator | Quick-entry choices: active Foremen and Jobs, Categories, Owners |
 | `PATCH /api/requests/{ref}` | coordinator | Edit fields / fix job |
 | `POST /api/requests/{ref}/acknowledge` | coordinator | Requires `owner_id` |
 | `POST /api/requests/{ref}/start` | coordinator | → In Progress |
@@ -162,9 +164,10 @@ Tool contract: tools return short, speakable facts; errors return `{error: "<spe
 | `POST /api/requests/{ref}/informed` | coordinator | Foreman Informed |
 | `POST /api/requests/{ref}/notes` | coordinator | Add note |
 | `POST /api/requests/{ref}/merge` | coordinator | Merge into another ref |
-| `GET /api/popups?since` | coordinator | Incoming transfer / emergency pop-ups |
+| `GET /api/popups?since` | coordinator | Incoming transfer / emergency pop-ups nobody has dismissed, newest first |
+| `POST /api/popups/{id}/dismiss` | coordinator | Dismiss a pop-up for everyone (`alerts.seen_at`) |
 | `GET /api/calls/{id}`, `/audio` | coordinator | Transcript, audio proxy |
-| `CRUD /api/admin/{foremen,jobs,owners,staff,duty,settings}` | admin | Roster and config |
+| `CRUD /api/admin/{foremen,jobs,owners,category-defaults,staff,duty,settings}` | admin | Roster and config |
 
 All writes go through `services/`, which writes the domain change and a `request_events` row in one transaction.
 
@@ -188,7 +191,7 @@ All timestamps `timestamptz` (UTC); displayed and parsed in `America/New_York`.
 | `request_notes` | id, request_id, at, author_type, author_id?, text, urgent |
 | `calls` | id, conversation_id (unique), call_sid, caller_e164, foreman_id?, started_at, ended_at, duration_s, termination_reason, transcript jsonb, summary, outcome (`submitted` \| `draft` \| `transferred` \| `emergency` \| `rejected` \| `status_only` \| `none`) |
 | `call_requests` | call_id, request_id, relation (`created` \| `looked_up` \| `amended`) |
-| `alerts` | id, request_id?, call_id?, kind (`today_new` \| `callback` \| `emergency` \| `overdue` \| `transfer` \| `eod_summary`), channel (`sms` \| `email` \| `popup`), to_staff_id?, sent_at, provider_id, status, seen_at? |
+| `alerts` | id, request_id?, call_id?, kind (`today_new` \| `callback` \| `emergency` \| `overdue` \| `transfer` \| `eod_summary`), channel (`sms` \| `email` \| `popup`), to_staff_id?, sent_at (attempted), provider_id?, status (`pending` \| `sent` \| `failed`), detail? (why not sent; for a `popup`, its text), seen_at? (pop-up dismissed), summary_date? (`eod_summary`: the New York day summarized; one per Coordinator per day) |
 
 Derived, not stored: **Overdue** = status Recorded and `now > ack_due_at`; **Uninformed** = Resolved, `foreman_informed_at` null, and `now > resolved_at + uninformed_after`.
 
