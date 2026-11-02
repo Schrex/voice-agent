@@ -171,6 +171,19 @@ describe("queue", () => {
     expect(within(statuses[0]).getByText("Change requested")).toHaveClass("flag");
   });
 
+  it("counts the Open requests: every request in the queue (spec J9 counts)", async () => {
+    serve([
+      row({ ref: "R-1002" }),
+      row({ ref: "R-1001", status: "Acknowledged" }),
+      row({ ref: "R-1000", status: "In Progress", overdue: true }),
+    ]);
+
+    await renderQueue();
+
+    expect(screen.getByText("Open (3)")).toBeInTheDocument();
+    expect(screen.getByText("Overdue (1)")).toBeInTheDocument();
+  });
+
   it("shows an Overdue count of zero when nothing is Overdue", async () => {
     serve([row({})]);
 
