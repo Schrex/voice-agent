@@ -122,6 +122,17 @@ def test_prompt_gives_the_spec_after_submit_sentence_verbatim() -> None:
     assert "`submit_requests`" in prompt
 
 
+def test_prompt_poor_connection_asks_to_repeat_once_then_offers_transfer_or_callback() -> None:
+    """Spec §8 "Poor connection: Ask to repeat once; then offer Transfer / Callback"."""
+    prompt = _agent()["prompt"]["prompt"]
+    rules = prompt.split("# Rules for every call")[1].split("\n# ")[0]
+
+    assert "- Poor connection:" in rules
+    assert "ask them to repeat it once" in rules
+    assert "do not ask a second time and do not guess" in rules
+    assert '"J5: Talking to the office"' in rules and '"J5: Callback Request"' in rules
+
+
 def test_llm_is_claude_sonnet_5_5_in_english() -> None:
     agent = _agent()
 
