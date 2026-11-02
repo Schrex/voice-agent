@@ -202,9 +202,11 @@ docs/task-dependencies.md is the original layer-based plan, superseded by the is
 - 2026-11-02 (review T4): GLOSSARY gains **Duty roster** (on-duty + backup Coordinator per date; _Avoid_ Roster, which is the foremen list). The spoken confirm question is "Should I record it?" / "Should I record them?" (GLOSSARY Recorded _Avoid_: submitted); `submit_requests` keeps its name. EL simulations, chat histories and the synthetic post-call fixture updated to match. Also removes a doubled "then the urgency" from the S3 read-back sentence.
 - 2026-11-02 (review S6): #34 "add alias → spoken alias matches on next call" now has an I test end to end: an alias added through `POST /api/admin/jobs/{id}/aliases` is matched by `POST /tools/find_jobs` on a call started after it (and was not before). No code change.
 - 2026-11-02 (review S7): #28 "promote or resolve as Withdrawn": each Drafts-page row has an Explanation field and a "Resolve as Withdrawn" button (disabled until the explanation is non-blank, AC9.2), calling the existing `POST /api/requests/{ref}/resolve` with Outcome Withdrawn (the guard already allowed Draft → Resolved). The Draft leaves the list, never enters the queue and is kept with a `resolved` staff event. No backend change.
+- 2026-11-02 (review S8): Promoting a Draft (`POST /api/requests/{ref}/record`) now runs the same `alerts.alert_recorded` as the agent's submit, so a promoted Request with Urgency Today texts the on-duty Coordinator once (J9 "SMS for new Today"). Note: a Draft gets no Urgency today (save_draft stores `needed_by_spoken` only and promotion does not resolve it), so in practice this fires only once Drafts carry an Urgency; see Open items. Amend → Today SMS left as-is (open question, unchanged).
 
 ## Open items
 
 - Office line behavior for overnight transfers (rings where? voicemail?).
 - Overnight Overdue SMS: send immediately (current default, built in #22 per spec §12 "Default v1") or hold until morning.
 - Safety-lead approval of the emergency line (`backend/agent/safety_line.txt` holds the spec placeholder, marked PLACEHOLDER; #26).
+- Draft Urgency (review S8): should a Draft's spoken needed-by be resolved (and its Urgency set) when it is promoted, and against which time — the call's or the promotion's? Until decided, promoted Drafts have no Urgency, so no Today SMS and no ack window.
