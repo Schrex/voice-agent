@@ -160,6 +160,20 @@ def test_prompt_reads_back_the_needed_by_the_backend_resolved() -> None:
     assert "leave `needed_by_spoken` out" in prompt
 
 
+def test_prompt_states_the_urgency_back_as_the_backend_returned_it() -> None:
+    """Spec §5: urgency "AI infers from needed-by and keywords and states it back". The backend
+    infers it (ADR 0004); the agent sends the need with the time words and says the returned
+    urgency in the read-back, in the glossary words. The S tests check the spoken behavior."""
+    prompt = _agent()["prompt"]["prompt"]
+
+    assert "do not speak it" not in prompt
+    assert "with their words exactly as they said them and the need" in prompt
+    assert '"Today": say "marked Today"' in prompt
+    assert '"Planned": say "marked Planned"' in prompt
+    assert "never work out the urgency yourself" in prompt
+    assert "Monday, November 2 at 7:00 AM, marked Planned." in prompt
+
+
 def test_prompt_reports_status_in_the_spec_lifecycle_words() -> None:
     """Spec J3 step 3 / AC3.1-AC3.3: the status is looked up, never recalled, and reported in
     the lifecycle words verbatim; no match is said plainly with Transfer or Callback offered
