@@ -5,6 +5,7 @@ trigger (or a restart) never texts twice. When it cannot be sent (nobody on duty
 provider error) it is recorded as failed with the reason, for the dashboard to show.
 """
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
@@ -29,6 +30,8 @@ from app.domain.urgency import Urgency
 from app.integrations.postmark import EmailNotSent
 from app.integrations.twilio_sms import SmsNotSent, SmsSender
 from app.services.queue import as_said
+
+log = logging.getLogger(__name__)
 
 
 def deliver(session: Session, alert: Alert, send: Callable[[], str]) -> None:
@@ -95,6 +98,19 @@ def alert_new_today(session: Session, sms: SmsSender, *, ref: str, now: datetime
         session.get_one(Alert, alert_id),
         partial(sms.send, phone, today_request_text(facts)),
     )
+
+
+def alert_recorded(session: Session, sms: SmsSender, *, refs: list[str], now: datetime) -> None:
+    """After Requests were Recorded: each Today one texts the on-duty Coordinator (AC1.9).
+
+    The Requests are already saved, so an alert problem is logged and never raised.
+    """
+    for ref in refs:
+        try:
+            alert_new_today(session, sms, ref=ref, now=now)
+        except Exception:
+            session.rollback()
+            log.exception("today_alert_failed", extra={"ref": ref})
 
 
 def _today_request(session: Session, ref: str) -> tuple[Request, TodayRequestFacts] | None:

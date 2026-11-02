@@ -19,9 +19,12 @@ from app.db.models import (
     RequestEvent,
     Staff,
 )
+from app.domain.lifecycle import Status
 from app.domain.ref import parse_ref
+from app.domain.sla import is_uninformed
 from app.services.notes import notes_of
 from app.services.queue import as_said
+from app.services.settings import uninformed_after
 
 
 @dataclass(frozen=True)
@@ -94,6 +97,7 @@ class RequestDetail:
     resolved_at: datetime | None
     merged_into: str | None  # ref of the Request this one was merged into (ticket #33)
     foreman_informed_at: datetime | None  # null until a coordinator marks Foreman Informed
+    uninformed: bool  # Resolved, not informed, past the office's threshold (#32)
     # The category's default Owner, offered first when acknowledging (null if none is set).
     default_owner_id: int | None
     events: list[Event]
@@ -101,8 +105,9 @@ class RequestDetail:
     notes: list[DetailNote]  # oldest first
 
 
-def request_detail(session: Session, ref: str) -> RequestDetail | None:
-    """The Request rendered `ref` ("R-1000") and its events, oldest first; None if unknown."""
+def request_detail(session: Session, ref: str, now: datetime) -> RequestDetail | None:
+    """The Request rendered `ref` ("R-1000") at `now`, and its events, oldest first; None if
+    unknown."""
     number = parse_ref(ref)
     if number is None:
         return None
@@ -138,6 +143,13 @@ def request_detail(session: Session, ref: str) -> RequestDetail | None:
         resolved_at=request.resolved_at,
         merged_into=_ref_of(session, request.merged_into_id),
         foreman_informed_at=request.foreman_informed_at,
+        uninformed=is_uninformed(
+            Status(request.status),
+            resolved_at=request.resolved_at,
+            foreman_informed_at=request.foreman_informed_at,
+            now=now,
+            after=uninformed_after(session),
+        ),
         default_owner_id=session.scalar(
             select(CategoryOwnerDefault.owner_id).where(
                 CategoryOwnerDefault.category == request.category

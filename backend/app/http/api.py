@@ -1,7 +1,7 @@
 """Dashboard API (`/api/*`, architecture §4.3). Every route requires a staff token."""
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -18,10 +18,8 @@ from app.domain.lifecycle import (
     Outcome,
     OutcomeRequired,
     OwnerRequired,
-    Status,
     TransitionNotAllowed,
 )
-from app.domain.sla import is_uninformed
 from app.http.auth import CurrentStaff
 from app.services.merges import merge_request
 from app.services.owners import list_owners
@@ -35,7 +33,6 @@ from app.services.requests import (
     resolve_request,
     start_request,
 )
-from app.services.settings import uninformed_after
 from app.services.uninformed import uninformed_requests
 
 router = APIRouter(prefix="/api")
@@ -208,10 +205,10 @@ def detail(
     clock: Annotated[Clock, Depends(get_clock)],
 ) -> RequestDetailOut:
     """One Request's fields and its full audit history (who, when, what changed)."""
-    found = request_detail(session, ref)
+    found = request_detail(session, ref, clock())
     if found is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such request")
-    return _detail_out(found, clock(), uninformed_after(session))
+    return _detail_out(found)
 
 
 class AcknowledgeIn(BaseModel):
@@ -354,9 +351,9 @@ def informed(
 
 
 def _updated(session: Session, ref: str, now: datetime) -> RequestDetailOut:
-    found = request_detail(session, ref)
+    found = request_detail(session, ref, now)
     assert found is not None
-    return _detail_out(found, now, uninformed_after(session))
+    return _detail_out(found)
 
 
 class OwnersOut(BaseModel):
@@ -369,7 +366,7 @@ def owners(staff: CurrentStaff, session: Annotated[Session, Depends(get_session)
     return OwnersOut(owners=[OwnerOut(id=o.id, name=o.name) for o in list_owners(session)])
 
 
-def _detail_out(found: RequestDetail, now: datetime, after: timedelta) -> RequestDetailOut:
+def _detail_out(found: RequestDetail) -> RequestDetailOut:
     return RequestDetailOut(
         ref=found.ref,
         foreman=found.foreman,
@@ -393,13 +390,7 @@ def _detail_out(found: RequestDetail, now: datetime, after: timedelta) -> Reques
         resolved_at=_utc(found.resolved_at) if found.resolved_at else None,
         merged_into=found.merged_into,
         foreman_informed_at=_utc_or_none(found.foreman_informed_at),
-        uninformed=is_uninformed(
-            Status(found.status),
-            resolved_at=found.resolved_at,
-            foreman_informed_at=found.foreman_informed_at,
-            now=now,
-            after=after,
-        ),
+        uninformed=found.uninformed,
         default_owner_id=found.default_owner_id,
         events=[
             EventOut(

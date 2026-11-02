@@ -7,13 +7,14 @@ violation raises `NotFound`, `Conflict` or `Invalid` and writes nothing.
 
 import uuid
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from typing import TypedDict
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.models import CATEGORIES, CategoryOwnerDefault, DutyRoster, Owner, Staff
+from app.domain.local_time import LOCAL_TZ
 from app.services.roster_admin import Conflict, NotFound
 
 
@@ -149,8 +150,10 @@ def update_staff(session: Session, staff_id: uuid.UUID, changes: StaffChanges) -
 # --- Duty roster -------------------------------------------------------------------------
 
 
-def duty_days(session: Session, *, start: date) -> list[DutyRoster]:
-    """Duty days from `start` on, by date."""
+def duty_days(session: Session, *, start: date | None, now: datetime) -> list[DutyRoster]:
+    """Duty days from `start` (default: `now`'s New York date) on, by date."""
+    if start is None:
+        start = now.astimezone(LOCAL_TZ).date()
     return list(
         session.scalars(select(DutyRoster).where(DutyRoster.day >= start).order_by(DutyRoster.day))
     )
