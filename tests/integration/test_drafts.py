@@ -369,6 +369,31 @@ def test_drafts_list_leaves_out_recorded_requests(hook: TestClient, db_session: 
     assert hook.get("/api/drafts", headers=headers).json() == {"drafts": []}
 
 
+def test_coordinator_discards_a_draft_by_resolving_it_as_withdrawn(
+    hook: TestClient, db_session: Session
+) -> None:
+    """#28: a Draft is "promoted or resolved as Withdrawn"; it leaves the Drafts list, is kept,
+    and the resolve writes a staff event."""
+    _deliver(hook, HANG_UP_PAYLOAD)
+    headers = _coordinator(db_session)
+    [draft] = _requests_of(db_session, HANG_UP)
+
+    response = hook.post(
+        f"/api/requests/{draft.ref_display}/resolve",
+        json={"outcome": "Withdrawn", "explanation": "Foreman hung up; not needed"},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert (response.json()["status"], response.json()["outcome"]) == ("Resolved", "Withdrawn")
+    assert hook.get("/api/drafts", headers=headers).json() == {"drafts": []}
+    db_session.expire_all()
+    assert draft.status == "Resolved"
+    event = _events(db_session, draft)[-1]
+    assert (event.kind, event.actor_type) == ("resolved", "staff")
+    assert event.before is not None and event.before["status"] == "Draft"
+
+
 def test_coordinator_promotes_a_draft_to_recorded_with_an_audit_event(
     hook: TestClient, db_session: Session
 ) -> None:

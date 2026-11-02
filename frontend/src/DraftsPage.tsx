@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
-import { fetchDrafts, officeTime, recordDraft, type Draft, type Staff } from "./api";
+import { fetchDrafts, officeTime, recordDraft, resolveRequest, type Draft, type Staff } from "./api";
 import { useAuth } from "./App";
 
 const REFRESH_MS = 10_000;
@@ -20,6 +21,13 @@ export function DraftsPage({ staff }: { staff: Staff }) {
     mutationFn: (ref: string) => recordDraft(token, ref),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["drafts"] }),
   });
+  // #28: a Draft nobody will record is discarded by resolving it as Withdrawn (never deleted).
+  const withdraw = useMutation({
+    mutationFn: ({ ref, explanation }: { ref: string; explanation: string }) =>
+      resolveRequest(token, ref, "Withdrawn", explanation),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["drafts"] }),
+  });
+  const busy = record.isPending || withdraw.isPending;
 
   return (
     <>
@@ -34,9 +42,17 @@ export function DraftsPage({ staff }: { staff: Staff }) {
       </header>
       <main>
         <h1>Drafts</h1>
-        <p>Not confirmed by the Foreman. Record one to put it in the queue.</p>
+        <p>
+          Not confirmed by the Foreman. Record one to put it in the queue, or resolve it as
+          Withdrawn if it is not needed.
+        </p>
         {record.isError && (
           <p role="alert">{record.variables} could not be recorded. Reload and try again.</p>
+        )}
+        {withdraw.isError && (
+          <p role="alert">
+            {withdraw.variables?.ref} could not be resolved. Reload and try again.
+          </p>
         )}
         {drafts.isError && !drafts.data && <p role="alert">Could not load the Drafts.</p>}
         {drafts.data && drafts.data.length === 0 && <p>No Drafts.</p>}
@@ -61,8 +77,9 @@ export function DraftsPage({ staff }: { staff: Staff }) {
                 <DraftRow
                   key={draft.ref}
                   draft={draft}
-                  busy={record.isPending}
+                  busy={busy}
                   onRecord={() => record.mutate(draft.ref)}
+                  onWithdraw={(explanation) => withdraw.mutate({ ref: draft.ref, explanation })}
                 />
               ))}
             </tbody>
@@ -73,7 +90,18 @@ export function DraftsPage({ staff }: { staff: Staff }) {
   );
 }
 
-function DraftRow({ draft, busy, onRecord }: { draft: Draft; busy: boolean; onRecord: () => void }) {
+function DraftRow({
+  draft,
+  busy,
+  onRecord,
+  onWithdraw,
+}: {
+  draft: Draft;
+  busy: boolean;
+  onRecord: () => void;
+  onWithdraw: (explanation: string) => void;
+}) {
+  const [explanation, setExplanation] = useState("");
   const quantity = [draft.quantity, draft.unit].filter(Boolean).join(" ");
   return (
     <tr>
@@ -97,6 +125,21 @@ function DraftRow({ draft, busy, onRecord }: { draft: Draft; busy: boolean; onRe
         <button type="button" disabled={busy} onClick={onRecord}>
           Record
         </button>
+        <form
+          aria-label={`Withdraw ${draft.ref}`}
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (explanation.trim() !== "") onWithdraw(explanation);
+          }}
+        >
+          <label>
+            Explanation
+            <input value={explanation} onChange={(e) => setExplanation(e.target.value)} />
+          </label>
+          <button type="submit" disabled={busy || explanation.trim() === ""}>
+            Resolve as Withdrawn
+          </button>
+        </form>
       </td>
     </tr>
   );

@@ -120,6 +120,35 @@ describe("Drafts page", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("R-1000 could not be recorded");
   });
 
+  it("resolves a Draft as Withdrawn with an explanation and drops it from the list", async () => {
+    const fetchMock = backend([DRAFT]);
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === "/api/me") return new Response(JSON.stringify(STAFF), { status: 200 });
+      if (url === "/api/drafts") {
+        const resolved = fetchMock.mock.calls.some(([u]) => String(u).endsWith("/resolve"));
+        return new Response(JSON.stringify({ drafts: resolved ? [] : [DRAFT] }), { status: 200 });
+      }
+      if (url.endsWith("/resolve") && init?.method === "POST") {
+        return new Response(JSON.stringify({ ref: "R-1000", status: "Resolved" }), { status: 200 });
+      }
+      return new Response("{}", { status: 404 });
+    });
+    renderAt("/drafts");
+
+    const row = await screen.findByRole("row", { name: /R-1000/ });
+    const withdraw = within(row).getByRole("button", { name: "Resolve as Withdrawn" });
+    expect(withdraw).toBeDisabled(); // an explanation is required (AC9.2)
+    await userEvent.type(within(row).getByLabelText("Explanation"), "Not needed");
+    await userEvent.click(withdraw);
+
+    expect(await screen.findByText("No Drafts.")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith("/api/requests/R-1000/resolve", {
+      method: "POST",
+      headers: { Authorization: "Bearer tok-pat", "Content-Type": "application/json" },
+      body: JSON.stringify({ outcome: "Withdrawn", explanation: "Not needed" }),
+    });
+  });
+
   it("is reached from the queue and links back to it", async () => {
     backend([]);
     renderAt("/");
