@@ -5,8 +5,8 @@ Run tickets in Anthropic-hosted sandboxes so work continues with the laptop off,
 ## What the repo provides
 
 - `.claude/settings.json` SessionStart hook → `scripts/cloud-setup.sh`. Runs only when `CLAUDE_CODE_REMOTE=true`.
-- Setup: uv + Python 3.12, `uv sync` in `backend/`, `npm ci` in `frontend/` (each skipped until the folder has its manifest), `gh` CLI, local Postgres with `voice_agent` and `voice_agent_test` DBs.
-- Exports `DATABASE_URL`, `TEST_DATABASE_URL` (`postgresql+psycopg://postgres:postgres@localhost:5432/...`), `TZ=America/New_York`, `APP_ENV=local`.
+- Setup: uv + Python 3.12, `uv sync` in `backend/`, `npm ci` in `frontend/` (each skipped until the folder has its manifest), `gh` CLI, local Postgres with `voice_agent`, `voice_agent_test` and `voice_agent_e2e` DBs.
+- Exports `DATABASE_URL`, `TEST_DATABASE_URL`, `E2E_DATABASE_URL` (`postgresql+psycopg://postgres:postgres@localhost:5432/...`), `TZ=America/New_York`, `APP_ENV=local`.
 - Tests use this per-sandbox Postgres, never the cloud Supabase DB: parallel sessions sharing one DB would clobber each other's data and run unmerged migrations against a shared schema.
 - Plain Postgres replaces Supabase local (it needs Docker, which cloud sessions don't have). Tests must read the DB URL from env, never hard-code the Supabase port.
 

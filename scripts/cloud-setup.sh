@@ -21,6 +21,11 @@ export_env() {
 
 SUDO=""
 [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null && SUDO="sudo"
+# Run a command as the postgres OS user. Cloud sessions run as root, where SUDO is
+# empty, so "$SUDO -u postgres" would not work there.
+as_pg() {
+  if [ "$(id -u)" -eq 0 ]; then runuser -u postgres -- "$@"; else sudo -u postgres "$@"; fi
+}
 
 # --- uv + Python 3.12 -------------------------------------------------------
 if ! command -v uv >/dev/null; then
@@ -63,16 +68,18 @@ fi
 if command -v service >/dev/null && ls /etc/init.d/postgresql >/dev/null 2>&1; then
   $SUDO service postgresql start >/dev/null 2>&1 || warn "postgres start failed"
   for _ in 1 2 3 4 5 6 7 8 9 10; do
-    $SUDO -u postgres psql -qtAc 'select 1' >/dev/null 2>&1 && break
+    as_pg psql -qtAc 'select 1' >/dev/null 2>&1 && break
     sleep 1
   done
-  $SUDO -u postgres psql -qc "alter user $PG_USER password '$PG_PASS';" >/dev/null 2>&1
-  for db in voice_agent voice_agent_test; do
-    $SUDO -u postgres psql -qtAc "select 1 from pg_database where datname='$db'" | grep -q 1 \
-      || $SUDO -u postgres createdb "$db" || warn "createdb $db failed"
+  as_pg psql -qc "alter user $PG_USER password '$PG_PASS';" >/dev/null 2>&1
+  for db in voice_agent voice_agent_test voice_agent_e2e; do
+    as_pg psql -qtAc "select 1 from pg_database where datname='$db'" | grep -q 1 \
+      || as_pg createdb "$db" || warn "createdb $db failed"
   done
   export_env DATABASE_URL "postgresql+psycopg://$PG_USER:$PG_PASS@localhost:5432/voice_agent"
   export_env TEST_DATABASE_URL "postgresql+psycopg://$PG_USER:$PG_PASS@localhost:5432/voice_agent_test"
+  # Playwright (frontend `npm run e2e`): tests/e2e/serve.sh migrates and seeds this one.
+  export_env E2E_DATABASE_URL "postgresql+psycopg://$PG_USER:$PG_PASS@localhost:5432/voice_agent_e2e"
 fi
 
 # --- Session defaults -------------------------------------------------------
