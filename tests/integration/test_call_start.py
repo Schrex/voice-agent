@@ -124,6 +124,22 @@ def test_unrostered_caller_gets_the_rejection_line_and_rejected_flag(hook: TestC
     }
 
 
+def test_with_no_office_number_an_unrostered_caller_hears_the_test_line(
+    hook: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Prototype testing (product owner, 2026-11-02): OFFICE_MAIN_NUMBER unset means no office
+    behind the line, so the J8 line (which names that number) becomes the test line."""
+    monkeypatch.delenv("OFFICE_MAIN_NUMBER")
+
+    response = _post(hook, _fixture("call_start_unrostered.json"))
+
+    assert response.status_code == 200
+    assert response.json()["dynamic_variables"]["rejected"] is True
+    assert response.json()["conversation_config_override"] == {
+        "agent": {"first_message": "The test is unavailable; please try again later."}
+    }
+
+
 def test_unrostered_attempt_is_logged(hook: TestClient, db_session: Session) -> None:
     _post(hook, _fixture("call_start_unrostered.json"))
 

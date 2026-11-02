@@ -218,10 +218,12 @@ docs/task-dependencies.md is the original layer-based plan, superseded by the is
   - Overnight Overdue SMS: send immediately (spec §12 default kept, no change, #22).
   - Staff removal: `DELETE /api/admin/staff/{id}` sets `staff.removed_at` (migration `0021`). A removed person gets 403 at once, leaves the staff list, the duty-roster choices, the Emergency SMS and the end-of-day email; the row stays so the audit history keeps their name. Refused (409) for yourself and for anyone on the duty roster today or later. `POST /api/admin/staff` with the same user id restores them; a seed file listing them does too. Office setup page: "Remove", then "Yes, remove" (no browser dialog).
 - 2026-11-02 (product owner): staging runs on Render's **free** plan for the prototype week. `render.yaml`: `plan: free`, migrations moved from `preDeployCommand` (paid only) into `startCommand`. Known limits: sleeps after ~15 min idle (calls fail while it wakes; Overdue sweep and 17:00 email pause), no Render Shell (staff are added through the Supabase SQL editor). Switch back to `starter` before #37; steps in `docs/staging.md` "Free plan".
+- 2026-11-02 (product owner): prototype phone testing with no office behind the line. `OFFICE_MAIN_NUMBER` is now optional: unset → an unrostered caller hears "The test is unavailable; please try again later." (`services.calls.TEST_UNAVAILABLE_LINE`) instead of the J8 line. The prompt shows the Office Line in the call context; empty → J5 and J6 say the same line and `end_call` instead of `transfer_to_number` (J6 keeps the safety line and `start_emergency` first). Two new S tests (`proto_j5_…`, `proto_j6_…`); the spec behaviour returns as soon as both numbers are set.
 
 ## Open items
 
 - Office line behavior for overnight transfers (rings where? voicemail?).
+- Before #37: set `OFFICE_MAIN_NUMBER` and the Office Line (prototype test line otherwise; `docs/staging.md` "Prototype testing").
 - Staging is on Render's free plan for the prototype week: switch `render.yaml` back to `plan: starter` (and restore `preDeployCommand`) before #37 (`docs/staging.md` "Free plan").
 - Safety-lead approval of the emergency line (`backend/agent/safety_line.txt` holds the spec placeholder, marked PLACEHOLDER; #26).
 - Draft Urgency (review S8): should a Draft's spoken needed-by be resolved (and its Urgency set) when it is promoted, and against which time — the call's or the promotion's? Until decided, promoted Drafts have no Urgency, so no Today SMS; since 2026-11-02 they get the Today ack window (no-Urgency rule) and so can go Overdue.

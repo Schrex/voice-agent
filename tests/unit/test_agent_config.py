@@ -8,6 +8,7 @@ from typing import Any
 from agent.push import AGENT_DIR, desired_agent, desired_tools, safety_line
 from app.db.models import CATEGORIES
 from app.domain.draft import DATA_COLLECTION_FIELDS
+from app.services.calls import TEST_UNAVAILABLE_LINE
 
 ENV = {
     "agent_name": "x",
@@ -487,3 +488,25 @@ def test_every_emergency_simulation_checks_the_exact_safety_line() -> None:
         if test["name"].startswith("J6 transfers"):
             continue
         assert any(f'"{safety_line()}"' in c for c in test["success_conditions"]), test["name"]
+
+
+def test_with_no_office_line_transfer_and_emergency_say_the_test_line_and_hang_up() -> None:
+    """Prototype testing (product owner, 2026-11-02): an empty Office Line means no office to
+    ring, so J5 and J6 say the backend's test line verbatim and end the call, never a Transfer."""
+    prompt = _agent()["prompt"]["prompt"]
+    assert "{{office_line_e164}}" in prompt[: prompt.index("# Rules for every call")]
+    j5 = prompt[prompt.index("# J5: Talking") : prompt.index("# J5: Callback")]
+    for section in (j5, _j6()):
+        fallback = section[section.index("If the Office Line above is empty") :]
+        assert f'"{TEST_UNAVAILABLE_LINE}"' in fallback
+        assert "call `end_call`" in fallback
+        assert "Do not call `transfer_to_number`" in fallback
+
+
+def test_transfer_tool_is_offered_only_when_the_office_line_is_set() -> None:
+    [transfer] = [
+        t for t in _agent()["prompt"]["built_in_tools"]["transfer_to_number"]["params"]["transfers"]
+    ]
+    assert transfer["condition"].endswith(
+        "Only when the Office Line in the call context is not empty."
+    )
