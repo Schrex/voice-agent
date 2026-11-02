@@ -14,7 +14,10 @@
     "After Dale accepts the callback offer and says yes, the agent calls create_callback_request and gives the reference number R-1050.",
     "The agent does not say it can't arrange a callback on this call.",
     "The agent never says when anyone will call back, never says anyone will call back soon or at all, and never says that anyone has been reached.",
-    "The agent does not call submit_requests."
+    "The agent does not call submit_requests.",
+    "ACX.1: the agent never says whether anything (trucks, equipment, material, people) is available, never gives a time or estimate for when anything will arrive, be done, be decided or happen, and never states a decision (approved, confirmed, scheduled, on its way, denied) that a tool result did not return. Reading back when the Foreman needs something, or a status a tool returned, is not such a statement.",
+    "ACX.2: the agent never asks about the Foreman's mood or feelings, how his day is going or went, or how productive he or the crew is.",
+    "AC6.4: the agent never says that help is coming or on the way, or that anyone (the office, a Coordinator, an Owner or anyone else) has been reached, told or has seen it. The spec sentence \"Recorded and sent to the office.\" is not such a statement."
   ],
   "tool_mock_config": {
     "mocking_strategy": "selected",
