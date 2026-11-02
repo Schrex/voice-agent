@@ -136,6 +136,17 @@ export type RequestEvent = {
   after: Record<string, unknown> | null;
 };
 
+/** A coordinator action on a request, named as the backend lists it in `allowed_actions`. */
+export type RequestAction =
+  | "acknowledge"
+  | "start"
+  | "reassign"
+  | "resolve"
+  | "merge"
+  | "edit"
+  | "mark_informed"
+  | "note";
+
 /** One request with its full audit history (`GET /api/requests/{ref}`). */
 export type RequestDetail = {
   ref: string;
@@ -172,6 +183,11 @@ export type RequestDetail = {
   foreman_informed_at: string | null;
   /** Resolved, not marked Foreman Informed within the threshold (as of the backend's clock). */
   uninformed: boolean;
+  /**
+   * What the backend's lifecycle guards allow a coordinator to do now (ADR 0004). The dashboard
+   * offers an action only when it is listed here; it never works the rules out itself.
+   */
+  allowed_actions: RequestAction[];
   /** The category's default Owner, offered first when acknowledging. */
   default_owner_id: number | null;
   /** Oldest first. */

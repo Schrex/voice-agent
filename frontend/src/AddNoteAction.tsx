@@ -17,6 +17,7 @@ export function AddNoteAction({ request }: { request: RequestDetail }) {
     },
   });
 
+  if (!request.allowed_actions.includes("note")) return null;
   const ready = text.trim() !== "";
   return (
     <form

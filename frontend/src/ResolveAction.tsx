@@ -4,8 +4,6 @@ import { useState } from "react";
 import { OUTCOMES, resolveRequest, type Outcome, type RequestDetail } from "./api";
 import { useAuth } from "./App";
 
-/** The open statuses (Recorded, Acknowledged, In Progress): a coordinator resolves these here. */
-const RESOLVABLE: RequestDetail["status"][] = ["Recorded", "Acknowledged", "In Progress"];
 
 /**
  * Resolve (spec J9): finish an open request with an Outcome and an explanation. Neither may be
@@ -25,7 +23,7 @@ export function ResolveAction({ request }: { request: RequestDetail }) {
     },
   });
 
-  if (!RESOLVABLE.includes(request.status)) return null;
+  if (!request.allowed_actions.includes("resolve")) return null;
   const ready = outcome !== "" && explanation.trim() !== "";
   return (
     <form

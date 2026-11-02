@@ -19,6 +19,7 @@ Any other move raises `TransitionNotAllowed`.
 `mark_informed` (Foreman Informed, not a status) is allowed on a Resolved request, once.
 """
 
+from collections.abc import Callable
 from datetime import datetime
 from enum import StrEnum
 
@@ -198,6 +199,34 @@ def reassign(current: Status, owner_id: int | None) -> Status:
     if owner_id is None:
         raise OwnerRequired()
     return current
+
+
+def allowed_actions(current: Status, *, foreman_informed_at: datetime | None) -> list[str]:
+    """The coordinator actions the guards above allow on a Request now, in a fixed order, for
+    the dashboard to offer (ADR 0004: the rules live here, not in the UI). Each is worked out
+    by asking its guard; "note" is always allowed."""
+    checks: list[tuple[str, Callable[[], object]]] = [
+        ("acknowledge", lambda: acknowledge(current, 0)),
+        ("start", lambda: start(current)),
+        ("reassign", lambda: reassign(current, 0)),
+        ("resolve", lambda: resolve(current, Outcome.FULFILLED, "-")),
+        (
+            "merge",
+            lambda: merge(
+                current, Status.RECORDED, same=False, outcome=Outcome.FULFILLED, explanation="-"
+            ),
+        ),
+        ("edit", lambda: edit(current)),
+        ("mark_informed", lambda: mark_informed(current, foreman_informed_at)),
+    ]
+    allowed = []
+    for name, check in checks:
+        try:
+            check()
+        except ValueError:
+            continue
+        allowed.append(name)
+    return [*allowed, "note"]
 
 
 class NotResolved(ValueError):

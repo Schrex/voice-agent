@@ -4,8 +4,6 @@ import { useState } from "react";
 import { mergeRequest, OUTCOMES, type Outcome, type RequestDetail } from "./api";
 import { useAuth } from "./App";
 
-/** Open statuses; the same ones Resolve is offered on, since merging resolves this request. */
-const MERGEABLE: RequestDetail["status"][] = ["Recorded", "Acknowledged", "In Progress"];
 
 /**
  * Merge duplicates (spec J2, J9): this request is Resolved, with an Outcome and explanation, and
@@ -29,7 +27,7 @@ export function MergeAction({ request }: { request: RequestDetail }) {
     },
   });
 
-  if (!MERGEABLE.includes(request.status)) return null;
+  if (!request.allowed_actions.includes("merge")) return null;
   if (!open) {
     return (
       <p className="action">

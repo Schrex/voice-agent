@@ -194,6 +194,9 @@ class RequestDetailOut(BaseModel):
     merged_into: str | None  # ref of the Request this one was merged into; null if not merged
     foreman_informed_at: str | None  # UTC, ISO 8601 with "Z"; null until marked Foreman Informed
     uninformed: bool  # Resolved, not marked Foreman Informed within the threshold (now)
+    # What the lifecycle guards allow a coordinator to do now (ADR 0004); the dashboard offers
+    # only these: acknowledge, start, reassign, resolve, merge, edit, mark_informed, note.
+    allowed_actions: list[str]
     default_owner_id: int | None  # the category's default Owner, offered when acknowledging
     events: list[EventOut]  # oldest first
     calls: list[LinkedCallOut]  # oldest first
@@ -439,6 +442,7 @@ def _detail_out(found: RequestDetail) -> RequestDetailOut:
         merged_into=found.merged_into,
         foreman_informed_at=_utc_or_none(found.foreman_informed_at),
         uninformed=found.uninformed,
+        allowed_actions=found.allowed_actions,
         default_owner_id=found.default_owner_id,
         events=[
             EventOut(

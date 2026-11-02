@@ -32,6 +32,7 @@ const RECORDED: RequestDetail = {
   needed_by_spoken: null,
   urgency: null,
   status: "Recorded",
+  allowed_actions: ["acknowledge", "resolve", "merge", "edit", "note"],
   source: "ai_call",
   recorded_at: "2026-11-02T01:30:00Z",
   owner: null,
@@ -49,6 +50,7 @@ const RECORDED: RequestDetail = {
 const ACKNOWLEDGED: RequestDetail = {
   ...RECORDED,
   status: "Acknowledged",
+  allowed_actions: ["start", "reassign", "resolve", "merge", "edit", "note"],
   owner: { id: 2, name: "Equipment Manager" },
   acknowledged_at: "2026-11-02T01:40:00Z",
   events: [

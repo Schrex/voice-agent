@@ -4,14 +4,12 @@ import { useState } from "react";
 import { fetchOwners, reassignOwner, type RequestDetail } from "./api";
 import { useAuth } from "./App";
 
-const REASSIGNABLE: RequestDetail["status"][] = ["Acknowledged", "In Progress"];
-
 /** Reassign owner (spec J9): give a request that already has an Owner another one. */
 export function ReassignOwnerAction({ request }: { request: RequestDetail }) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const [ownerId, setOwnerId] = useState("");
-  const offered = REASSIGNABLE.includes(request.status);
+  const offered = request.allowed_actions.includes("reassign");
   const owners = useQuery({
     queryKey: ["owners", session?.accessToken],
     queryFn: () => fetchOwners(session!.accessToken),

@@ -15,7 +15,7 @@ export function AcknowledgeAction({ request }: { request: RequestDetail }) {
   const owners = useQuery({
     queryKey: ["owners", session?.accessToken],
     queryFn: () => fetchOwners(session!.accessToken),
-    enabled: !!session && request.status === "Recorded",
+    enabled: !!session && request.allowed_actions.includes("acknowledge"),
   });
   const acknowledge = useMutation({
     mutationFn: (owner: number) => acknowledgeRequest(session!.accessToken, request.ref, owner),
@@ -25,7 +25,7 @@ export function AcknowledgeAction({ request }: { request: RequestDetail }) {
     },
   });
 
-  if (request.status !== "Recorded") return null;
+  if (!request.allowed_actions.includes("acknowledge")) return null;
   return (
     <form
       className="action"

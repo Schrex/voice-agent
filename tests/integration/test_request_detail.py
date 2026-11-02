@@ -126,6 +126,8 @@ def test_detail_returns_the_request_fields(
         "foreman_informed_at": None,
         "uninformed": False,
         "default_owner_id": db_session.scalar(select(Owner.id).where(Owner.name == "Dispatch")),
+        # ADR 0004: the dashboard offers only what the lifecycle guards allow.
+        "allowed_actions": ["acknowledge", "resolve", "merge", "edit", "note"],
     }
 
 

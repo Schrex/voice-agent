@@ -19,7 +19,7 @@ from app.db.models import (
     RequestEvent,
     Staff,
 )
-from app.domain.lifecycle import Status
+from app.domain.lifecycle import Status, allowed_actions
 from app.domain.ref import parse_ref
 from app.domain.sla import is_uninformed
 from app.services.notes import notes_of
@@ -98,6 +98,7 @@ class RequestDetail:
     merged_into: str | None  # ref of the Request this one was merged into (ticket #33)
     foreman_informed_at: datetime | None  # null until a coordinator marks Foreman Informed
     uninformed: bool  # Resolved, not informed, past the office's threshold (#32)
+    allowed_actions: list[str]  # what the lifecycle guards allow a coordinator now (ADR 0004)
     # The category's default Owner, offered first when acknowledging (null if none is set).
     default_owner_id: int | None
     events: list[Event]
@@ -149,6 +150,9 @@ def request_detail(session: Session, ref: str, now: datetime) -> RequestDetail |
             foreman_informed_at=request.foreman_informed_at,
             now=now,
             after=uninformed_after(session),
+        ),
+        allowed_actions=allowed_actions(
+            Status(request.status), foreman_informed_at=request.foreman_informed_at
         ),
         default_owner_id=session.scalar(
             select(CategoryOwnerDefault.owner_id).where(

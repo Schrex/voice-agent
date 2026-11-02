@@ -30,6 +30,7 @@ const DETAIL: RequestDetail = {
   needed_by_spoken: "tomorrow at seven",
   urgency: "Planned",
   status: "Recorded",
+  allowed_actions: ["acknowledge", "resolve", "merge", "edit", "note"],
   source: "ai_call",
   recorded_at: "2026-11-02T01:30:00Z",
   owner: null,

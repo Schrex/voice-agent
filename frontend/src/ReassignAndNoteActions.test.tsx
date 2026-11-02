@@ -34,6 +34,7 @@ const ACKNOWLEDGED: RequestDetail = {
   needed_by_spoken: null,
   urgency: null,
   status: "Acknowledged",
+  allowed_actions: ["start", "reassign", "resolve", "merge", "edit", "note"],
   source: "ai_call",
   recorded_at: "2026-11-02T01:30:00Z",
   owner: { id: 1, name: "Dispatch" },
@@ -99,8 +100,8 @@ describe("Reassign owner", () => {
     expect(await within(fields).findByText("Equipment Manager")).toBeInTheDocument();
   });
 
-  it("is not offered for a Recorded request (Acknowledge sets its first Owner)", async () => {
-    serve({ ...ACKNOWLEDGED, status: "Recorded", owner: null }, ACKNOWLEDGED);
+  it("is not offered when the backend does not allow reassign", async () => {
+    serve({ ...ACKNOWLEDGED, allowed_actions: ["start", "resolve", "note"] }, ACKNOWLEDGED);
     renderDetail();
 
     await screen.findByRole("form", { name: "Add note" });

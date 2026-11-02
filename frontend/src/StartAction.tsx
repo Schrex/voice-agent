@@ -15,7 +15,7 @@ export function StartAction({ request }: { request: RequestDetail }) {
     },
   });
 
-  if (request.status !== "Acknowledged") return null;
+  if (!request.allowed_actions.includes("start")) return null;
   return (
     <div className="action">
       <button type="button" onClick={() => start.mutate()} disabled={start.isPending}>
