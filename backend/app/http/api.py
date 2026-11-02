@@ -45,13 +45,12 @@ class StaffOut(BaseModel):
     id: uuid.UUID
     name: str
     email: str
-    role: str
 
 
 @router.get("/me")
 def me(staff: CurrentStaff) -> StaffOut:
     """The signed-in staff member; the dashboard calls it after login to check access."""
-    return StaffOut(id=staff.id, name=staff.name, email=staff.email, role=staff.role)
+    return StaffOut(id=staff.id, name=staff.name, email=staff.email)
 
 
 class QueueRequestOut(BaseModel):

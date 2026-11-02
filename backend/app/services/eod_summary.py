@@ -32,13 +32,14 @@ from app.services.queue import as_said
 
 
 def send_end_of_day_summary(session: Session, email: EmailSender, *, now: datetime) -> None:
-    """Email today's summary to every Coordinator who has not had it yet; nothing before 17:00."""
+    """Email today's summary to every staff member who has not had it yet; nothing before 17:00.
+
+    One Staff role (ADR 0006): everyone on the staff list is a Coordinator.
+    """
     if not is_due(now):
         return
     day = summary_day(now)
-    coordinators = session.scalars(
-        select(Staff).where(Staff.role == "coordinator").order_by(Staff.name, Staff.id)
-    ).all()
+    coordinators = session.scalars(select(Staff).order_by(Staff.name, Staff.id)).all()
     pending: list[tuple[int, str]] = []
     for staff in coordinators:
         alert_id = session.scalar(

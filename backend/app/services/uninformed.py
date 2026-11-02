@@ -1,5 +1,6 @@
 """Uninformed Requests (ticket #32; spec §5 flags, AC9.4): Resolved, not marked Foreman Informed,
-and Resolved more than the threshold ago (`app.domain.sla`). Read-only; dashboard only.
+and Resolved more than the threshold ago (`app.domain.sla`); never a Request merged into another.
+Read-only; dashboard only.
 """
 
 from dataclasses import dataclass
@@ -38,6 +39,7 @@ def uninformed_requests(session: Session, now: datetime) -> list[UninformedRow]:
         .where(
             Request.status == Status.RESOLVED.value,
             Request.foreman_informed_at.is_(None),
+            Request.merged_into_id.is_(None),  # the surviving Request carries the flag
             Request.resolved_at < cutoff,
         )
         .order_by(Request.resolved_at, Request.ref)

@@ -40,9 +40,11 @@ def test_the_windows_are_the_offices_settings() -> None:
 
 
 @pytest.mark.parametrize("urgency", [Urgency.EMERGENCY, None])
-def test_no_window_is_set_where_the_spec_gives_none(urgency: Urgency | None) -> None:
-    """Spec §4 gives windows for Today/Callback and Planned only (open question on #22)."""
-    assert ack_due_at(urgency, RECORDED_AT, DEFAULT) is None
+def test_emergency_and_no_urgency_use_the_today_window(urgency: Urgency | None) -> None:
+    """Product owner decision on #22/#26: every Recorded Request can go Overdue."""
+    windows = AckWindows(today=timedelta(minutes=5), planned=timedelta(minutes=30))
+    assert ack_due_at(urgency, RECORDED_AT, DEFAULT) == RECORDED_AT + timedelta(minutes=15)
+    assert ack_due_at(urgency, RECORDED_AT, windows) == RECORDED_AT + timedelta(minutes=5)
 
 
 DUE = datetime(2026, 11, 1, 20, 19, tzinfo=UTC)

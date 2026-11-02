@@ -32,10 +32,16 @@ def is_uninformed(
     foreman_informed_at: datetime | None,
     now: datetime,
     after: timedelta = UNINFORMED_AFTER,
+    merged: bool = False,
 ) -> bool:
-    """Resolved, not marked Foreman Informed, and `now > resolved_at + after`."""
+    """Resolved, not marked Foreman Informed, and `now > resolved_at + after`.
+
+    A Request merged into another never is: the surviving Request carries the flag (product
+    owner decision on #32/#33).
+    """
     return (
-        status is Status.RESOLVED
+        not merged
+        and status is Status.RESOLVED
         and foreman_informed_at is None
         and resolved_at is not None
         and resolved_at < uninformed_cutoff(now, after)
@@ -57,10 +63,10 @@ def ack_due_at(
 ) -> datetime | None:
     """When a Request Recorded at `recorded_at` must be Acknowledged by.
 
-    None for Emergency and for an unknown Urgency: the spec gives them no ack window (open
-    question on #22), so they never show Overdue.
+    Emergency and an unknown Urgency use the Today window (product owner decision on #22 and
+    #26), so every Recorded Request can go Overdue.
     """
-    if urgency is Urgency.TODAY:
+    if urgency in (Urgency.TODAY, Urgency.EMERGENCY, None):
         return recorded_at + windows.today
     if urgency is Urgency.PLANNED:
         return recorded_at + windows.planned

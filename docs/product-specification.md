@@ -59,6 +59,8 @@ Missed-call coverage on main line → proactive foreman notifications → verifi
 | **Owner** | Nothing (v1) | Fulfills the request; status updated by a coordinator |
 | **Admin** | Dashboard | Maintains roster, jobs (with aliases), owners, office line number, duty roster |
 
+Pilot: one Staff role. Every staff member can do both Coordinator and Admin work, and "all coordinators" means everyone on the staff list ([ADR 0006](adr/0006-one-staff-role-for-the-pilot.md)).
+
 ## 4. Operating parameters
 
 | Parameter | v1 value | Notes |
@@ -68,6 +70,7 @@ Missed-call coverage on main line → proactive foreman notifications → verifi
 | Transfer target | Dedicated office line | Used for both Transfer and Emergency; the AI cannot detect whether anyone answered ([ADR 0003](adr/0003-elevenlabs-native-telephony.md)) |
 | Ack window — Today / Callback | 15 min | Placeholder; recalibrate from baseline (days 1–5) |
 | Ack window — Planned | 2 h | Placeholder |
+| Ack window — Emergency, and no Urgency (needed-by unknown, Drafts) | Same as Today (15 min) | Product owner, 2026-11-02: every Recorded request can go Overdue |
 | Uninformed threshold | 2 h after Resolved | Placeholder |
 | Recording retention | 90 days (audio + transcript) | Request records kept indefinitely |
 | Recording access | Coordinators, Admin | |
@@ -92,7 +95,7 @@ Consequence of 24/7 single mode: a Transfer or Callback at 2 AM behaves exactly 
 | In Progress | Owner acting; outcome unknown | Coordinator |
 | Resolved | Finished, with Outcome (Fulfilled / Partially Fulfilled / Denied / Withdrawn) + explanation | Coordinator, or AI for foreman withdrawal before In Progress |
 
-**Flags (dashboard):** Overdue (not Acknowledged within ack window) · Uninformed (Resolved, not Foreman Informed within threshold) · Unmatched job · Change requested · Has unknown fields.
+**Flags (dashboard):** Overdue (not Acknowledged within ack window) · Uninformed (Resolved, not Foreman Informed within threshold; never a request merged into another, and a phone withdrawal counts as Foreman Informed) · Unmatched job · Change requested · Has unknown fields.
 
 ## 6. User journeys and desired behavior
 
@@ -124,7 +127,7 @@ Coordinators can also merge duplicates on the dashboard.
 
 ### J4 — Foreman amends or withdraws
 
-- Before In Progress: AI applies the change (or resolves as Withdrawn), reads it back, notifies coordinator/owner.
+- Before In Progress: AI applies the change (or resolves as Withdrawn and marks it Foreman Informed, since the foreman withdrew it himself), reads it back, notifies coordinator/owner.
 - At/after In Progress: AI adds a note, flags *Change requested*, and tells the foreman *"I've flagged that for the office; it isn't changed yet."*
 
 ### J5 — Foreman wants to talk to the office (Transfer)

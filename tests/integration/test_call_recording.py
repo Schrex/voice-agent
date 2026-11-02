@@ -64,8 +64,8 @@ def elevenlabs(client: TestClient) -> Iterator[FakeElevenLabs]:
     http.close()
 
 
-def _staff(session: Session, role: str) -> Staff:
-    staff = Staff(id=uuid.uuid4(), name=f"{role} Lee", email=f"{role}@example.com", role=role)
+def _staff(session: Session) -> Staff:
+    staff = Staff(id=uuid.uuid4(), name="Pat Lee", email="pat@example.com")
     session.add(staff)
     session.flush()
     return staff
@@ -79,7 +79,7 @@ def _token(sub: uuid.UUID) -> dict[str, str]:
 @pytest.fixture
 def coordinator(db_session: Session) -> dict[str, str]:
     seed_roster(db_session, load_roster_file(SAMPLE_ROSTER))
-    return _token(_staff(db_session, "coordinator").id)
+    return _token(_staff(db_session).id)
 
 
 TRANSCRIPT: list[dict[str, Any]] = [
@@ -164,16 +164,13 @@ def test_audio_endpoint_refuses_non_staff(
     assert elevenlabs.requests == []  # ElevenLabs is never asked for a refused caller
 
 
-@pytest.mark.parametrize("role", ["coordinator", "admin"])
 def test_staff_get_the_recording_streamed_from_elevenlabs(
-    client: TestClient, db_session: Session, elevenlabs: FakeElevenLabs, role: str
+    client: TestClient, db_session: Session, elevenlabs: FakeElevenLabs
 ) -> None:
     seed_roster(db_session, load_roster_file(SAMPLE_ROSTER))
     call = _call(db_session)
 
-    response = client.get(
-        f"/api/calls/{call.id}/audio", headers=_token(_staff(db_session, role).id)
-    )
+    response = client.get(f"/api/calls/{call.id}/audio", headers=_token(_staff(db_session).id))
 
     assert response.status_code == 200
     assert response.content == AUDIO

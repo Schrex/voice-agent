@@ -55,14 +55,14 @@ def test_seed_is_idempotent(db_session: Session) -> None:
 
 def test_seed_upserts_staff_by_supabase_user_id(db_session: Session) -> None:
     user_id = uuid.UUID("7d0b3c1e-2f4a-4b6c-9d8e-0f1a2b3c4d5e")
-    entry = {"id": str(user_id), "name": "Pat Lee", "email": "pat@example.com", "role": "admin"}
+    entry = {"id": str(user_id), "name": "Pat Lee", "email": "pat@example.com"}
     seed_roster(db_session, RosterFile.model_validate({"staff": [entry]}))
     seed_roster(
-        db_session, RosterFile.model_validate({"staff": [{**entry, "role": "coordinator"}]})
+        db_session, RosterFile.model_validate({"staff": [{**entry, "name": "Pat Lee-Ortiz"}]})
     )
 
     staff = db_session.scalars(select(Staff)).all()
-    assert [(s.id, s.name, s.role) for s in staff] == [(user_id, "Pat Lee", "coordinator")]
+    assert [(s.id, s.name) for s in staff] == [(user_id, "Pat Lee-Ortiz")]
 
 
 def test_seed_loads_staff_phones_and_the_duty_roster(db_session: Session) -> None:
@@ -74,10 +74,9 @@ def test_seed_loads_staff_phones_and_the_duty_roster(db_session: Session) -> Non
                     "id": str(pat),
                     "name": "Pat Lee",
                     "email": "pat@example.com",
-                    "role": "coordinator",
                     "phone_e164": "+15855550199",
                 },
-                {"id": str(sam), "name": "Sam Ortiz", "email": "s@example.com", "role": "admin"},
+                {"id": str(sam), "name": "Sam Ortiz", "email": "s@example.com"},
             ],
             "duty": [
                 {"date": "2026-11-02", "on_duty": str(pat), "backup": str(sam)},
@@ -107,17 +106,17 @@ def test_seed_rejects_a_staff_phone_not_in_e164() -> None:
         "id": str(uuid.uuid4()),
         "name": "X",
         "email": "x@example.com",
-        "role": "coordinator",
         "phone_e164": "585-555-0199",
     }
     with pytest.raises(ValidationError):
         RosterFile.model_validate({"staff": [entry]})
 
 
-def test_seed_rejects_unknown_staff_role() -> None:
-    entry = {"id": str(uuid.uuid4()), "name": "X", "email": "x@example.com", "role": "owner"}
-    with pytest.raises(ValidationError):
-        RosterFile.model_validate({"staff": [entry]})
+def test_seed_still_reads_an_old_file_with_staff_roles(db_session: Session) -> None:
+    """Roles left the staff list (one Staff role, ADR 0006); an older seed file still loads."""
+    entry = {"id": str(uuid.uuid4()), "name": "X", "email": "x@example.com", "role": "admin"}
+    seed_roster(db_session, RosterFile.model_validate({"staff": [entry]}))
+    assert db_session.scalars(select(Staff.name)).all() == ["X"]
 
 
 def test_seed_upserts_owners_by_name_with_their_default_categories(db_session: Session) -> None:

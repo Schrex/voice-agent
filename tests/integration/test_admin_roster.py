@@ -1,4 +1,7 @@
-"""Admin: roster and jobs (#34). `/api/admin/foremen` and `/api/admin/jobs`, admin role only."""
+"""Admin: roster and jobs (#34). `/api/admin/foremen` and `/api/admin/jobs`.
+
+Open to every staff member (one Staff role, ADR 0006).
+"""
 
 import re
 import time
@@ -28,7 +31,7 @@ def jwt_secret(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 
 
 def _headers_for(session: Session, role: str) -> dict[str, str]:
-    staff = Staff(id=uuid.uuid4(), name=f"Pat {role}", email="pat@example.com", role=role)
+    staff = Staff(id=uuid.uuid4(), name=f"Pat {role}", email="pat@example.com")
     session.add(staff)
     session.flush()
     claims: dict[str, Any] = {
@@ -88,11 +91,12 @@ ADMIN_CALLS = [
 
 
 @pytest.mark.parametrize(("method", "path", "body"), ADMIN_CALLS)
-def test_coordinator_cannot_use_admin_endpoints(
+def test_every_staff_member_can_use_admin_endpoints(
     client: TestClient, coordinator: dict[str, str], method: str, path: str, body: Any
 ) -> None:
+    """One Staff role (ADR 0006): no staff member gets 403 here."""
     response = client.request(method, path, json=body, headers=coordinator)
-    assert response.status_code == 403
+    assert response.status_code not in (401, 403)
 
 
 @pytest.mark.parametrize(("method", "path", "body"), ADMIN_CALLS)

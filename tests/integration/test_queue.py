@@ -32,7 +32,7 @@ def jwt_secret(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 def headers(db_session: Session) -> dict[str, str]:
     """A signed-in coordinator, on a seeded roster."""
     seed_roster(db_session, load_roster_file(SAMPLE_ROSTER))
-    staff = Staff(id=uuid.uuid4(), name="Pat", email="pat@example.com", role="coordinator")
+    staff = Staff(id=uuid.uuid4(), name="Pat", email="pat@example.com")
     db_session.add(staff)
     db_session.flush()
     claims = {"sub": str(staff.id), "aud": "authenticated", "exp": int(time.time()) + 3600}

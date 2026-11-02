@@ -8,7 +8,7 @@ import json
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -91,8 +91,8 @@ def tools(
     yield client
 
 
-def _staff(session: Session, name: str, phone: str | None, role: str = "coordinator") -> Staff:
-    staff = Staff(id=uuid.uuid4(), name=name, email=f"{uuid.uuid4().hex}@example.com", role=role)
+def _staff(session: Session, name: str, phone: str | None) -> Staff:
+    staff = Staff(id=uuid.uuid4(), name=name, email=f"{uuid.uuid4().hex}@example.com")
     staff.phone_e164 = phone
     session.add(staff)
     session.flush()
@@ -130,9 +130,9 @@ def _call_id(session: Session) -> int:
 def test_ac6_2_emergency_request_is_recorded_and_every_coordinator_is_texted(
     tools: TestClient, db_session: Session, sms: FakeSms
 ) -> None:
+    """One Staff role (ADR 0006): every staff member is a Coordinator, so all are texted."""
     pat = _staff(db_session, "Pat Lee", "+15855550199")
     sam = _staff(db_session, "Sam Ortiz", "+15855550198")
-    _staff(db_session, "Ann Admin", "+15855550197", role="admin")
 
     response = _emergency(
         tools,
@@ -202,12 +202,12 @@ def test_emergency_is_recorded_by_the_agent_with_its_event_and_call_link(
     assert (request.job_id, request.job_spoken) == (None, "the Fairport job")
 
 
-def test_an_emergency_has_no_ack_window(tools: TestClient, db_session: Session) -> None:
-    """#22: the spec gives Emergency no ack window, so it never shows Overdue."""
+def test_an_emergency_gets_the_today_ack_window(tools: TestClient, db_session: Session) -> None:
+    """Product owner decision on #22/#26: an Emergency nobody acknowledges goes Overdue."""
     _emergency(tools, {"summary": "we hit a gas line"})
 
     [request] = _requests(db_session)
-    assert request.ack_due_at is None
+    assert request.ack_due_at == NOW + timedelta(minutes=15)
 
 
 def test_asking_again_on_the_same_call_returns_the_same_ref_and_texts_nobody_twice(

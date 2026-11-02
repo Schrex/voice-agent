@@ -7,7 +7,7 @@ their history, and a status lookup of A reports B.
 import time
 import uuid
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +24,7 @@ from app.services.calls import Caller
 from app.services.merges import status_request
 from app.services.requests import NewItem, RequestNotFound, submit_requests
 from app.services.roster import load_roster_file, seed_roster
+from app.services.uninformed import uninformed_requests
 
 SAMPLE_ROSTER = Path(__file__).resolve().parents[2] / "backend" / "seed" / "sample_roster.json"
 
@@ -46,7 +47,7 @@ def frozen_clock(client: TestClient) -> None:
 @pytest.fixture
 def staff(db_session: Session) -> Staff:
     seed_roster(db_session, load_roster_file(SAMPLE_ROSTER))
-    staff = Staff(id=uuid.uuid4(), name="Pat Lee", email="pat@example.com", role="coordinator")
+    staff = Staff(id=uuid.uuid4(), name="Pat Lee", email="pat@example.com")
     db_session.add(staff)
     db_session.flush()
     return staff
@@ -270,3 +271,16 @@ def test_status_lookup_of_a_merged_ref_reports_the_request_it_was_merged_into(
     assert status_request(db_session, c).ref_display == c
     with pytest.raises(RequestNotFound):
         status_request(db_session, "R-999999")
+
+
+def test_a_merged_request_never_shows_uninformed(
+    client: TestClient, db_session: Session, headers: dict[str, str], dispatch: Owner
+) -> None:
+    """Product owner decision on #32/#33: the surviving Request carries the flag."""
+    a = _record(db_session)
+    b = _acknowledged(client, db_session, headers, dispatch)
+    assert _merge(client, headers, a, b).status_code == 200
+
+    later = NOW + timedelta(hours=3)
+    assert [row.ref for row in uninformed_requests(db_session, later)] == []
+    assert _detail(client, headers, a)["uninformed"] is False

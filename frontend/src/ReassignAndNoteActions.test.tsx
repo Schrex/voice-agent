@@ -8,7 +8,7 @@ import type { Owner, RequestDetail } from "./api";
 
 // Spec J9 actions "Reassign owner" and "Add note" on the request detail.
 
-const STAFF = { id: "u-1", name: "Pat Lee", email: "pat@example.com", role: "coordinator" };
+const STAFF = { id: "u-1", name: "Pat Lee", email: "pat@example.com" };
 const OWNERS: Owner[] = [
   { id: 1, name: "Dispatch" },
   { id: 2, name: "Equipment Manager" },

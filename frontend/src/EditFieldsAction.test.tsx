@@ -10,7 +10,6 @@ const STAFF = {
   id: "u-1",
   name: "Pat Lee",
   email: "pat@example.com",
-  role: "coordinator",
 };
 const JOBS = [
   { id: 2, name: "Penfield Sewer Replacement" },

@@ -25,7 +25,7 @@ export function QueuePage({ staff }: { staff: Staff }) {
         <nav>
           <Link to="/drafts">Drafts</Link> <Link to="/quick-entry">Log a request</Link>
         </nav>
-        {staff.role === "admin" && <Link to="/admin">Admin</Link>}
+        <Link to="/admin">Admin</Link>
         <span>{staff.name}</span>
         <button type="button" onClick={() => void auth.signOut()}>
           Log out

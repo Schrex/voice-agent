@@ -66,22 +66,29 @@ def withdraw_request(
 
 
 def _resolve_withdrawn(session: Session, request: Request, now: datetime) -> None:
-    """Resolved, Outcome Withdrawn, "Withdrawn by foreman", and the `resolved` event."""
+    """Resolved, Outcome Withdrawn, "Withdrawn by foreman", and the `resolved` event.
+
+    Also Foreman Informed: the Foreman withdrew it on this call, so it never shows Uninformed
+    (product owner decision on #20/#32).
+    """
     status, outcome, explanation = withdraw(Status(request.status))
     before = {
         "status": request.status,
         "outcome": request.outcome,
         "explanation": request.explanation,
         "resolved_at": iso(request.resolved_at),
+        "foreman_informed_at": iso(request.foreman_informed_at),
     }
     request.status = status.value
     request.outcome = outcome.value
     request.explanation = explanation
     request.resolved_at = now
+    request.foreman_informed_at = now
     after = {
         "status": status.value,
         "outcome": outcome.value,
         "explanation": explanation,
         "resolved_at": iso(now),
+        "foreman_informed_at": iso(now),
     }
     agent_event(session, request, now, "resolved", before, after)

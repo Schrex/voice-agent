@@ -16,10 +16,10 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const CATEGORIES = ["Trucking", "Equipment", "Equipment Repair", "Material", "Labor", "Information", "Callback", "Other"];
 
 /** In-memory `/api/admin/{owners,category-defaults,staff,duty,settings}`; records every write. */
-function fakeApi(role: "admin" | "coordinator") {
+function fakeApi() {
   const staff = [
-    { id: "s-1", name: "Casey Coordinator", email: "casey@x.com", role: "coordinator", phone_e164: "+15855550123" },
-    { id: "s-2", name: "Jo Backup", email: "jo@x.com", role: "coordinator", phone_e164: null },
+    { id: "s-1", name: "Casey Coordinator", email: "casey@x.com", phone_e164: "+15855550123" },
+    { id: "s-2", name: "Jo Backup", email: "jo@x.com", phone_e164: null },
   ];
   const owners = [{ id: 1, name: "Dispatch", phone_e164: null, email: null }];
   const defaults: Record<string, number | null> = Object.fromEntries(CATEGORIES.map((c) => [c, null]));
@@ -37,8 +37,7 @@ function fakeApi(role: "admin" | "coordinator") {
     const method = init.method ?? "GET";
     const body = init.body ? JSON.parse(String(init.body)) : undefined;
     if (method !== "GET") writes.push({ method, url, body });
-    if (url === "/api/me") return json({ id: "u", name: "Ali Admin", email: "a@x", role });
-    if (role !== "admin") return json({ detail: "Admins only" }, 403);
+    if (url === "/api/me") return json({ id: "u", name: "Ali Admin", email: "a@x" });
 
     if (url === "/api/admin/settings" && method === "GET") return json(settings);
     if (url === "/api/admin/settings" && method === "PATCH") {
@@ -50,7 +49,7 @@ function fakeApi(role: "admin" | "coordinator") {
     }
     if (url === "/api/admin/staff" && method === "GET") return json(staff);
     if (url === "/api/admin/staff" && method === "POST") {
-      const s = { role: "coordinator", phone_e164: null, ...body };
+      const s = { phone_e164: null, ...body };
       staff.push(s);
       return json(s, 201);
     }
@@ -100,15 +99,8 @@ function renderAt(path: string) {
 describe("admin: owners, staff, duty roster, settings", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("refuses a coordinator", async () => {
-    fakeApi("coordinator");
-    renderAt("/admin/office");
-    expect(await screen.findByRole("alert")).toHaveTextContent("Admins only");
-    expect(screen.queryByRole("heading", { name: "Duty roster" })).not.toBeInTheDocument();
-  });
-
   it("is reached from the admin page", async () => {
-    fakeApi("admin");
+    fakeApi();
     renderAt("/admin");
     await userEvent.click(await screen.findByRole("link", { name: "Owners, staff, duty roster, settings" }));
     expect(window.location.pathname).toBe("/admin/office");
@@ -116,7 +108,7 @@ describe("admin: owners, staff, duty roster, settings", () => {
   });
 
   it("sets the on-duty and backup Coordinator for a date, then removes the day", async () => {
-    const { writes } = fakeApi("admin");
+    const { writes } = fakeApi();
     renderAt("/admin/office");
     const form = await screen.findByRole("form", { name: "Set duty day" });
     await within(within(form).getByLabelText("Backup")).findByRole("option", { name: "Jo Backup" });
@@ -139,7 +131,7 @@ describe("admin: owners, staff, duty roster, settings", () => {
   });
 
   it("changes the acknowledgment windows and the office line", async () => {
-    const { writes } = fakeApi("admin");
+    const { writes } = fakeApi();
     renderAt("/admin/office");
     const form = await screen.findByRole("form", { name: "Settings" });
     const today = within(form).getByLabelText("Today ack window (minutes)");
@@ -161,7 +153,7 @@ describe("admin: owners, staff, duty roster, settings", () => {
   });
 
   it("shows why settings were not saved", async () => {
-    fakeApi("admin");
+    fakeApi();
     renderAt("/admin/office");
     const form = await screen.findByRole("form", { name: "Settings" });
     await screen.findByDisplayValue("120");
@@ -174,8 +166,8 @@ describe("admin: owners, staff, duty roster, settings", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("greater than or equal to 1");
   });
 
-  it("adds staff and makes one an admin", async () => {
-    const { writes } = fakeApi("admin");
+  it("adds staff", async () => {
+    const { writes } = fakeApi();
     renderAt("/admin/office");
     const form = await screen.findByRole("form", { name: "Add staff" });
 
@@ -185,22 +177,18 @@ describe("admin: owners, staff, duty roster, settings", () => {
     await userEvent.type(within(form).getByLabelText("Phone"), "+15855550130");
     await userEvent.click(within(form).getByRole("button", { name: "Add staff" }));
     const row = await screen.findByRole("row", { name: /Lee Office/ });
-    expect(row).toHaveTextContent("coordinator");
-
-    await userEvent.click(within(row).getByRole("button", { name: "Make admin" }));
-    expect(await within(screen.getByRole("row", { name: /Lee Office/ })).findByRole("button", { name: "Make coordinator" })).toBeInTheDocument();
+    expect(row).toHaveTextContent("+15855550130");
     expect(writes).toEqual([
       {
         method: "POST",
         url: "/api/admin/staff",
-        body: { id: "s-3", name: "Lee Office", email: "lee@x.com", role: "coordinator", phone_e164: "+15855550130" },
+        body: { id: "s-3", name: "Lee Office", email: "lee@x.com", phone_e164: "+15855550130" },
       },
-      { method: "PATCH", url: "/api/admin/staff/s-3", body: { role: "admin" } },
     ]);
   });
 
   it("adds an Owner and makes it a category's default", async () => {
-    const { writes } = fakeApi("admin");
+    const { writes } = fakeApi();
     renderAt("/admin/office");
     const form = await screen.findByRole("form", { name: "Add owner" });
 

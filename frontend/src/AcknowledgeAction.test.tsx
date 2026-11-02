@@ -6,7 +6,7 @@ import { App } from "./App";
 import type { AuthClient } from "./auth";
 import type { Owner, RequestDetail } from "./api";
 
-const STAFF = { id: "u-1", name: "Pat Lee", email: "pat@example.com", role: "coordinator" };
+const STAFF = { id: "u-1", name: "Pat Lee", email: "pat@example.com" };
 const OWNERS: Owner[] = [
   { id: 1, name: "Dispatch" },
   { id: 2, name: "Equipment Manager" },

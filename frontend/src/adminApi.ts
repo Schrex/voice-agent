@@ -16,7 +16,6 @@ export type StaffMember = {
   id: string;
   name: string;
   email: string;
-  role: "coordinator" | "admin";
   phone_e164: string | null;
 };
 export type DutyDay = {

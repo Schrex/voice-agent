@@ -32,12 +32,10 @@ export function OfficeSetupPage({ staff }: { staff: Staff }) {
   const token = session!.accessToken;
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
-  const isAdmin = staff.role === "admin";
 
   const get = <T,>(path: string) => ({
     queryKey: ["admin", path],
     queryFn: () => adminFetch<T>(token, path),
-    enabled: isAdmin,
   });
   const duty = useQuery(get<DutyDay[]>("/duty"));
   const staffList = useQuery(get<StaffMember[]>("/staff"));
@@ -46,7 +44,8 @@ export function OfficeSetupPage({ staff }: { staff: Staff }) {
   const settings = useQuery(get<OfficeSettings>("/settings"));
 
   const write = useMutation({
-    mutationFn: ({ path, method, body }: Write) => adminFetch<unknown>(token, path, method, body),
+    mutationFn: ({ path, method, body }: Write) =>
+      adminFetch<unknown>(token, path, method, body),
     onMutate: () => setError(null),
     onError: (e: Error) => setError(e.message),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["admin"] }),
@@ -56,7 +55,9 @@ export function OfficeSetupPage({ staff }: { staff: Staff }) {
       () => true,
       () => false,
     );
-  const loadFailed = [duty, staffList, owners, defaults, settings].some((q) => q.isError);
+  const loadFailed = [duty, staffList, owners, defaults, settings].some(
+    (q) => q.isError,
+  );
 
   return (
     <>
@@ -70,26 +71,30 @@ export function OfficeSetupPage({ staff }: { staff: Staff }) {
       </header>
       <main>
         <h1>Owners, staff, duty roster, settings</h1>
-        {!isAdmin ? (
-          <p role="alert">Admins only.</p>
-        ) : (
-          <>
-            {error && <p role="alert">{error}</p>}
-            {loadFailed && <p role="alert">Could not load the office setup. Reload to try again.</p>}
-            <h2>Duty roster</h2>
-            <DutyTable days={duty.data ?? []} save={save} />
-            <SetDutyDay staff={staffList.data ?? []} save={save} />
-            <h2>Staff</h2>
-            <StaffTable staff={staffList.data ?? []} save={save} />
-            <AddStaff save={save} />
-            <h2>Owners</h2>
-            <OwnersTable owners={owners.data ?? []} />
-            <AddOwner save={save} />
-            <h2>Category defaults</h2>
-            <DefaultsTable defaults={defaults.data ?? []} owners={owners.data ?? []} save={save} />
-            <h2>Settings</h2>
-            {settings.data && <SettingsForm current={settings.data} save={save} />}
-          </>
+        {error && <p role="alert">{error}</p>}
+        {loadFailed && (
+          <p role="alert">
+            Could not load the office setup. Reload to try again.
+          </p>
+        )}
+        <h2>Duty roster</h2>
+        <DutyTable days={duty.data ?? []} save={save} />
+        <SetDutyDay staff={staffList.data ?? []} save={save} />
+        <h2>Staff</h2>
+        <StaffTable staff={staffList.data ?? []} />
+        <AddStaff save={save} />
+        <h2>Owners</h2>
+        <OwnersTable owners={owners.data ?? []} />
+        <AddOwner save={save} />
+        <h2>Category defaults</h2>
+        <DefaultsTable
+          defaults={defaults.data ?? []}
+          owners={owners.data ?? []}
+          save={save}
+        />
+        <h2>Settings</h2>
+        {settings.data && (
+          <SettingsForm current={settings.data} save={save} />
         )}
       </main>
     </>
@@ -117,7 +122,9 @@ function DutyTable({ days, save }: { days: DutyDay[]; save: Save }) {
             <td>
               <button
                 type="button"
-                onClick={() => void save({ method: "DELETE", path: `/duty/${d.date}` })}
+                onClick={() =>
+                  void save({ method: "DELETE", path: `/duty/${d.date}` })
+                }
               >
                 Remove
               </button>
@@ -146,11 +153,20 @@ function SetDutyDay({ staff, save }: { staff: StaffMember[]; save: Save }) {
     <form aria-label="Set duty day" className="add" onSubmit={submit}>
       <label>
         Date
-        <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
+        <input
+          type="date"
+          required
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
       </label>
       <label>
         On duty
-        <select required value={onDuty} onChange={(e) => setOnDuty(e.target.value)}>
+        <select
+          required
+          value={onDuty}
+          onChange={(e) => setOnDuty(e.target.value)}
+        >
           <option value="">Choose…</option>
           {staff.map((s) => (
             <option key={s.id} value={s.id}>
@@ -175,7 +191,7 @@ function SetDutyDay({ staff, save }: { staff: StaffMember[]; save: Save }) {
   );
 }
 
-function StaffTable({ staff, save }: { staff: StaffMember[]; save: Save }) {
+function StaffTable({ staff }: { staff: StaffMember[] }) {
   return (
     <table>
       <thead>
@@ -183,33 +199,16 @@ function StaffTable({ staff, save }: { staff: StaffMember[]; save: Save }) {
           <th>Name</th>
           <th>Email</th>
           <th>Phone</th>
-          <th>Role</th>
         </tr>
       </thead>
       <tbody>
-        {staff.map((s) => {
-          const other = s.role === "admin" ? "coordinator" : "admin";
-          return (
-            <tr key={s.id}>
-              <td>{s.name}</td>
-              <td>{s.email}</td>
-              <td>{s.phone_e164 ?? "—"}</td>
-              <td>
-                <span className="inline">
-                  <span>{s.role}</span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void save({ method: "PATCH", path: `/staff/${s.id}`, body: { role: other } })
-                    }
-                  >
-                    Make {other}
-                  </button>
-                </span>
-              </td>
-            </tr>
-          );
-        })}
+        {staff.map((s) => (
+          <tr key={s.id}>
+            <td>{s.name}</td>
+            <td>{s.email}</td>
+            <td>{s.phone_e164 ?? "—"}</td>
+          </tr>
+        ))}
       </tbody>
     </table>
   );
@@ -226,7 +225,6 @@ function AddStaff({ save }: { save: Save }) {
       id: id.trim(),
       name: name.trim(),
       email: email.trim(),
-      role: "coordinator",
       phone_e164: phone.trim() || null,
     };
     if (await save({ method: "POST", path: "/staff", body })) {
@@ -244,11 +242,19 @@ function AddStaff({ save }: { save: Save }) {
       </label>
       <label>
         Name
-        <input required value={name} onChange={(e) => setName(e.target.value)} />
+        <input
+          required
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
       </label>
       <label>
         Email
-        <input required value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
       </label>
       <label>
         Phone
@@ -292,7 +298,11 @@ function AddOwner({ save }: { save: Save }) {
   const [email, setEmail] = useState("");
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const body = { name: name.trim(), phone_e164: phone.trim() || null, email: email.trim() || null };
+    const body = {
+      name: name.trim(),
+      phone_e164: phone.trim() || null,
+      email: email.trim() || null,
+    };
     if (await save({ method: "POST", path: "/owners", body })) {
       setName("");
       setPhone("");
@@ -303,7 +313,11 @@ function AddOwner({ save }: { save: Save }) {
     <form aria-label="Add owner" className="add" onSubmit={submit}>
       <label>
         Owner name
-        <input required value={name} onChange={(e) => setName(e.target.value)} />
+        <input
+          required
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
       </label>
       <label>
         Owner phone
@@ -322,7 +336,11 @@ function AddOwner({ save }: { save: Save }) {
   );
 }
 
-function DefaultsTable(props: { defaults: CategoryDefault[]; owners: Owner[]; save: Save }) {
+function DefaultsTable(props: {
+  defaults: CategoryDefault[];
+  owners: Owner[];
+  save: Save;
+}) {
   return (
     <table>
       <thead>
@@ -343,7 +361,9 @@ function DefaultsTable(props: { defaults: CategoryDefault[]; owners: Owner[]; sa
                   void props.save({
                     method: "PUT",
                     path: `/category-defaults/${encodeURIComponent(d.category)}`,
-                    body: { owner_id: e.target.value ? Number(e.target.value) : null },
+                    body: {
+                      owner_id: e.target.value ? Number(e.target.value) : null,
+                    },
                   })
                 }
               >
@@ -363,10 +383,18 @@ function DefaultsTable(props: { defaults: CategoryDefault[]; owners: Owner[]; sa
 }
 
 /** Starts from the settings as first loaded; after a save the fields already show them. */
-function SettingsForm({ current, save }: { current: OfficeSettings; save: Save }) {
+function SettingsForm({
+  current,
+  save,
+}: {
+  current: OfficeSettings;
+  save: Save;
+}) {
   const [officeLine, setOfficeLine] = useState(current.office_line_e164 ?? "");
   const [today, setToday] = useState(String(current.ack_window_today_min));
-  const [planned, setPlanned] = useState(String(current.ack_window_planned_min));
+  const [planned, setPlanned] = useState(
+    String(current.ack_window_planned_min),
+  );
   const [saved, setSaved] = useState(false);
 
   async function submit(event: FormEvent) {
@@ -391,7 +419,12 @@ function SettingsForm({ current, save }: { current: OfficeSettings; save: Save }
       </label>
       <label>
         Today ack window (minutes)
-        <input type="number" required value={today} onChange={(e) => setToday(e.target.value)} />
+        <input
+          type="number"
+          required
+          value={today}
+          onChange={(e) => setToday(e.target.value)}
+        />
       </label>
       <label>
         Planned ack window (minutes)

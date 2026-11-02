@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 import type { AuthClient, AuthSession } from "./auth";
 
-const STAFF = { id: "u-1", name: "Pat Lee", email: "pat@example.com", role: "coordinator" };
+const STAFF = { id: "u-1", name: "Pat Lee", email: "pat@example.com" };
 
 /** In-memory stand-in for Supabase Auth: one valid email/password pair. */
 function fakeAuth(initial: AuthSession | null = null): AuthClient & { signedOut: boolean } {

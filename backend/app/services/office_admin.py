@@ -105,7 +105,6 @@ def set_category_default(session: Session, category: str, owner_id: int | None) 
 class StaffChanges(TypedDict, total=False):
     name: str
     email: str
-    role: str
     phone_e164: str | None
 
 
@@ -119,13 +118,12 @@ def add_staff(
     staff_id: uuid.UUID,
     name: str,
     email: str,
-    role: str,
     phone_e164: str | None,
 ) -> Staff:
     """Put a Supabase Auth user (`staff_id`) on the staff list, so they can use the dashboard."""
     if session.get(Staff, staff_id) is not None:
         raise Conflict("That user is already on the staff list.")
-    staff = Staff(id=staff_id, name=name, email=email, role=role, phone_e164=phone_e164)
+    staff = Staff(id=staff_id, name=name, email=email, phone_e164=phone_e164)
     session.add(staff)
     session.commit()
     return staff
@@ -139,8 +137,6 @@ def update_staff(session: Session, staff_id: uuid.UUID, changes: StaffChanges) -
         staff.name = changes["name"]
     if "email" in changes:
         staff.email = changes["email"]
-    if "role" in changes:
-        staff.role = changes["role"]
     if "phone_e164" in changes:
         staff.phone_e164 = changes["phone_e164"]
     session.commit()
