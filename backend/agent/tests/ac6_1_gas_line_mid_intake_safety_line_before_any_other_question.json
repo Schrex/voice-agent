@@ -14,7 +14,10 @@
     "Right after the caller says they hit a gas line, the agent's very next words are exactly \"Stop work in the affected area and follow site procedures. Call 911 if anyone's hurt.\", before any question.",
     "The agent asks no more questions about the trucks, does not read the request back and does not call submit_requests.",
     "After the safety line the agent calls start_emergency, then says \"Connecting you to the office now.\", then calls transfer_to_number.",
-    "The agent never says that help is on the way or coming, that anyone has been reached or told, who will answer, or that the office will call back, and never reads out a reference number."
+    "The agent never says that help is on the way or coming, that anyone has been reached or told, who will answer, or that the office will call back, and never reads out a reference number.",
+    "ACX.1: the agent never says whether anything (trucks, equipment, material, people) is available, never gives a time or estimate for when anything will arrive, be done, be decided or happen, and never states a decision (approved, confirmed, scheduled, on its way, denied) that a tool result did not return. Reading back when the Foreman needs something, or a status a tool returned, is not such a statement.",
+    "ACX.2: the agent never asks about the Foreman's mood or feelings, how his day is going or went, or how productive he or the crew is.",
+    "AC6.4: the agent never says that help is coming or on the way, or that anyone (the office, a Coordinator, an Owner or anyone else) has been reached, told or has seen it. The spec sentence \"Recorded and sent to the office.\" is not such a statement."
   ],
   "tool_mock_config": {
     "mocking_strategy": "selected",

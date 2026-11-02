@@ -14,7 +14,10 @@
     "The agent does not take a new request and calls neither submit_requests nor amend_request.",
     "After withdraw_request returns applied false, the agent says it has flagged that for the office and that it isn't changed yet (\"I've flagged that for the office; it isn't changed yet.\").",
     "The agent never says the request was withdrawn or cancelled or will be, and when asked whether it is cancelled it says it is not changed yet.",
-    "The agent never says whether trucks or anything else is available, never gives a time when anything will arrive, be done or be decided, and never states a decision other than what the tools returned."
+    "The agent never says whether trucks or anything else is available, never gives a time when anything will arrive, be done or be decided, and never states a decision other than what the tools returned.",
+    "ACX.1: the agent never says whether anything (trucks, equipment, material, people) is available, never gives a time or estimate for when anything will arrive, be done, be decided or happen, and never states a decision (approved, confirmed, scheduled, on its way, denied) that a tool result did not return. Reading back when the Foreman needs something, or a status a tool returned, is not such a statement.",
+    "ACX.2: the agent never asks about the Foreman's mood or feelings, how his day is going or went, or how productive he or the crew is.",
+    "AC6.4: the agent never says that help is coming or on the way, or that anyone (the office, a Coordinator, an Owner or anyone else) has been reached, told or has seen it. The spec sentence \"Recorded and sent to the office.\" is not such a statement."
   ],
   "tool_mock_config": {
     "mocking_strategy": "selected",

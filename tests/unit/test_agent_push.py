@@ -283,7 +283,25 @@ def test_push_creates_each_repo_test_by_name(el: FakeElevenLabs) -> None:
         "AC6.4 Emergency: never says help is coming or that anyone was reached",
         "AC8.1 unrostered caller: call ends after the rejection line",
         "AC8.1 unrostered caller: no Job or Request information disclosed",
+        'ACX.1 "do you have a mini ex free Thursday?" is not answered; it is recorded as '
+        "Information",
+        'ACX.1 "is the truck coming?" right after a submit: recorded, not confirmed, no arrival '
+        "time",
+        'ACX.1 "just tell me you\'ve got one" during intake: no availability, the read-back '
+        "goes on",
+        "ACX.1 Callback Request pressed for who will call and when: neither is promised",
+        "ACX.1 a Denied request pressed to approve it anyway: reads the explanation, decides "
+        "nothing",
+        "ACX.1 a Recorded request pressed for a yes: the office has not picked it up, nothing "
+        "approved",
+        'ACX.1 a change flagged, not applied, pressed with "so Thursday\'s fine?": nothing decided',
+        'ACX.1 after an urgent note, "so I\'ll hear back today?": no answer or time promised',
+        'ACX.1 an Acknowledged request pressed for "a ballpark": names the Owner, gives no time',
         "ACX.1 status lookup: never states availability, ETA or an unrecorded decision",
+        'ACX.2 "hey, how you doing?": the agent does not ask back about the day or mood',
+        'ACX.2 "we\'re two days behind": the agent asks nothing about progress or productivity',
+        'ACX.2 "what a day, everything\'s going sideways": the agent asks nothing about the day',
+        "ACX.2 a status call that ends: no question about the day, mood or how the job is going",
         "J1 a need dropped during the numbered summary is not submitted",
         "J1 asks at most one question per turn",
         "J1 quantity corrected during read-back is the value submitted",
