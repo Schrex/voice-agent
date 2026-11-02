@@ -316,6 +316,7 @@ def add_note_tool(
     caller: Annotated[Caller, Depends(get_caller)],
     session: Annotated[Session, Depends(get_session)],
     clock: Annotated[Clock, Depends(get_clock)],
+    sms: Annotated[SmsSender, Depends(get_sms_sender)],
     x_conversation_id: Annotated[str | None, Header()] = None,
 ) -> Any:
     """Appends the Foreman's note to one of his own Requests; `{"ok": true}`. Never creates one.
@@ -331,6 +332,7 @@ def add_note_tool(
     try:
         add_note_for_caller(
             session,
+            sms,
             caller=caller,
             ref=parsed.ref,
             text=parsed.text,
@@ -603,6 +605,7 @@ def withdraw_request_tool(
     caller: Annotated[Caller, Depends(get_caller)],
     session: Annotated[Session, Depends(get_session)],
     clock: Annotated[Clock, Depends(get_clock)],
+    sms: Annotated[SmsSender, Depends(get_sms_sender)],
     x_conversation_id: Annotated[str | None, Header()] = None,
 ) -> Any:
     """Before In Progress the Request is Resolved/Withdrawn: `{"applied": true}`. At or after In
@@ -616,7 +619,7 @@ def withdraw_request_tool(
         log.warning("withdraw_request_invalid", extra=log_ctx)
         return {"error": NOT_WITHDRAWN}
     try:
-        applied = withdraw_request(session, caller=caller, ref=parsed.ref, now=clock())
+        applied = withdraw_request(session, sms, caller=caller, ref=parsed.ref, now=clock())
     except WithdrawRequestNotFound:
         session.rollback()
         log.info("withdraw_request_not_found", extra=log_ctx)

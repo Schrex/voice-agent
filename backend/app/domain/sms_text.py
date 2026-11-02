@@ -53,10 +53,30 @@ def overdue_request_text(facts: TodayRequestFacts, *, urgency: str, recorded_at:
     )
 
 
+def urgent_note_text(facts: TodayRequestFacts, note: str) -> str:
+    """E.g. "Urgent note on R-1000 from Dale Kramer, Route 104 Widening (tri-axle dump trucks):
+    “need an answer today”" (spec J3 step 4, AC3.5: the coordinator is alerted)."""
+    return (
+        f"Urgent note on {facts.ref} from {facts.foreman}, {_job_or_unmatched(facts)} "
+        f"({facts.need}): “{note.strip()}”"
+    )
+
+
+def withdrawn_text(facts: TodayRequestFacts) -> str:
+    """E.g. "Withdrawn by foreman: R-1000 from Dale Kramer, Route 104 Widening: tri-axle dump
+    trucks, 3 trucks, needed by Mon, Nov 2, 7:00 AM" (spec J4, AC4.1: the coordinator is
+    notified)."""
+    return f"Withdrawn by foreman: {request_line(facts)}"
+
+
+def _job_or_unmatched(facts: TodayRequestFacts) -> str:
+    return facts.job if facts.job is not None else f"“{facts.job_spoken}” (Unmatched)"
+
+
 def request_line(facts: TodayRequestFacts) -> str:
     """E.g. "R-1000 from Dale Kramer, Route 104 Widening: tri-axle dump trucks, 3 trucks,
     needed by Sun, Nov 1, 5:00 PM" (also used by the end-of-day summary email, #23)."""
-    job = facts.job if facts.job is not None else f"“{facts.job_spoken}” (Unmatched)"
+    job = _job_or_unmatched(facts)
     amount = " ".join(part for part in (facts.quantity, facts.unit) if part)
     what = f"{facts.need}, {amount}" if amount else facts.need
     text = f"{facts.ref} from {facts.foreman}, {job}: {what}"

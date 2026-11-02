@@ -4,6 +4,7 @@ A note never changes the Request's fields and never creates a Request (AC3.5). E
 a `note_added` event in the same transaction. #18/#19 reuse `add_note`.
 """
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -13,9 +14,13 @@ from sqlalchemy.orm import Session
 from app.db.models import Request, RequestNote
 from app.domain.lifecycle import Status
 from app.domain.ref import parse_ref
+from app.integrations.twilio_sms import SmsSender
+from app.services.alerts import alert_urgent_note
 from app.services.calls import Caller
 from app.services.events import add_event
 from app.services.merges import final_target
+
+log = logging.getLogger(__name__)
 
 
 class NoteRequestNotFound(Exception):
@@ -32,13 +37,22 @@ class Note:
 
 
 def add_note_for_caller(
-    session: Session, *, caller: Caller, ref: str, text: str, urgent: bool, now: datetime
+    session: Session,
+    sms: SmsSender,
+    *,
+    caller: Caller,
+    ref: str,
+    text: str,
+    urgent: bool,
+    now: datetime,
 ) -> None:
     """The agent appends the Foreman's note to one of his own Requests.
 
     A Draft is not his to note (the lookup never returns one), and a Request merged into
     another (#33) takes the note on its final target, as the lookup reports it. Anything else,
     including another Foreman's Request, raises `NoteRequestNotFound` and writes nothing.
+    An urgent note then texts the on-duty Coordinator (AC3.5); the note is saved either way,
+    so an alert problem is logged, never raised.
     """
     request = own_request(session, caller, ref)
     add_note(
@@ -51,6 +65,12 @@ def add_note_for_caller(
         now=now,
     )
     session.commit()
+    if urgent:
+        try:
+            alert_urgent_note(session, sms, ref=request.ref_display, note=text, now=now)
+        except Exception:
+            session.rollback()
+            log.exception("urgent_note_alert_failed", extra={"ref": request.ref_display})
 
 
 def add_note(
