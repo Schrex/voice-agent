@@ -20,7 +20,7 @@
     },
     {
       "role": "agent",
-      "message": "Two tri-axle dump trucks, Route 104 Widening, tomorrow at 7 AM. Should I submit it?",
+      "message": "Two tri-axle dump trucks, Route 104 Widening, tomorrow at 7 AM, marked Planned. Should I record it?",
       "time_in_call_secs": 12
     },
     {

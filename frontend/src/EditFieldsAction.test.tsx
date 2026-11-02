@@ -38,6 +38,7 @@ const UNMATCHED: RequestDetail = {
   needed_by_spoken: null,
   urgency: null,
   status: "Recorded",
+  allowed_actions: ["acknowledge", "resolve", "merge", "edit", "note"],
   source: "ai_call",
   recorded_at: "2026-11-02T01:30:00Z",
   owner: null,
@@ -263,10 +264,11 @@ describe("edit fields / fix the Job", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("is not offered on a Resolved request", async () => {
+  it("is not offered when the backend does not allow edit (a Resolved request)", async () => {
     serve({
       ...UNMATCHED,
       status: "Resolved",
+      allowed_actions: ["mark_informed", "note"],
       outcome: "Denied",
       explanation: "No trucks",
       resolved_at: "2026-11-02T02:00:00Z",

@@ -4,19 +4,25 @@ A note never changes the Request's fields and never creates a Request (AC3.5). E
 a `note_added` event in the same transaction. #18/#19 reuse `add_note`.
 """
 
-import re
+import logging
+import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import Request, RequestEvent, RequestNote
+from app.db.models import Request, RequestNote
 from app.domain.lifecycle import Status
+from app.domain.ref import parse_ref
+from app.integrations.twilio_sms import SmsSender
+from app.services.alerts import alert_urgent_note
 from app.services.calls import Caller
+from app.services.events import add_event
 from app.services.merges import final_target
+from app.services.requests import locked_request
 
-_REF = re.compile(r"^R-(\d{1,18})$")
+log = logging.getLogger(__name__)
 
 
 class NoteRequestNotFound(Exception):
@@ -33,15 +39,24 @@ class Note:
 
 
 def add_note_for_caller(
-    session: Session, *, caller: Caller, ref: str, text: str, urgent: bool, now: datetime
+    session: Session,
+    sms: SmsSender,
+    *,
+    caller: Caller,
+    ref: str,
+    text: str,
+    urgent: bool,
+    now: datetime,
 ) -> None:
     """The agent appends the Foreman's note to one of his own Requests.
 
     A Draft is not his to note (the lookup never returns one), and a Request merged into
     another (#33) takes the note on its final target, as the lookup reports it. Anything else,
     including another Foreman's Request, raises `NoteRequestNotFound` and writes nothing.
+    An urgent note then texts the on-duty Coordinator (AC3.5); the note is saved either way,
+    so an alert problem is logged, never raised.
     """
-    request = _own_request(session, caller, ref)
+    request = own_request(session, caller, ref)
     add_note(
         session,
         request=request,
@@ -49,6 +64,41 @@ def add_note_for_caller(
         author_id=None,
         text=text,
         urgent=urgent,
+        now=now,
+    )
+    session.commit()
+    if urgent:
+        try:
+            alert_urgent_note(session, sms, ref=request.ref_display, note=text, now=now)
+        except Exception:
+            session.rollback()
+            log.exception("urgent_note_alert_failed", extra={"ref": request.ref_display})
+
+
+class BlankNote(ValueError):
+    def __init__(self) -> None:
+        super().__init__("A note needs some text")
+
+
+def add_staff_note(
+    session: Session, *, ref: str, text: str | None, staff_id: uuid.UUID, now: datetime
+) -> None:
+    """A coordinator adds a note to the Request rendered `ref` (spec J9 "Add note").
+
+    The note is appended as typed, never urgent (urgent notes are the Foreman's, AC3.5) and
+    texts nobody; it changes no field. Unknown ref → `RequestNotFound`; blank → `BlankNote`;
+    either way nothing is written.
+    """
+    request = locked_request(session, ref)
+    if text is None or not text.strip():
+        raise BlankNote()
+    add_note(
+        session,
+        request=request,
+        author_type="staff",
+        author_id=str(staff_id),
+        text=text,
+        urgent=False,
         now=now,
     )
     session.commit()
@@ -75,16 +125,15 @@ def add_note(
             urgent=urgent,
         )
     )
-    session.add(
-        RequestEvent(
-            request_id=request.id,
-            at=now,
-            actor_type=author_type,
-            actor_id=author_id,
-            kind="note_added",
-            before=None,
-            after={"text": text, "urgent": urgent},
-        )
+    add_event(
+        session,
+        request,
+        actor_type=author_type,
+        actor_id=author_id,
+        now=now,
+        kind="note_added",
+        before=None,
+        after={"text": text, "urgent": urgent},
     )
 
 
@@ -103,13 +152,13 @@ def notes_of(session: Session, request_id: int) -> list[Note]:
     ]
 
 
-def _own_request(session: Session, caller: Caller, ref: str) -> Request:
-    match = _REF.match(ref)
+def own_request(session: Session, caller: Caller, ref: str) -> Request:
+    number = parse_ref(ref)
     request = (
         session.scalars(
-            select(Request).where(Request.ref == int(match.group(1))).with_for_update()
+            select(Request).where(Request.ref == number).with_for_update()
         ).one_or_none()
-        if match
+        if number is not None
         else None
     )
     if (

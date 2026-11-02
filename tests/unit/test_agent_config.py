@@ -122,6 +122,28 @@ def test_prompt_gives_the_spec_after_submit_sentence_verbatim() -> None:
     assert "`submit_requests`" in prompt
 
 
+def test_prompt_poor_connection_asks_to_repeat_once_then_offers_transfer_or_callback() -> None:
+    """Spec §8 "Poor connection: Ask to repeat once; then offer Transfer / Callback"."""
+    prompt = _agent()["prompt"]["prompt"]
+    rules = prompt.split("# Rules for every call")[1].split("\n# ")[0]
+
+    assert "- Poor connection:" in rules
+    assert "ask them to repeat it once" in rules
+    assert "do not ask a second time and do not guess" in rules
+    assert '"J5: Talking to the office"' in rules and '"J5: Callback Request"' in rules
+
+
+def test_read_back_asks_whether_to_record_never_to_submit() -> None:
+    """GLOSSARY "Recorded" _Avoid_: submitted. The spoken confirm question uses the glossary
+    word; `submit_requests` stays the tool's name."""
+    prompt = _agent()["prompt"]["prompt"]
+
+    assert "Should I submit" not in prompt
+    assert "whether to submit" not in prompt
+    assert '7:00 AM, marked Planned. Should I record it?"' in prompt
+    assert "Should I record them?" in prompt
+
+
 def test_llm_is_claude_sonnet_5_5_in_english() -> None:
     agent = _agent()
 
@@ -158,6 +180,20 @@ def test_prompt_reads_back_the_needed_by_the_backend_resolved() -> None:
     assert "`resolve_needed_by`" in prompt
     assert "needed_by_resolved" in prompt
     assert "leave `needed_by_spoken` out" in prompt
+
+
+def test_prompt_states_the_urgency_back_as_the_backend_returned_it() -> None:
+    """Spec §5: urgency "AI infers from needed-by and keywords and states it back". The backend
+    infers it (ADR 0004); the agent sends the need with the time words and says the returned
+    urgency in the read-back, in the glossary words. The S tests check the spoken behavior."""
+    prompt = _agent()["prompt"]["prompt"]
+
+    assert "do not speak it" not in prompt
+    assert "with their words exactly as they said them and the need" in prompt
+    assert '"Today": say "marked Today"' in prompt
+    assert '"Planned": say "marked Planned"' in prompt
+    assert "never work out the urgency yourself" in prompt
+    assert "Monday, November 2 at 7:00 AM, marked Planned." in prompt
 
 
 def test_prompt_reports_status_in_the_spec_lifecycle_words() -> None:
@@ -287,6 +323,19 @@ def test_prompt_takes_a_callback_request_asking_one_optional_question() -> None:
     assert '"What\'s it about?"' in prompt
     assert "`create_callback_request`" in prompt
     assert "Never say when anyone will call back" in prompt
+
+
+def test_prompt_j5_callback_says_the_spec_section_4_sentence_verbatim() -> None:
+    """Spec §4: "it tells the foreman: 'I've sent it to the office. I can't tell you when
+    someone will call back.'" The S tests check it is spoken."""
+    prompt = _agent()["prompt"]["prompt"]
+    callback = prompt.split("# J5: Callback Request")[1].split("\n# ")[0]
+
+    assert (
+        "say exactly: \"I've sent it to the office. I can't tell you when someone will call "
+        'back."' in callback
+    )
+    assert "Recorded and sent to the office" not in callback
 
 
 def test_accepting_the_callback_offer_after_a_failed_lookup_takes_a_callback_request() -> None:

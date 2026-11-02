@@ -38,7 +38,12 @@ export function QueuePage({ staff }: { staff: Staff }) {
           <p role="alert">Could not load the queue.</p>
         )}
         {queue.data && (
-          <p className="counts">Overdue ({queue.data.filter((r) => r.overdue).length})</p>
+          // Spec J9 counts. The queue holds exactly the Open requests (the backend's open
+          // statuses), so Open is its length; Overdue is the backend's per-request flag.
+          <p className="counts">
+            <span>Open ({queue.data.length})</span> ·{" "}
+            <span>Overdue ({queue.data.filter((r) => r.overdue).length})</span>
+          </p>
         )}
         {queue.data && queue.data.length === 0 && <p>No requests.</p>}
         {queue.data && queue.data.length > 0 && <QueueTable requests={queue.data} now={queue.dataUpdatedAt} />}

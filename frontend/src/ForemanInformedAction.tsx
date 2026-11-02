@@ -19,7 +19,8 @@ export function ForemanInformedAction({ request }: { request: RequestDetail }) {
     },
   });
 
-  if (request.status !== "Resolved") return null;
+  const markable = request.allowed_actions.includes("mark_informed");
+  if (!markable && !request.foreman_informed_at) return null;
   return (
     <section className="action" aria-labelledby="foreman-informed">
       <h2 id="foreman-informed">Foreman Informed</h2>

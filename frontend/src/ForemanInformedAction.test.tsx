@@ -29,6 +29,7 @@ const RESOLVED: RequestDetail = {
   needed_by_spoken: null,
   urgency: null,
   status: "Resolved",
+  allowed_actions: ["mark_informed", "note"],
   source: "ai_call",
   recorded_at: "2026-11-02T01:30:00Z",
   owner: { id: 1, name: "Dispatch" },
@@ -48,6 +49,7 @@ const INFORMED: RequestDetail = {
   // Sunday, November 1, 9:30 PM in New York.
   foreman_informed_at: "2026-11-02T02:30:00Z",
   uninformed: false,
+  allowed_actions: ["note"],
   events: [
     {
       at: "2026-11-02T02:30:00Z",
@@ -124,9 +126,16 @@ describe("Foreman Informed", () => {
   });
 
   it.each(["Draft", "Recorded", "Acknowledged", "In Progress"] as const)(
-    "is not shown when %s",
+    "is not shown when %s (the backend does not allow mark_informed)",
     async (status) => {
-      serve({ ...RESOLVED, status, outcome: null, resolved_at: null, uninformed: false });
+      serve({
+        ...RESOLVED,
+        status,
+        outcome: null,
+        resolved_at: null,
+        uninformed: false,
+        allowed_actions: ["note"],
+      });
       renderDetail();
 
       await screen.findByRole("heading", { name: "R-1000" });

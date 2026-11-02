@@ -92,7 +92,6 @@ def test_a_day_without_a_time_keeps_the_time_unknown(spoken: str, expected_day: 
         "",
         "I don't know",
         "not sure yet",
-        "ASAP",
         "next Tuesday",
         "end of the day",
         "tomorrow evening",
@@ -168,3 +167,62 @@ def test_am_pm_typed_against_the_hour_is_understood(typed: str, expected: dateti
 def test_naive_now_is_refused() -> None:
     with pytest.raises(ValueError):
         parse_needed_by("tomorrow at seven", datetime(2026, 11, 1, 15, 4))
+
+
+def test_speakable_at_reads_an_instant_in_new_york_time() -> None:
+    from app.domain.timeparse import speakable_at
+
+    assert speakable_at(utc(11, 2, 12, 0)) == "Monday, November 2 at 7:00 AM"
+
+
+# Spec §5: Today = "needed today or work stopped"; "need it now" is needed at the call time.
+@pytest.mark.parametrize(
+    ("spoken", "now", "expected_utc"),
+    [
+        ("now", SUN_AFTERNOON, utc(11, 1, 20, 4)),
+        ("right now", SUN_AFTERNOON, utc(11, 1, 20, 4)),
+        ("Right now!", SUN_AFTERNOON, utc(11, 1, 20, 4)),
+        ("ASAP", SUN_AFTERNOON, utc(11, 1, 20, 4)),
+        ("a.s.a.p.", SUN_AFTERNOON, utc(11, 1, 20, 4)),
+        ("as soon as possible", SUN_AFTERNOON, utc(11, 1, 20, 4)),
+        ("immediately", SUN_AFTERNOON, utc(11, 1, 20, 4)),
+        # Late at night "now" is still the call's own day and minute.
+        ("now", SUN_LATE, utc(11, 2, 4, 50)),
+    ],
+)
+def test_now_words_resolve_to_the_call_time_and_are_today(
+    spoken: str, now: datetime, expected_utc: datetime
+) -> None:
+    resolved = parse_needed_by(spoken, now)
+    assert resolved is not None
+    assert resolved.at == expected_utc
+    assert urgency_for(resolved, now) == Urgency.TODAY
+
+
+@pytest.mark.parametrize("spoken", ["now tomorrow", "tomorrow right now", "now at seven"])
+def test_now_with_another_time_is_not_guessed(spoken: str) -> None:
+    assert parse_needed_by(spoken, SUN_AFTERNOON) is None
+
+
+@pytest.mark.parametrize(
+    ("from_needed_by", "said", "expected"),
+    [
+        # Keywords decide only when the needed-by gave no Urgency.
+        (None, "we're stopped, need a pump", Urgency.TODAY),
+        (None, "the crew is shut down without it", Urgency.TODAY),
+        (None, "we're waiting on it", Urgency.TODAY),
+        (None, "Work STOPPED on the trench", Urgency.TODAY),
+        (None, "a lowboy for the dozer", None),
+        (None, "the unstoppable crew", None),
+        (None, "", None),
+        # A said needed-by wins: keywords never override it.
+        (Urgency.PLANNED, "we're stopped", Urgency.PLANNED),
+        (Urgency.TODAY, "a lowboy", Urgency.TODAY),
+    ],
+)
+def test_work_stopped_keywords_make_a_request_today_when_no_needed_by_says(
+    from_needed_by: Urgency | None, said: str, expected: Urgency | None
+) -> None:
+    from app.domain.urgency import infer_urgency
+
+    assert infer_urgency(from_needed_by, said) == expected

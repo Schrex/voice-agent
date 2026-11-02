@@ -7,7 +7,7 @@
     "jobs": "Penfield Sewer Replacement; Route 104 Widening",
     "now_local": "Sunday, November 1, 2026, 3:04 PM"
   },
-  "simulation_scenario": "You are Dale, a foreman on the Roster. When the assistant asks what you need, say in one sentence: you need one excavator operator at the Smith pit tomorrow at 6:30 AM. If asked about the job, say it is the Smith pit and nothing else; never agree that it is any other job. When the assistant reads the details back and asks whether to submit, say yes. After it gives you a reference number, say that's all and goodbye.",
+  "simulation_scenario": "You are Dale, a foreman on the Roster. When the assistant asks what you need, say in one sentence: you need one excavator operator at the Smith pit tomorrow at 6:30 AM. If asked about the job, say it is the Smith pit and nothing else; never agree that it is any other job. When the assistant reads the details back and asks whether to record it, say yes. After it gives you a reference number, say that's all and goodbye.",
   "simulation_max_turns": 8,
   "success_conditions": [
     "The agent calls find_jobs with the Job as the caller said it (the Smith pit).",
@@ -16,7 +16,7 @@
     "The agent never says the request is confirmed, never states availability, and never gives an arrival time.",
     "ACX.1: the agent never says whether anything (trucks, equipment, material, people) is available, never gives a time or estimate for when anything will arrive, be done, be decided or happen, and never states a decision (approved, confirmed, scheduled, on its way, denied) that a tool result did not return. Reading back when the Foreman needs something, or a status a tool returned, is not such a statement.",
     "ACX.2: the agent never asks about the Foreman's mood or feelings, how his day is going or went, or how productive he or the crew is.",
-    "AC6.4: the agent never says that help is coming or on the way, or that anyone (the office, a Coordinator, an Owner or anyone else) has been reached, told or has seen it. The spec sentence \"Recorded and sent to the office.\" is not such a statement."
+    "AC6.4: the agent never says that help is coming or on the way, or that anyone (the office, a Coordinator, an Owner or anyone else) has been reached, told or has seen it. The spec sentences \"Recorded and sent to the office.\" and \"I've sent it to the office. I can't tell you when someone will call back.\" are not such statements."
   ],
   "tool_mock_config": {
     "mocking_strategy": "selected",

@@ -17,6 +17,45 @@ test.beforeEach(async ({ page }) => {
   await stubSupabaseAuth(page, [COORDINATOR]);
 });
 
+test("a coordinator resolves an unwanted Draft as Withdrawn", async ({ page, request }) => {
+  // #28: a Draft is "promoted or resolved as Withdrawn"; it is never deleted.
+  const auth = { Authorization: `Bearer ${accessToken(COORDINATOR)}` };
+  const refs = async (): Promise<string[]> =>
+    (await (await request.get("/api/drafts", { headers: auth })).json()).drafts.map(
+      (d: { ref: string }) => d.ref,
+    );
+  const before = await refs();
+  await playCall(request, {
+    caller: DALE,
+    conversationId: `conv_e2e_discard_${Date.now()}`,
+    fixture: "post_call_hang_up_before_confirm.json",
+  });
+  const [ref] = (await refs()).filter((r) => !before.includes(r));
+
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(COORDINATOR.email);
+  await page.getByLabel("Password").fill(COORDINATOR.password);
+  await page.getByRole("button", { name: "Log in" }).click();
+  await page.getByRole("link", { name: "Drafts" }).click();
+
+  const row = page.getByRole("row", { name: new RegExp(`${ref}\\b`) });
+  const withdraw = row.getByRole("button", { name: "Resolve as Withdrawn" });
+  await expect(withdraw).toBeDisabled();
+  await row.getByLabel("Explanation").fill("Foreman hung up; not needed");
+  await withdraw.click();
+
+  await expect(row).toHaveCount(0);
+  const detail = await (await request.get(`/api/requests/${ref}`, { headers: auth })).json();
+  expect([detail.status, detail.outcome, detail.explanation]).toEqual([
+    "Resolved",
+    "Withdrawn",
+    "Foreman hung up; not needed",
+  ]);
+  // It never entered the queue.
+  await page.getByRole("link", { name: "Queue" }).click();
+  await expect(page.getByRole("link", { name: ref, exact: true })).toHaveCount(0);
+});
+
 test("a coordinator records a Draft from a hung-up call", async ({ page, request }) => {
   const conversationId = `conv_e2e_hang_up_${Date.now()}`;
   await playCall(request, {

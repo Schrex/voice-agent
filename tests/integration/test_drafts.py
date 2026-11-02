@@ -12,7 +12,8 @@ import json
 import time
 import uuid
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from dataclasses import dataclass, field
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -24,7 +25,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.clock import get_clock
-from app.db.models import Call, CallRequest, Job, Request, RequestEvent, Staff
+from app.db.models import Alert, Call, CallRequest, DutyRoster, Job, Request, RequestEvent, Staff
+from app.http.sms import get_sms_sender
 from app.main import app
 from app.services.roster import load_roster_file, seed_roster
 
@@ -367,6 +369,87 @@ def test_drafts_list_leaves_out_recorded_requests(hook: TestClient, db_session: 
     hook.post(f"/api/requests/{draft.ref_display}/record", headers=headers)
 
     assert hook.get("/api/drafts", headers=headers).json() == {"drafts": []}
+
+
+def test_coordinator_discards_a_draft_by_resolving_it_as_withdrawn(
+    hook: TestClient, db_session: Session
+) -> None:
+    """#28: a Draft is "promoted or resolved as Withdrawn"; it leaves the Drafts list, is kept,
+    and the resolve writes a staff event."""
+    _deliver(hook, HANG_UP_PAYLOAD)
+    headers = _coordinator(db_session)
+    [draft] = _requests_of(db_session, HANG_UP)
+
+    response = hook.post(
+        f"/api/requests/{draft.ref_display}/resolve",
+        json={"outcome": "Withdrawn", "explanation": "Foreman hung up; not needed"},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert (response.json()["status"], response.json()["outcome"]) == ("Resolved", "Withdrawn")
+    assert hook.get("/api/drafts", headers=headers).json() == {"drafts": []}
+    db_session.expire_all()
+    assert draft.status == "Resolved"
+    event = _events(db_session, draft)[-1]
+    assert (event.kind, event.actor_type) == ("resolved", "staff")
+    assert event.before is not None and event.before["status"] == "Draft"
+
+
+@dataclass
+class _FakeSms:
+    sent: list[tuple[str, str]] = field(default_factory=list)
+
+    def send(self, to: str, body: str) -> str:
+        self.sent.append((to, body))
+        return f"SM{len(self.sent):032d}"
+
+
+def _pat_on_duty(session: Session) -> None:
+    pat = Staff(id=uuid.uuid4(), name="Pat Lee", email="lee@example.com", role="coordinator")
+    pat.phone_e164 = "+15855550199"
+    session.add(pat)
+    session.flush()
+    session.add(DutyRoster(day=date(2026, 11, 1), on_duty_staff_id=pat.id))
+    session.flush()
+
+
+def test_promoting_a_today_draft_texts_the_on_duty_coordinator(
+    hook: TestClient, db_session: Session
+) -> None:
+    """J9 "Alerts: SMS for new Today": a Draft promoted with Urgency Today is a new Today
+    Request. (A Draft gets no Urgency today, see PROGRESS open question; set here directly.)"""
+    sms = _FakeSms()
+    app.dependency_overrides[get_sms_sender] = lambda: sms
+    _deliver(hook, HANG_UP_PAYLOAD)
+    headers = _coordinator(db_session)
+    _pat_on_duty(db_session)
+    [draft] = _requests_of(db_session, HANG_UP)
+    draft.urgency = "Today"
+    db_session.flush()
+
+    response = hook.post(f"/api/requests/{draft.ref_display}/record", headers=headers)
+
+    assert response.status_code == 200
+    [(to, body)] = sms.sent
+    assert to == "+15855550199"
+    assert body.startswith(f"Today request {draft.ref_display} from Dale Kramer")
+    alert = db_session.scalars(select(Alert)).one()
+    assert (alert.kind, alert.status) == ("today_new", "sent")
+
+
+def test_promoting_a_draft_without_urgency_texts_nobody(
+    hook: TestClient, db_session: Session
+) -> None:
+    sms = _FakeSms()
+    app.dependency_overrides[get_sms_sender] = lambda: sms
+    _deliver(hook, HANG_UP_PAYLOAD)
+    headers = _coordinator(db_session)
+    _pat_on_duty(db_session)
+    [draft] = _requests_of(db_session, HANG_UP)
+
+    assert hook.post(f"/api/requests/{draft.ref_display}/record", headers=headers).is_success
+    assert sms.sent == []
 
 
 def test_coordinator_promotes_a_draft_to_recorded_with_an_audit_event(

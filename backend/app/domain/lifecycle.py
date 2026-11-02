@@ -8,6 +8,8 @@ Statuses and Outcomes are the glossary words, stored verbatim. Each move has one
 - `merge`: Request A merged into Request B (ticket #33): A is resolved as `resolve` requires;
   B must be another Request that is not Resolved.
 - `edit`: not a move; a coordinator may edit fields or fix the Job of any non-Resolved Request.
+- `reassign`: not a move; a coordinator gives an Acknowledged or In Progress Request another
+  Owner (spec J9 "Reassign owner").
 - `may_amend`: not a move; a Foreman's change by phone applies only before In Progress (spec J4,
   ticket #19); from In Progress on it becomes a note and a Change requested flag instead.
 - `withdraw`: the agent's narrower right (§5; ticket #20): only Recorded or Acknowledged →
@@ -17,6 +19,7 @@ Any other move raises `TransitionNotAllowed`.
 `mark_informed` (Foreman Informed, not a status) is allowed on a Resolved request, once.
 """
 
+from collections.abc import Callable
 from datetime import datetime
 from enum import StrEnum
 
@@ -174,6 +177,56 @@ def withdraw(current: Status) -> tuple[Status, Outcome, str]:
     if not may_withdraw(current):
         raise TransitionNotAllowed(current, Status.RESOLVED)
     return Status.RESOLVED, Outcome.WITHDRAWN, WITHDRAWN_BY_FOREMAN
+
+
+class NotReassignable(ValueError):
+    """Only a Request that has an Owner and is not finished gets a new Owner (spec J9)."""
+
+    def __init__(self, current: Status) -> None:
+        super().__init__(f"A {current.value} request has no Owner to reassign")
+        self.current = current
+
+
+# Statuses with an Owner that is still acting or about to (set at Acknowledge).
+REASSIGNABLE_STATUSES: frozenset[Status] = frozenset({Status.ACKNOWLEDGED, Status.IN_PROGRESS})
+
+
+def reassign(current: Status, owner_id: int | None) -> Status:
+    """Reassign owner (spec J9): Acknowledged or In Progress only, with an Owner; the status is
+    unchanged. A Recorded request gets its first Owner by `acknowledge`."""
+    if current not in REASSIGNABLE_STATUSES:
+        raise NotReassignable(current)
+    if owner_id is None:
+        raise OwnerRequired()
+    return current
+
+
+def allowed_actions(current: Status, *, foreman_informed_at: datetime | None) -> list[str]:
+    """The coordinator actions the guards above allow on a Request now, in a fixed order, for
+    the dashboard to offer (ADR 0004: the rules live here, not in the UI). Each is worked out
+    by asking its guard; "note" is always allowed."""
+    checks: list[tuple[str, Callable[[], object]]] = [
+        ("acknowledge", lambda: acknowledge(current, 0)),
+        ("start", lambda: start(current)),
+        ("reassign", lambda: reassign(current, 0)),
+        ("resolve", lambda: resolve(current, Outcome.FULFILLED, "-")),
+        (
+            "merge",
+            lambda: merge(
+                current, Status.RECORDED, same=False, outcome=Outcome.FULFILLED, explanation="-"
+            ),
+        ),
+        ("edit", lambda: edit(current)),
+        ("mark_informed", lambda: mark_informed(current, foreman_informed_at)),
+    ]
+    allowed = []
+    for name, check in checks:
+        try:
+            check()
+        except ValueError:
+            continue
+        allowed.append(name)
+    return [*allowed, "note"]
 
 
 class NotResolved(ValueError):

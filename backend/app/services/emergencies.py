@@ -7,18 +7,21 @@ at any hour, no duty roster needed). The agent transfers whatever this returns.
 
 from dataclasses import dataclass
 from datetime import datetime
+from functools import partial
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import Alert, Call, CallRequest, Foreman, Job, Request, RequestEvent, Staff
+from app.db.models import Alert, Call, CallRequest, Foreman, Job, Request, Staff
 from app.domain.lifecycle import Status, transition
 from app.domain.sms_text import emergency_text
 from app.domain.urgency import Urgency
-from app.integrations.twilio_sms import SmsNotSent, SmsSender
+from app.integrations.twilio_sms import SmsSender
 from app.services.ack_window import set_ack_due_at
+from app.services.alerts import deliver
 from app.services.calls import Caller
-from app.services.requests import _recorded_fields
+from app.services.events import agent_event
+from app.services.requests import recorded_fields
 
 # The spec gives an Emergency no Category of its own (open question on #26); none of the
 # others fits, so it is Other, the glossary's catch-all.
@@ -75,17 +78,7 @@ def start_emergency(
     set_ack_due_at(session, request)  # none for Emergency (#22)
     session.add(request)
     session.flush()
-    session.add(
-        RequestEvent(
-            request_id=request.id,
-            at=now,
-            actor_type="agent",
-            actor_id=None,
-            kind="recorded",
-            before=None,
-            after=_recorded_fields(request),
-        )
-    )
+    agent_event(session, request, now, "recorded", None, recorded_fields(request))
     session.add(CallRequest(call_id=caller.call_id, request_id=request.id, relation="created"))
 
     foreman = session.get_one(Foreman, caller.foreman_id)
@@ -126,11 +119,5 @@ def start_emergency(
     session.commit()
 
     for row, phone in to_send:
-        try:
-            row.provider_id = sms.send(phone, text)
-            row.status = "sent"
-        except SmsNotSent as exc:
-            row.status = "failed"
-            row.detail = f"SMS not sent: {exc}"
-        session.commit()
+        deliver(session, row, partial(sms.send, phone, text))
     return ref

@@ -13,6 +13,9 @@ from app.clock import Clock, get_clock
 from app.db.session import get_session
 from app.domain.lifecycle import TransitionNotAllowed
 from app.http.auth import CurrentStaff
+from app.http.sms import get_sms_sender
+from app.integrations.twilio_sms import SmsSender
+from app.services.alerts import alert_recorded
 from app.services.drafts import RequestNotFound, list_drafts, record_draft
 
 router = APIRouter(prefix="/api")
@@ -74,14 +77,19 @@ def record(
     staff: CurrentStaff,
     session: Annotated[Session, Depends(get_session)],
     clock: Annotated[Clock, Depends(get_clock)],
+    sms: Annotated[SmsSender, Depends(get_sms_sender)],
 ) -> RecordedOut:
-    """Promote a Draft to Recorded. 404 unknown ref; 422 if it is not a Draft."""
+    """Promote a Draft to Recorded. 404 unknown ref; 422 if it is not a Draft. A promoted Today
+    Request texts the on-duty Coordinator like any new Today Request (J9 "SMS for new Today")."""
+    now = clock()
     try:
-        request = record_draft(session, ref=ref, staff_id=staff.id, now=clock())
+        request = record_draft(session, ref=ref, staff_id=staff.id, now=now)
     except RequestNotFound as exc:
         session.rollback()
         raise HTTPException(404, "No such request") from exc
     except TransitionNotAllowed as exc:
         session.rollback()
         raise HTTPException(422, "Only a Draft can be recorded") from exc
-    return RecordedOut(ref=request.ref_display, status=request.status)
+    recorded = RecordedOut(ref=request.ref_display, status=request.status)
+    alert_recorded(session, sms, refs=[recorded.ref], now=now)
+    return recorded

@@ -5,9 +5,11 @@ trigger (or a restart) never texts twice. When it cannot be sent (nobody on duty
 provider error) it is recorded as failed with the reason, for the dashboard to show.
 """
 
-import re
+import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from functools import partial
 
 from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
@@ -16,18 +18,37 @@ from sqlalchemy.orm import Session
 from app.db.models import Alert, Call, CallRequest, DutyRoster, Foreman, Job, Request, Staff
 from app.domain.lifecycle import OPEN_STATUSES
 from app.domain.local_time import LOCAL_TZ
+from app.domain.ref import parse_ref
 from app.domain.sms_text import (
     TodayRequestFacts,
     callback_request_text,
     short_date,
     today_request_text,
     transfer_text,
+    urgent_note_text,
+    withdrawn_text,
 )
 from app.domain.urgency import Urgency
+from app.integrations.postmark import EmailNotSent
 from app.integrations.twilio_sms import SmsNotSent, SmsSender
 from app.services.queue import as_said
 
-_REF = re.compile(r"^R-(\d{1,18})$")
+log = logging.getLogger(__name__)
+
+
+def deliver(session: Session, alert: Alert, send: Callable[[], str]) -> None:
+    """Send a recorded alert and commit how it went: `sent` with the provider's id, or
+    `failed` with the provider's reason. `send` texts or emails and returns the provider id."""
+    try:
+        alert.provider_id = send()
+        alert.status = "sent"
+    except SmsNotSent as exc:
+        alert.status = "failed"
+        alert.detail = f"SMS not sent: {exc}"
+    except EmailNotSent as exc:
+        alert.status = "failed"
+        alert.detail = f"Email not sent: {exc}"
+    session.commit()
 
 
 def on_duty_coordinator(session: Session, now: datetime) -> tuple[Staff | None, str]:
@@ -45,59 +66,115 @@ def alert_new_today(session: Session, sms: SmsSender, *, ref: str, now: datetime
     Does nothing for a Request that is not Today, and nothing if its alert was already
     recorded (sent, failed or being sent).
     """
-    found = _today_request(session, ref)
+    found = _request_facts(session, ref)
     if found is None:
         return
     request, facts = found
+    if request.urgency != Urgency.TODAY.value or request.recorded_at is None:
+        return
+    _text_on_duty(
+        session, sms, request=request, kind="today_new", body=today_request_text(facts), now=now
+    )
+
+
+def alert_urgent_note(
+    session: Session, sms: SmsSender, *, ref: str, note: str, now: datetime
+) -> None:
+    """Text the on-duty Coordinator the Foreman's urgent note on `ref` (spec J3 step 4, AC3.5:
+    "the coordinator is alerted"; #21). One `urgent_note` alert per urgent note."""
+    found = _request_facts(session, ref)
+    if found is None:
+        return
+    request, facts = found
+    _text_on_duty(
+        session,
+        sms,
+        request=request,
+        kind="urgent_note",
+        body=urgent_note_text(facts, note),
+        now=now,
+        once=False,
+    )
+
+
+def alert_withdrawn(session: Session, sms: SmsSender, *, ref: str, now: datetime) -> None:
+    """Text the on-duty Coordinator that the Foreman withdrew `ref` by phone (spec J4, AC4.1:
+    "the coordinator is notified"; #21). At most one `withdrawn` alert per Request."""
+    found = _request_facts(session, ref)
+    if found is None:
+        return
+    request, facts = found
+    _text_on_duty(
+        session, sms, request=request, kind="withdrawn", body=withdrawn_text(facts), now=now
+    )
+
+
+def _text_on_duty(
+    session: Session,
+    sms: SmsSender,
+    *,
+    request: Request,
+    kind: str,
+    body: str,
+    now: datetime,
+    once: bool = True,
+) -> None:
+    """Record a `kind` SMS alert to the on-duty Coordinator, commit it, then send it.
+
+    `once`: a second alert of this kind for the Request is not recorded (needs the kind's
+    partial unique index on `request_id`). Nobody on duty or no phone → recorded as failed.
+    """
     staff, reason = on_duty_coordinator(session, now)
     if staff is not None and not staff.phone_e164:
         reason = f"{staff.name} has no phone number"
     can_send = staff is not None and staff.phone_e164 is not None
-    alert_id = session.scalar(
-        insert(Alert)
-        .values(
-            request_id=request.id,
-            kind="today_new",
-            channel="sms",
-            to_staff_id=None if staff is None else staff.id,
-            sent_at=now,
-            status="pending" if can_send else "failed",
-            detail=None if can_send else reason,
-        )
-        .on_conflict_do_nothing(
-            index_elements=["request_id"], index_where=text("kind = 'today_new'")
-        )
-        .returning(Alert.id)
+    statement = insert(Alert).values(
+        request_id=request.id,
+        kind=kind,
+        channel="sms",
+        to_staff_id=None if staff is None else staff.id,
+        sent_at=now,
+        status="pending" if can_send else "failed",
+        detail=None if can_send else reason,
     )
+    if once:
+        statement = statement.on_conflict_do_nothing(
+            index_elements=["request_id"], index_where=text(f"kind = '{kind}'")
+        )
+    alert_id = session.scalar(statement.returning(Alert.id))
     session.commit()
     if alert_id is None or not can_send:
         return
     assert staff is not None and staff.phone_e164 is not None
-    alert = session.get_one(Alert, alert_id)
-    try:
-        alert.provider_id = sms.send(staff.phone_e164, today_request_text(facts))
-        alert.status = "sent"
-    except SmsNotSent as exc:
-        alert.status = "failed"
-        alert.detail = f"SMS not sent: {exc}"
-    session.commit()
+    deliver(session, session.get_one(Alert, alert_id), partial(sms.send, staff.phone_e164, body))
 
 
-def _today_request(session: Session, ref: str) -> tuple[Request, TodayRequestFacts] | None:
-    match = _REF.match(ref)
-    if match is None:
+def alert_recorded(session: Session, sms: SmsSender, *, refs: list[str], now: datetime) -> None:
+    """After Requests were Recorded: each Today one texts the on-duty Coordinator (AC1.9).
+
+    The Requests are already saved, so an alert problem is logged and never raised.
+    """
+    for ref in refs:
+        try:
+            alert_new_today(session, sms, ref=ref, now=now)
+        except Exception:
+            session.rollback()
+            log.exception("today_alert_failed", extra={"ref": ref})
+
+
+def _request_facts(session: Session, ref: str) -> tuple[Request, TodayRequestFacts] | None:
+    number = parse_ref(ref)
+    if number is None:
         return None
     row = session.execute(
         select(Request, Foreman, Job.name)
         .join(Foreman, Foreman.id == Request.foreman_id)
         .outerjoin(Job, Job.id == Request.job_id)
-        .where(Request.ref == int(match.group(1)))
+        .where(Request.ref == number)
     ).one_or_none()
     if row is None:
         return None
     request, foreman, job_name = row
-    if request.urgency != Urgency.TODAY.value or request.recorded_at is None:
-        return None
     return request, TodayRequestFacts(
         ref=request.ref_display,
         foreman=f"{foreman.first_name} {foreman.last_name}",
@@ -172,13 +249,8 @@ def alert_transfer(
     if not can_send:
         return
     assert staff is not None and staff.phone_e164 is not None
-    try:
-        texted.provider_id = sms.send(staff.phone_e164, text)
-        texted.status = "sent"
-    except SmsNotSent as exc:
-        texted.status = "failed"
-        texted.detail = f"SMS not sent: {exc}"
-    session.commit()
+    phone = staff.phone_e164
+    deliver(session, texted, partial(sms.send, phone, text))
 
 
 @dataclass(frozen=True)
@@ -254,11 +326,11 @@ def alert_callback(session: Session, sms: SmsSender, *, ref: str, now: datetime)
     and backup is texted once. A missing Coordinator or phone is a failed alert with the reason.
     Does nothing for a Request that is not a Recorded Callback Request.
     """
-    match = _REF.match(ref)
-    if match is None:
+    number = parse_ref(ref)
+    if number is None:
         return
     request = session.scalars(
-        select(Request).where(Request.ref == int(match.group(1))).with_for_update()
+        select(Request).where(Request.ref == number).with_for_update()
     ).one_or_none()
     if request is None or request.category != "Callback" or request.recorded_at is None:
         return
@@ -300,13 +372,7 @@ def alert_callback(session: Session, sms: SmsSender, *, ref: str, now: datetime)
             to_send.append((alert, phone))
     session.commit()
     for alert, phone in to_send:
-        try:
-            alert.provider_id = sms.send(phone, text_body)
-            alert.status = "sent"
-        except SmsNotSent as exc:
-            alert.status = "failed"
-            alert.detail = f"SMS not sent: {exc}"
-        session.commit()
+        deliver(session, alert, partial(sms.send, phone, text_body))
 
 
 def _on_duty_and_backup(session: Session, now: datetime) -> list[tuple[Staff | None, str]]:

@@ -80,7 +80,15 @@ export async function fetchQueue(accessToken: string): Promise<QueueRequest[]> {
 /** An alert that could not be sent, for a request still open (`GET /api/alerts/failed`). */
 export type FailedAlert = {
   ref: string | null;
-  kind: "today_new" | "callback" | "emergency" | "overdue" | "transfer" | "eod_summary";
+  kind:
+    | "today_new"
+    | "callback"
+    | "emergency"
+    | "overdue"
+    | "transfer"
+    | "eod_summary"
+    | "urgent_note"
+    | "withdrawn";
   channel: "sms" | "email" | "popup";
   /** When it was attempted; UTC, ISO 8601. */
   at: string;
@@ -136,6 +144,17 @@ export type RequestEvent = {
   after: Record<string, unknown> | null;
 };
 
+/** A coordinator action on a request, named as the backend lists it in `allowed_actions`. */
+export type RequestAction =
+  | "acknowledge"
+  | "start"
+  | "reassign"
+  | "resolve"
+  | "merge"
+  | "edit"
+  | "mark_informed"
+  | "note";
+
 /** One request with its full audit history (`GET /api/requests/{ref}`). */
 export type RequestDetail = {
   ref: string;
@@ -172,6 +191,11 @@ export type RequestDetail = {
   foreman_informed_at: string | null;
   /** Resolved, not marked Foreman Informed within the threshold (as of the backend's clock). */
   uninformed: boolean;
+  /**
+   * What the backend's lifecycle guards allow a coordinator to do now (ADR 0004). The dashboard
+   * offers an action only when it is listed here; it never works the rules out itself.
+   */
+  allowed_actions: RequestAction[];
   /** The category's default Owner, offered first when acknowledging. */
   default_owner_id: number | null;
   /** Oldest first. */
@@ -305,6 +329,32 @@ export async function acknowledgeRequest(
     body: JSON.stringify({ owner_id: ownerId }),
   });
   if (!response.ok) throw new Error(`acknowledge ${ref} failed: ${response.status}`);
+  return (await response.json()) as RequestDetail;
+}
+
+/** Reassign owner (spec J9) of an Acknowledged or In Progress request; resolves to it updated. */
+export async function reassignOwner(
+  accessToken: string,
+  ref: string,
+  ownerId: number,
+): Promise<RequestDetail> {
+  const response = await fetch(`/api/requests/${encodeURIComponent(ref)}/owner`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ owner_id: ownerId }),
+  });
+  if (!response.ok) throw new Error(`reassign ${ref} failed: ${response.status}`);
+  return (await response.json()) as RequestDetail;
+}
+
+/** Add note (spec J9): a coordinator's note, as typed; resolves to the updated request. */
+export async function addNote(accessToken: string, ref: string, text: string): Promise<RequestDetail> {
+  const response = await fetch(`/api/requests/${encodeURIComponent(ref)}/notes`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!response.ok) throw new Error(`note on ${ref} failed: ${response.status}`);
   return (await response.json()) as RequestDetail;
 }
 

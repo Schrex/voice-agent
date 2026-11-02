@@ -346,7 +346,16 @@ class DutyRoster(Base):
     backup: Mapped[Staff | None] = relationship(foreign_keys=[backup_staff_id])
 
 
-ALERT_KINDS = ("today_new", "callback", "emergency", "overdue", "transfer", "eod_summary")
+ALERT_KINDS = (
+    "today_new",
+    "callback",
+    "emergency",
+    "overdue",
+    "transfer",
+    "eod_summary",
+    "urgent_note",
+    "withdrawn",
+)
 ALERT_CHANNELS = ("sms", "email", "popup")
 ALERT_STATUSES = ("pending", "sent", "failed")
 
@@ -357,7 +366,8 @@ class Alert(Base):
     `status` pending (being sent), sent (provider accepted it; `provider_id` set) or failed
     (`detail` says why, e.g. nobody on duty). `sent_at` is when it was attempted.
     One `today_new` alert per Request at most (`uq_alerts_today_new`) and one `overdue` alert
-    (`uq_alerts_overdue`, ticket #22); one `eod_summary` per Coordinator per New York day
+    (`uq_alerts_overdue`, ticket #22) and one `withdrawn` alert (`uq_alerts_withdrawn`); one
+    `urgent_note` alert per urgent phone note; one `eod_summary` per Coordinator per New York day
     (`summary_date`, `uq_alerts_eod_summary`, ticket #23).
     """
 
@@ -377,6 +387,12 @@ class Alert(Base):
             "request_id",
             unique=True,
             postgresql_where=text("kind = 'overdue'"),
+        ),
+        Index(
+            "uq_alerts_withdrawn",
+            "request_id",
+            unique=True,
+            postgresql_where=text("kind = 'withdrawn'"),
         ),
         CheckConstraint(
             "(kind = 'eod_summary') = (summary_date IS NOT NULL AND to_staff_id IS NOT NULL)",

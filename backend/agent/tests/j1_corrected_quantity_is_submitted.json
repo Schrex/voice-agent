@@ -70,7 +70,7 @@
     },
     {
       "role": "agent",
-      "message": "Three tri-axle dump trucks at Route 104 Widening, Monday, November 2 at 7:00 AM. Should I submit it?",
+      "message": "Three tri-axle dump trucks at Route 104 Widening, Monday, November 2 at 7:00 AM, marked Planned. Should I record it?",
       "time_in_call_secs": 12
     },
     {
@@ -80,7 +80,7 @@
     },
     {
       "role": "agent",
-      "message": "Two tri-axle dump trucks at Route 104 Widening, Monday, November 2 at 7:00 AM. Should I submit it?",
+      "message": "Two tri-axle dump trucks at Route 104 Widening, Monday, November 2 at 7:00 AM, marked Planned. Should I record it?",
       "time_in_call_secs": 21
     },
     {

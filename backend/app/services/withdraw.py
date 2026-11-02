@@ -8,33 +8,41 @@ amend is (`amend.flag_change_requested`). Either way the call is linked to the R
 (`call_requests` relation `amended`). It is all one transaction.
 """
 
+import logging
 from datetime import datetime
 
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from app.db.models import CallRequest, Request, RequestEvent
+from app.db.models import CallRequest, Request
 from app.domain.lifecycle import Status, may_withdraw, withdraw
+from app.integrations.twilio_sms import SmsSender
+from app.services.alerts import alert_withdrawn
 from app.services.amend import flag_change_requested
 from app.services.calls import Caller
-from app.services.notes import NoteRequestNotFound, _own_request
-from app.services.requests import _iso
+from app.services.events import agent_event, iso
+from app.services.notes import NoteRequestNotFound, own_request
 
 WITHDRAW_NOTE = "Change requested: withdraw"
+
+log = logging.getLogger(__name__)
 
 
 class WithdrawRequestNotFound(Exception):
     """No Request of the caller's has this ref (unknown, a Draft, or another Foreman's)."""
 
 
-def withdraw_request(session: Session, *, caller: Caller, ref: str, now: datetime) -> bool:
+def withdraw_request(
+    session: Session, sms: SmsSender, *, caller: Caller, ref: str, now: datetime
+) -> bool:
     """Withdraw the caller's Request `ref`, or flag it; True when it was withdrawn.
 
     The Request must be the caller's own and not a Draft; a merged one is withdrawn on its final
     target, as the lookup reports it. Otherwise WithdrawRequestNotFound, with nothing written.
+    A withdrawal then texts the on-duty Coordinator (AC4.1); an alert problem is logged.
     """
     try:
-        request = _own_request(session, caller, ref)
+        request = own_request(session, caller, ref)
     except NoteRequestNotFound as e:
         raise WithdrawRequestNotFound(ref) from e
     applied = may_withdraw(Status(request.status))
@@ -48,6 +56,12 @@ def withdraw_request(session: Session, *, caller: Caller, ref: str, now: datetim
         .on_conflict_do_nothing()
     )
     session.commit()
+    if applied:
+        try:
+            alert_withdrawn(session, sms, ref=request.ref_display, now=now)
+        except Exception:
+            session.rollback()
+            log.exception("withdrawn_alert_failed", extra={"ref": request.ref_display})
     return applied
 
 
@@ -58,25 +72,16 @@ def _resolve_withdrawn(session: Session, request: Request, now: datetime) -> Non
         "status": request.status,
         "outcome": request.outcome,
         "explanation": request.explanation,
-        "resolved_at": _iso(request.resolved_at),
+        "resolved_at": iso(request.resolved_at),
     }
     request.status = status.value
     request.outcome = outcome.value
     request.explanation = explanation
     request.resolved_at = now
-    session.add(
-        RequestEvent(
-            request_id=request.id,
-            at=now,
-            actor_type="agent",
-            actor_id=None,
-            kind="resolved",
-            before=before,
-            after={
-                "status": status.value,
-                "outcome": outcome.value,
-                "explanation": explanation,
-                "resolved_at": _iso(now),
-            },
-        )
-    )
+    after = {
+        "status": status.value,
+        "outcome": outcome.value,
+        "explanation": explanation,
+        "resolved_at": iso(now),
+    }
+    agent_event(session, request, now, "resolved", before, after)

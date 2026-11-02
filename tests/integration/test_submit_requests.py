@@ -222,7 +222,7 @@ def test_failure_after_the_request_is_written_rolls_everything_back(
         raise RuntimeError("boom")
 
     # The Request row is already flushed when its audit event is built.
-    monkeypatch.setattr("app.services.requests._recorded_fields", fail)
+    monkeypatch.setattr("app.services.requests.recorded_fields", fail)
 
     response = _submit(tools, {"items": [_item(db_session)]})
 
@@ -334,7 +334,7 @@ def test_several_items_where_a_later_one_fails_in_the_database_record_none_of_th
 def test_several_items_where_writing_the_last_event_fails_record_none_of_them(
     tools: TestClient, db_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    real = requests_service._recorded_fields
+    real = requests_service.recorded_fields
     seen: list[object] = []
 
     def fail_on_second(request: Request) -> dict[str, object]:
@@ -343,7 +343,7 @@ def test_several_items_where_writing_the_last_event_fails_record_none_of_them(
             raise RuntimeError("boom")
         return real(request)
 
-    monkeypatch.setattr("app.services.requests._recorded_fields", fail_on_second)
+    monkeypatch.setattr("app.services.requests.recorded_fields", fail_on_second)
 
     response = _submit(tools, {"items": [_item(db_session), _item(db_session, need="lowboy")]})
 

@@ -1,7 +1,7 @@
 """Dashboard API (`/api/*`, architecture §4.3). Every route requires a staff token."""
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -14,16 +14,16 @@ from app.domain.lifecycle import (
     AlreadyInformed,
     ExplanationRequired,
     MergeIntoItself,
+    NotReassignable,
     NotResolved,
     Outcome,
     OutcomeRequired,
     OwnerRequired,
-    Status,
     TransitionNotAllowed,
 )
-from app.domain.sla import is_uninformed
 from app.http.auth import CurrentStaff
 from app.services.merges import merge_request
+from app.services.notes import BlankNote, add_staff_note
 from app.services.owners import list_owners
 from app.services.queue import open_requests
 from app.services.request_detail import RequestDetail, request_detail
@@ -32,10 +32,10 @@ from app.services.requests import (
     UnknownOwner,
     acknowledge_request,
     mark_foreman_informed,
+    reassign_owner,
     resolve_request,
     start_request,
 )
-from app.services.settings import uninformed_after
 from app.services.uninformed import uninformed_requests
 
 router = APIRouter(prefix="/api")
@@ -194,6 +194,9 @@ class RequestDetailOut(BaseModel):
     merged_into: str | None  # ref of the Request this one was merged into; null if not merged
     foreman_informed_at: str | None  # UTC, ISO 8601 with "Z"; null until marked Foreman Informed
     uninformed: bool  # Resolved, not marked Foreman Informed within the threshold (now)
+    # What the lifecycle guards allow a coordinator to do now (ADR 0004); the dashboard offers
+    # only these: acknowledge, start, reassign, resolve, merge, edit, mark_informed, note.
+    allowed_actions: list[str]
     default_owner_id: int | None  # the category's default Owner, offered when acknowledging
     events: list[EventOut]  # oldest first
     calls: list[LinkedCallOut]  # oldest first
@@ -208,10 +211,10 @@ def detail(
     clock: Annotated[Clock, Depends(get_clock)],
 ) -> RequestDetailOut:
     """One Request's fields and its full audit history (who, when, what changed)."""
-    found = request_detail(session, ref)
+    found = request_detail(session, ref, clock())
     if found is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such request")
-    return _detail_out(found, clock(), uninformed_after(session))
+    return _detail_out(found)
 
 
 class AcknowledgeIn(BaseModel):
@@ -254,6 +257,51 @@ def start(
     except RequestNotFound as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such request") from exc
     except TransitionNotAllowed as exc:
+        session.rollback()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+    return _updated(session, ref, now)
+
+
+@router.post("/requests/{ref}/owner")
+def reassign(
+    ref: str,
+    body: AcknowledgeIn,
+    staff: CurrentStaff,
+    session: Annotated[Session, Depends(get_session)],
+    clock: Annotated[Clock, Depends(get_clock)],
+) -> RequestDetailOut:
+    """Reassign owner (spec J9) of an Acknowledged or In Progress Request; returns it updated."""
+    now = clock()
+    try:
+        reassign_owner(session, ref=ref, owner_id=body.owner_id, staff_id=staff.id, now=now)
+    except RequestNotFound as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such request") from exc
+    except (OwnerRequired, NotReassignable, UnknownOwner) as exc:
+        session.rollback()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+    return _updated(session, ref, now)
+
+
+class NoteIn(BaseModel):
+    # Optional so a missing text reaches the service's blank check: 422 either way.
+    text: str | None = None
+
+
+@router.post("/requests/{ref}/notes")
+def add_note(
+    ref: str,
+    body: NoteIn,
+    staff: CurrentStaff,
+    session: Annotated[Session, Depends(get_session)],
+    clock: Annotated[Clock, Depends(get_clock)],
+) -> RequestDetailOut:
+    """Add note (spec J9): appended as typed, by the signed-in staff member; returns the Request."""
+    now = clock()
+    try:
+        add_staff_note(session, ref=ref, text=body.text, staff_id=staff.id, now=now)
+    except RequestNotFound as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such request") from exc
+    except BlankNote as exc:
         session.rollback()
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
     return _updated(session, ref, now)
@@ -354,9 +402,9 @@ def informed(
 
 
 def _updated(session: Session, ref: str, now: datetime) -> RequestDetailOut:
-    found = request_detail(session, ref)
+    found = request_detail(session, ref, now)
     assert found is not None
-    return _detail_out(found, now, uninformed_after(session))
+    return _detail_out(found)
 
 
 class OwnersOut(BaseModel):
@@ -369,7 +417,7 @@ def owners(staff: CurrentStaff, session: Annotated[Session, Depends(get_session)
     return OwnersOut(owners=[OwnerOut(id=o.id, name=o.name) for o in list_owners(session)])
 
 
-def _detail_out(found: RequestDetail, now: datetime, after: timedelta) -> RequestDetailOut:
+def _detail_out(found: RequestDetail) -> RequestDetailOut:
     return RequestDetailOut(
         ref=found.ref,
         foreman=found.foreman,
@@ -393,13 +441,8 @@ def _detail_out(found: RequestDetail, now: datetime, after: timedelta) -> Reques
         resolved_at=_utc(found.resolved_at) if found.resolved_at else None,
         merged_into=found.merged_into,
         foreman_informed_at=_utc_or_none(found.foreman_informed_at),
-        uninformed=is_uninformed(
-            Status(found.status),
-            resolved_at=found.resolved_at,
-            foreman_informed_at=found.foreman_informed_at,
-            now=now,
-            after=after,
-        ),
+        uninformed=found.uninformed,
+        allowed_actions=found.allowed_actions,
         default_owner_id=found.default_owner_id,
         events=[
             EventOut(

@@ -18,10 +18,9 @@ from sqlalchemy.orm import Session
 from app.clock import Clock, get_clock
 from app.config import tool_secret
 from app.db.session import get_session
-from app.domain.urgency import Urgency
 from app.http.sms import get_sms_sender
 from app.integrations.twilio_sms import SmsSender
-from app.services.alerts import alert_callback, alert_new_today, alert_transfer
+from app.services.alerts import alert_callback, alert_recorded, alert_transfer
 from app.services.amend import AmendRequestNotFound, amend_request
 from app.services.callbacks import create_callback_request
 from app.services.calls import Caller, caller_for_conversation
@@ -105,6 +104,7 @@ class FindJobsBody(BaseModel):
 
 class ResolveNeededByBody(BaseModel):
     needed_by_spoken: str
+    need: str = ""
 
 
 @router.post("/find_jobs")
@@ -154,16 +154,7 @@ def submit_requests_tool(
         log.exception("submit_requests_failed", extra=log_ctx)
         return {"error": NOT_SAVED}
     log.info("submit_requests", extra={**log_ctx, "ref": [r.ref for r in recorded]})
-    now = clock()
-    for r in recorded:
-        if r.needed_by.urgency != Urgency.TODAY.value:
-            continue
-        # The Request is saved; an alert problem must not turn into a spoken error.
-        try:
-            alert_new_today(session, sms, ref=r.ref, now=now)
-        except Exception:
-            session.rollback()
-            log.exception("today_alert_failed", extra={**log_ctx, "ref": r.ref})
+    alert_recorded(session, sms, refs=[r.ref for r in recorded], now=clock())
     return [
         {
             "ref": r.ref,
@@ -192,7 +183,7 @@ def resolve_needed_by_tool(
     except ValidationError:
         log.warning("resolve_needed_by_invalid", extra=log_ctx)
         return {"error": TIME_NOT_READ}
-    resolved = resolve_needed_by(parsed.needed_by_spoken, clock())
+    resolved = resolve_needed_by(parsed.needed_by_spoken, clock(), parsed.need)
     log.info("resolve_needed_by", extra={**log_ctx, "resolved": resolved.urgency is not None})
     return {"needed_by_resolved": resolved.needed_by_resolved, "urgency": resolved.urgency}
 
@@ -326,6 +317,7 @@ def add_note_tool(
     caller: Annotated[Caller, Depends(get_caller)],
     session: Annotated[Session, Depends(get_session)],
     clock: Annotated[Clock, Depends(get_clock)],
+    sms: Annotated[SmsSender, Depends(get_sms_sender)],
     x_conversation_id: Annotated[str | None, Header()] = None,
 ) -> Any:
     """Appends the Foreman's note to one of his own Requests; `{"ok": true}`. Never creates one.
@@ -341,6 +333,7 @@ def add_note_tool(
     try:
         add_note_for_caller(
             session,
+            sms,
             caller=caller,
             ref=parsed.ref,
             text=parsed.text,
@@ -613,6 +606,7 @@ def withdraw_request_tool(
     caller: Annotated[Caller, Depends(get_caller)],
     session: Annotated[Session, Depends(get_session)],
     clock: Annotated[Clock, Depends(get_clock)],
+    sms: Annotated[SmsSender, Depends(get_sms_sender)],
     x_conversation_id: Annotated[str | None, Header()] = None,
 ) -> Any:
     """Before In Progress the Request is Resolved/Withdrawn: `{"applied": true}`. At or after In
@@ -626,7 +620,7 @@ def withdraw_request_tool(
         log.warning("withdraw_request_invalid", extra=log_ctx)
         return {"error": NOT_WITHDRAWN}
     try:
-        applied = withdraw_request(session, caller=caller, ref=parsed.ref, now=clock())
+        applied = withdraw_request(session, sms, caller=caller, ref=parsed.ref, now=clock())
     except WithdrawRequestNotFound:
         session.rollback()
         log.info("withdraw_request_not_found", extra=log_ctx)

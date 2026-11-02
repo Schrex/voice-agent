@@ -55,7 +55,7 @@
     },
     {
       "role": "agent",
-      "message": "I'll record it without a needed-by time. Two tri-axle dump trucks at Route 104 Widening. Should I submit it?",
+      "message": "I'll record it without a needed-by time. Two tri-axle dump trucks at Route 104 Widening. Should I record it?",
       "time_in_call_secs": 15
     },
     {

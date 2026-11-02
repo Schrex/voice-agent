@@ -28,6 +28,7 @@ const RECORDED: RequestDetail = {
   needed_by_spoken: null,
   urgency: null,
   status: "Recorded",
+  allowed_actions: ["acknowledge", "resolve", "merge", "edit", "note"],
   source: "ai_call",
   recorded_at: "2026-11-02T01:30:00Z",
   owner: null,
@@ -46,6 +47,7 @@ const RECORDED: RequestDetail = {
 const MERGED: RequestDetail = {
   ...RECORDED,
   status: "Resolved",
+  allowed_actions: ["mark_informed", "note"],
   outcome: "Withdrawn",
   explanation: "Same trucks as R-1001",
   resolved_at: "2026-11-02T02:00:00Z",
@@ -175,8 +177,8 @@ describe("merge duplicates", () => {
     expect(field("Status")).toBe("Recorded");
   });
 
-  it.each(["Recorded", "Acknowledged", "In Progress"] as const)("is offered when %s", async (s) => {
-    serve({ ...RECORDED, status: s });
+  it("is offered when the backend allows merge", async () => {
+    serve({ ...RECORDED, status: "In Progress", allowed_actions: ["merge", "note"] });
     renderDetail();
 
     expect(
@@ -184,8 +186,9 @@ describe("merge duplicates", () => {
     ).toBeInTheDocument();
   });
 
-  it.each(["Draft", "Resolved"] as const)("is not offered when %s", async (s) => {
-    serve({ ...RECORDED, status: s });
+  it("is not offered when the backend does not allow merge, whatever the status", async () => {
+    // ADR 0004: the dashboard does not work out the lifecycle rules itself.
+    serve({ ...RECORDED, status: "Recorded", allowed_actions: ["note"] });
     renderDetail();
 
     await screen.findByRole("heading", { name: "R-1000" });

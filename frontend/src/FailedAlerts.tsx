@@ -13,6 +13,8 @@ const KIND: Record<FailedAlert["kind"], string> = {
   overdue: "Overdue",
   transfer: "Transfer",
   eod_summary: "End-of-day",
+  urgent_note: "Urgent note",
+  withdrawn: "Withdrawal",
 };
 
 const CHANNEL: Record<FailedAlert["channel"], string> = {

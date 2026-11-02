@@ -5,7 +5,6 @@ Requests get a history event, all in one transaction. Nothing is deleted; A's hi
 notes) stay on A. A status lookup of A's ref reports B (`status_request`).
 """
 
-import re
 import uuid
 from datetime import datetime
 
@@ -14,9 +13,9 @@ from sqlalchemy.orm import Session
 
 from app.db.models import Request
 from app.domain.lifecycle import Outcome, Status, merge
-from app.services.requests import RequestNotFound, _iso, _locked, _staff_event
-
-_REF = re.compile(r"^R-(\d{1,18})$")
+from app.domain.ref import parse_ref
+from app.services.events import iso, staff_event
+from app.services.requests import RequestNotFound, locked_request
 
 
 def merge_request(
@@ -36,8 +35,8 @@ def merge_request(
     its resolve fields and `merged_into`; B gets a `merged_in` event naming A. A refused merge
     raises and writes nothing.
     """
-    source = _locked(session, ref)
-    target = _locked(session, into)
+    source = locked_request(session, ref)
+    target = locked_request(session, into)
     status = merge(
         Status(source.status),
         Status(target.status),
@@ -50,7 +49,7 @@ def merge_request(
         "status": source.status,
         "outcome": source.outcome,
         "explanation": source.explanation,
-        "resolved_at": _iso(source.resolved_at),
+        "resolved_at": iso(source.resolved_at),
         "merged_into": None,
     }
     source.status = status.value
@@ -62,11 +61,11 @@ def merge_request(
         "status": status.value,
         "outcome": outcome.value,
         "explanation": explanation,
-        "resolved_at": _iso(now),
+        "resolved_at": iso(now),
         "merged_into": target.ref_display,
     }
-    _staff_event(session, source, staff_id, now, "merged", before, after)
-    _staff_event(
+    staff_event(session, source, staff_id, now, "merged", before, after)
+    staff_event(
         session,
         target,
         staff_id,
@@ -84,10 +83,10 @@ def status_request(session: Session, ref: str) -> Request:
 
     For the phone status lookup (`find_open_requests`, ticket #16) to report B for A's ref.
     """
-    match = _REF.match(ref)
+    number = parse_ref(ref)
     request = (
-        session.scalars(select(Request).where(Request.ref == int(match.group(1)))).one_or_none()
-        if match
+        session.scalars(select(Request).where(Request.ref == number)).one_or_none()
+        if number is not None
         else None
     )
     if request is None:

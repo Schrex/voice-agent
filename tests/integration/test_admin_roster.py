@@ -388,6 +388,39 @@ def test_admin_adds_and_removes_an_alias(
     assert _aliases(_job(client, admin, "Penfield Sewer Replacement")) == ["the sewer job"]
 
 
+def test_an_alias_the_admin_adds_is_matched_by_find_jobs_on_the_next_call(
+    client: TestClient, admin: dict[str, str], seeded: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """#34 DoD: "add alias → spoken alias matches on next call" (via #13's `find_jobs`)."""
+    monkeypatch.setenv("TOOL_SECRET", "test-tool-secret")
+    conversation = f"conv_admin_{uuid.uuid4().hex}"
+    started = client.post(
+        "/hooks/call-start",
+        json={"caller_id": "+15855550101", "conversation_id": conversation},
+        headers={"X-Hook-Secret": "test-hook-secret"},
+    )
+    assert started.status_code == 200
+    tool_headers = {"X-Tool-Secret": "test-tool-secret", "X-Conversation-Id": conversation}
+
+    def find(spoken: str) -> Any:
+        response = client.post("/tools/find_jobs", json={"query": spoken}, headers=tool_headers)
+        assert response.status_code == 200
+        return response.json()
+
+    assert find("the Fairport lift station") == []
+    penfield = _job(client, admin, "Penfield Sewer Replacement")
+
+    added = client.post(
+        f"/api/admin/jobs/{penfield['id']}/aliases",
+        json={"alias": "the Fairport lift station"},
+        headers=admin,
+    )
+    assert added.status_code == 201
+
+    [match] = find("the Fairport lift station")
+    assert (match["job_id"], match["name"]) == (penfield["id"], "Penfield Sewer Replacement")
+
+
 def test_duplicate_alias_on_the_same_job_is_409(
     client: TestClient, admin: dict[str, str], seeded: None
 ) -> None:

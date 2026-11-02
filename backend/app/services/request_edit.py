@@ -16,8 +16,9 @@ from sqlalchemy.orm import Session
 from app.db.models import CATEGORIES, Job, Request
 from app.domain.lifecycle import Status, edit
 from app.domain.request_edit import changed_fields
+from app.services.events import staff_event
 from app.services.queue import as_said
-from app.services.requests import _locked, _staff_event
+from app.services.requests import locked_request
 
 
 class InvalidEdit(ValueError):
@@ -55,7 +56,7 @@ def edit_request(
     in the same transaction; an edit that changes nothing writes nothing. A refused edit raises
     and writes nothing.
     """
-    request = _locked(session, ref)
+    request = locked_request(session, ref)
     edit(Status(request.status))
     proposed = {name: _checked(session, name, value) for name, value in changes.items()}
     before, after = changed_fields(_current(request), proposed)
@@ -65,7 +66,7 @@ def edit_request(
     for name, value in after.items():
         stored = Decimal(str(value)) if name == "quantity" and value is not None else value
         setattr(request, name, stored)
-    _staff_event(session, request, staff_id, now, "edited", before, after)
+    staff_event(session, request, staff_id, now, "edited", before, after)
     session.commit()
 
 

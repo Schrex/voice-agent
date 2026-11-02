@@ -28,6 +28,7 @@ const ACKNOWLEDGED: RequestDetail = {
   needed_by_spoken: null,
   urgency: null,
   status: "Acknowledged",
+  allowed_actions: ["start", "reassign", "resolve", "merge", "edit", "note"],
   source: "ai_call",
   recorded_at: "2026-11-02T01:30:00Z",
   owner: { id: 1, name: "Dispatch" },
@@ -45,6 +46,7 @@ const ACKNOWLEDGED: RequestDetail = {
 const IN_PROGRESS: RequestDetail = {
   ...ACKNOWLEDGED,
   status: "In Progress",
+  allowed_actions: ["reassign", "resolve", "merge", "edit", "note"],
   events: [
     {
       at: "2026-11-02T01:50:00Z",
@@ -59,6 +61,7 @@ const IN_PROGRESS: RequestDetail = {
 const RESOLVED: RequestDetail = {
   ...IN_PROGRESS,
   status: "Resolved",
+  allowed_actions: ["mark_informed", "note"],
   outcome: "Denied",
   explanation: "No trucks free until Thursday",
   resolved_at: "2026-11-02T02:00:00Z",
@@ -143,8 +146,8 @@ describe("move to In Progress", () => {
     expect(field("Status")).toBe("Acknowledged");
   });
 
-  it.each(["Recorded", "In Progress", "Resolved"] as const)("is not offered when %s", async (s) => {
-    serve({ ...RESOLVED, status: s }, "start", IN_PROGRESS);
+  it("Move to In Progress is not offered when the backend does not allow start", async () => {
+    serve({ ...ACKNOWLEDGED, allowed_actions: ["resolve", "note"] }, "start", IN_PROGRESS);
     renderDetail();
 
     await screen.findByRole("heading", { name: "R-1000" });
@@ -225,15 +228,15 @@ describe("resolve", () => {
     expect(field("Status")).toBe("In Progress");
   });
 
-  it.each(["Recorded", "Acknowledged"] as const)("is offered when %s", async (s) => {
-    serve({ ...IN_PROGRESS, status: s }, "resolve", RESOLVED);
+  it("is offered when the backend allows resolve", async () => {
+    serve({ ...IN_PROGRESS, status: "Recorded", allowed_actions: ["resolve"] }, "resolve", RESOLVED);
     renderDetail();
 
     expect(await screen.findByRole("button", { name: "Resolve" })).toBeInTheDocument();
   });
 
-  it.each(["Draft", "Resolved"] as const)("is not offered when %s", async (s) => {
-    serve({ ...RESOLVED, status: s }, "resolve", RESOLVED);
+  it("is not offered when the backend does not allow resolve, whatever the status", async () => {
+    serve({ ...IN_PROGRESS, allowed_actions: ["note"] }, "resolve", RESOLVED);
     renderDetail();
 
     await screen.findByRole("heading", { name: "R-1000" });

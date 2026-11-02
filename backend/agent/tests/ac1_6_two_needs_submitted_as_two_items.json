@@ -70,7 +70,7 @@
     },
     {
       "role": "agent",
-      "message": "I have two requests. Number 1: two tri-axle dump trucks at Route 104 Widening, Monday, November 2 at 7:00 AM. Number 2: forty tons of number 2 stone at Route 104 Widening, Monday, November 2 at 7:00 AM. Should I submit them?",
+      "message": "I have two requests. Number 1: two tri-axle dump trucks at Route 104 Widening, Monday, November 2 at 7:00 AM, marked Planned. Number 2: forty tons of number 2 stone at Route 104 Widening, Monday, November 2 at 7:00 AM, marked Planned. Should I record them?",
       "time_in_call_secs": 13
     },
     {

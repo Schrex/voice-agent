@@ -1,6 +1,5 @@
 """One Request with its audit history (ticket #10). Read-only; writes stay in `requests.py`."""
 
-import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -20,10 +19,12 @@ from app.db.models import (
     RequestEvent,
     Staff,
 )
+from app.domain.lifecycle import Status, allowed_actions
+from app.domain.ref import parse_ref
+from app.domain.sla import is_uninformed
 from app.services.notes import notes_of
 from app.services.queue import as_said
-
-_REF = re.compile(r"^R-(\d{1,18})$")
+from app.services.settings import uninformed_after
 
 
 @dataclass(frozen=True)
@@ -96,6 +97,8 @@ class RequestDetail:
     resolved_at: datetime | None
     merged_into: str | None  # ref of the Request this one was merged into (ticket #33)
     foreman_informed_at: datetime | None  # null until a coordinator marks Foreman Informed
+    uninformed: bool  # Resolved, not informed, past the office's threshold (#32)
+    allowed_actions: list[str]  # what the lifecycle guards allow a coordinator now (ADR 0004)
     # The category's default Owner, offered first when acknowledging (null if none is set).
     default_owner_id: int | None
     events: list[Event]
@@ -103,16 +106,17 @@ class RequestDetail:
     notes: list[DetailNote]  # oldest first
 
 
-def request_detail(session: Session, ref: str) -> RequestDetail | None:
-    """The Request rendered `ref` ("R-1000") and its events, oldest first; None if unknown."""
-    match = _REF.match(ref)
-    if match is None:
+def request_detail(session: Session, ref: str, now: datetime) -> RequestDetail | None:
+    """The Request rendered `ref` ("R-1000") at `now`, and its events, oldest first; None if
+    unknown."""
+    number = parse_ref(ref)
+    if number is None:
         return None
     row = session.execute(
         select(Request, Foreman, Job.name)
         .join(Foreman, Request.foreman_id == Foreman.id)
         .outerjoin(Job, Request.job_id == Job.id)
-        .where(Request.ref == int(match.group(1)))
+        .where(Request.ref == number)
     ).one_or_none()
     if row is None:
         return None
@@ -140,6 +144,16 @@ def request_detail(session: Session, ref: str) -> RequestDetail | None:
         resolved_at=request.resolved_at,
         merged_into=_ref_of(session, request.merged_into_id),
         foreman_informed_at=request.foreman_informed_at,
+        uninformed=is_uninformed(
+            Status(request.status),
+            resolved_at=request.resolved_at,
+            foreman_informed_at=request.foreman_informed_at,
+            now=now,
+            after=uninformed_after(session),
+        ),
+        allowed_actions=allowed_actions(
+            Status(request.status), foreman_informed_at=request.foreman_informed_at
+        ),
         default_owner_id=session.scalar(
             select(CategoryOwnerDefault.owner_id).where(
                 CategoryOwnerDefault.category == request.category
@@ -172,7 +186,7 @@ def _notes(session: Session, request_id: int) -> list[DetailNote]:
     names: dict[uuid.UUID, str] = {}
     if staff_ids:
         rows = session.execute(select(Staff.id, Staff.name).where(Staff.id.in_(staff_ids)))
-        names = dict(rows.tuples())
+        names = {staff_id: name for staff_id, name in rows}
     return [
         DetailNote(
             at=n.at,

@@ -35,7 +35,12 @@ test("a note the Foreman adds on a call shows on the request detail with the urg
   await page.getByLabel("Email").fill(COORDINATOR.email);
   await page.getByLabel("Password").fill(COORDINATOR.password);
   await page.getByRole("button", { name: "Log in" }).click();
-  await page.getByRole("link", { name: ref, exact: true }).click();
+  // The urgent note texted the on-duty Coordinator (AC3.5, review S1); nobody is on duty in
+  // the e2e seed, so the alert is recorded as failed and shown on the queue.
+  await expect(page.getByRole("alert", { name: "Alerts not sent" })).toContainText(
+    `Urgent note SMS for ${ref} not sent`,
+  );
+  await page.locator("table.queue").first().getByRole("link", { name: ref, exact: true }).click();
 
   const notes = page.getByRole("list", { name: "Notes" });
   const note = notes.getByRole("listitem");

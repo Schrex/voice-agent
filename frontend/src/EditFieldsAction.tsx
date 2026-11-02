@@ -19,7 +19,7 @@ const NUMBER = /^\d+(\.\d+)?$/;
  */
 export function EditFieldsAction({ request }: { request: RequestDetail }) {
   const [open, setOpen] = useState(false);
-  if (request.status === "Resolved") return null;
+  if (!request.allowed_actions.includes("edit")) return null;
   if (!open) {
     return (
       <div className="action">

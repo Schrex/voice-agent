@@ -7,6 +7,8 @@ from app.domain.sms_text import (
     overdue_callback_text,
     overdue_request_text,
     today_request_text,
+    urgent_note_text,
+    withdrawn_text,
 )
 
 FACTS = TodayRequestFacts(
@@ -71,3 +73,17 @@ def test_an_overdue_callback_request_says_what_it_is_about() -> None:
     assert overdue_callback_text(
         ref="R-1042", foreman="Dale Kramer", reason="", recorded_at=recorded_at
     ).startswith("Overdue: Callback request R-1042 from Dale Kramer, about: not stated.")
+
+
+def test_urgent_note_names_the_request_and_quotes_the_note() -> None:
+    assert urgent_note_text(FACTS, "need an answer today") == (
+        "Urgent note on R-1000 from Dale Kramer, Route 104 Widening (tri-axle dump trucks): "
+        "“need an answer today”"
+    )
+
+
+def test_withdrawn_names_the_whole_request() -> None:
+    assert withdrawn_text(FACTS) == (
+        "Withdrawn by foreman: R-1000 from Dale Kramer, Route 104 Widening: "
+        "tri-axle dump trucks, 3 trucks, needed by Mon, Nov 2, 7:00 AM"
+    )

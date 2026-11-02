@@ -17,7 +17,6 @@ from sqlalchemy.orm import Session
 from app.clock import Clock, get_clock
 from app.db.models import DutyRoster, Owner, Settings, Staff
 from app.db.session import get_session
-from app.domain.local_time import LOCAL_TZ
 from app.http.auth import current_admin
 from app.services import office_admin
 from app.services.office_admin import Invalid
@@ -234,8 +233,7 @@ def list_duty(
     start: Annotated[datetime.date | None, Query(alias="from")] = None,
 ) -> list[DutyOut]:
     """Duty days from `from` (default: today in New York) on."""
-    first = start or clock().astimezone(LOCAL_TZ).date()
-    return [DutyOut.of(d) for d in office_admin.duty_days(session, start=first)]
+    return [DutyOut.of(d) for d in office_admin.duty_days(session, start=start, now=clock())]
 
 
 @router.put("/duty/{day}")

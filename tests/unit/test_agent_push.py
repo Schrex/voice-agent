@@ -305,6 +305,7 @@ def test_push_creates_each_repo_test_by_name(el: FakeElevenLabs) -> None:
         "J1 a need dropped during the numbered summary is not submitted",
         "J1 asks at most one question per turn",
         "J1 quantity corrected during read-back is the value submitted",
+        "J1 work stopped, needed right now: the urgency Today is stated back",
         "J2 no, it is a new one: a new request is submitted",
         "J3 step 2: several matching requests, asks which one by need and Job",
         "J4 withdrawing an In Progress request is flagged for the office, not withdrawn",
