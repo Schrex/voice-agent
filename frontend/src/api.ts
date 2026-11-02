@@ -80,7 +80,15 @@ export async function fetchQueue(accessToken: string): Promise<QueueRequest[]> {
 /** An alert that could not be sent, for a request still open (`GET /api/alerts/failed`). */
 export type FailedAlert = {
   ref: string | null;
-  kind: "today_new" | "callback" | "emergency" | "overdue" | "transfer" | "eod_summary";
+  kind:
+    | "today_new"
+    | "callback"
+    | "emergency"
+    | "overdue"
+    | "transfer"
+    | "eod_summary"
+    | "urgent_note"
+    | "withdrawn";
   channel: "sms" | "email" | "popup";
   /** When it was attempted; UTC, ISO 8601. */
   at: string;

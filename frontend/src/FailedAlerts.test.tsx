@@ -54,6 +54,21 @@ describe("failed alerts on the queue", () => {
     );
   });
 
+  it("names urgent-note and withdrawal SMS that were not sent (review S1)", async () => {
+    const at = "2026-11-01T20:04:00Z";
+    serve([
+      { ref: "R-1001", kind: "urgent_note", channel: "sms", at, detail: null },
+      { ref: "R-1000", kind: "withdrawn", channel: "sms", at, detail: null },
+    ]);
+    window.history.pushState({}, "", "/");
+    render(<App auth={signedIn} />);
+
+    const box = await screen.findByRole("alert", { name: "Alerts not sent" });
+    const [note, withdrawn] = within(box).getAllByRole("listitem");
+    expect(note).toHaveTextContent("Urgent note SMS for R-1001 not sent");
+    expect(withdrawn).toHaveTextContent("Withdrawal SMS for R-1000 not sent");
+  });
+
   it("shows nothing when every alert was sent", async () => {
     serve([]);
     window.history.pushState({}, "", "/");
