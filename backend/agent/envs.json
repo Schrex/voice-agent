@@ -7,9 +7,9 @@
   },
   "staging": {
     "agent_name": "Field Request Assistant (staging)",
-    "backend_url": null,
-    "hook_secret_id": null,
-    "tool_secret_id": null
+    "backend_url": "https://voice-agent-staging-qsh3.onrender.com",
+    "hook_secret_id": "rkdj213ZojN5LOPcfT3R",
+    "tool_secret_id": "6dyV0UkqD4QXSPuYFUyi"
   },
   "prod": {
     "agent_name": "Field Request Assistant (prod)",
