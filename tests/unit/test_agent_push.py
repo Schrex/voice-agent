@@ -310,7 +310,9 @@ def test_push_creates_each_repo_test_by_name(el: FakeElevenLabs) -> None:
         "J3 step 2: several matching requests, asks which one by need and Job",
         "J4 withdrawing an In Progress request is flagged for the office, not withdrawn",
         "J5 transfers even when the office could not be told",
+        "J5 with no Office Line says the test line and hangs up",
         "J6 transfers even when the Emergency could not be recorded",
+        "J6 with no Office Line gives the safety line, records it, then the test line",
     ]
 
 

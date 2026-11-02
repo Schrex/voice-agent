@@ -49,12 +49,13 @@ def elevenlabs_api_base() -> str:
     return os.environ.get("ELEVENLABS_API_BASE") or "https://api.elevenlabs.io"
 
 
-def office_main_number() -> str:
-    """Main office number spoken to unrostered callers (spec J8), inserted as written."""
-    number = os.environ.get("OFFICE_MAIN_NUMBER")
-    if not number:
-        raise RuntimeError("OFFICE_MAIN_NUMBER is not set")
-    return number
+def office_main_number() -> str | None:
+    """Main office number spoken to unrostered callers (spec J8), inserted as written.
+
+    Unset: prototype testing with no office behind the line; unrostered callers hear the test
+    line instead (`services.calls.TEST_UNAVAILABLE_LINE`).
+    """
+    return os.environ.get("OFFICE_MAIN_NUMBER") or None
 
 
 def app_env() -> str:

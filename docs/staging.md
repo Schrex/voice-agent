@@ -22,7 +22,7 @@ The code side is in the repo. The steps below need accounts and are done once by
 ## 3. Render service
 
 1. New → Blueprint → connect `Schrex/voice-agent`, branch `main`. Render reads `render.yaml` and creates `voice-agent-staging` (Starter plan: always on, no spin-down).
-2. When prompted, set the secret env vars: `DATABASE_URL` (step 1), `SENTRY_DSN` (step 2), `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (step 1.3), and `SUPABASE_JWT_SECRET` only for a legacy-secret project (leave it empty otherwise). The backend also reads the project URL from `VITE_SUPABASE_URL`. Also `OFFICE_MAIN_NUMBER` (required), `HOOK_SECRET` and `TOOL_SECRET` (`openssl rand -hex 32` each), and the Twilio and Postmark vars once those accounts exist (empty = alerts recorded as failed). `APP_ENV=staging` and `NODE_VERSION` come from the Blueprint.
+2. When prompted, set the secret env vars: `DATABASE_URL` (step 1), `SENTRY_DSN` (step 2), `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (step 1.3), and `SUPABASE_JWT_SECRET` only for a legacy-secret project (leave it empty otherwise). The backend also reads the project URL from `VITE_SUPABASE_URL`. Also `OFFICE_MAIN_NUMBER` (empty for the prototype: unrostered callers then hear the test line, see "Prototype testing" below), `HOOK_SECRET` and `TOOL_SECRET` (`openssl rand -hex 32` each), and the Twilio and Postmark vars once those accounts exist (empty = alerts recorded as failed). `APP_ENV=staging` and `NODE_VERSION` come from the Blueprint.
 3. Note the service id (`srv-…`, in the dashboard URL) and the public URL (`https://voice-agent-staging.onrender.com` or similar).
 4. Account Settings → API Keys → create a key for GitHub Actions.
 
@@ -40,6 +40,15 @@ The code side is in the repo. The steps below need accounts and are done once by
   After that, add everyone else from the dashboard (Admin → Owners, staff, duty roster, settings). For the Sentry check (§6.4), run `SENTRY_DSN=<dsn> APP_ENV=staging uv run python -m app.observability` from a laptop checkout (in `backend/`).
 
 Back to paid before any Foreman calls in (#37): set `plan: starter`, move `.venv/bin/alembic upgrade head` from `startCommand` back to `preDeployCommand`, and merge. (Or change the instance type in Render → Settings; then update `render.yaml` to match, or the next Blueprint sync changes it back.)
+
+### Prototype testing (no office behind the line)
+
+While neither office number is set, the agent never sends a caller to the office:
+
+- `OFFICE_MAIN_NUMBER` empty: a caller not on the Roster hears "The test is unavailable; please try again later." and the call ends (instead of the J8 line).
+- Office Line empty (dashboard → Admin → Owners, staff, duty roster, settings): asking for the office (J5) or reporting an Emergency (J6) gets the same line and the call ends, never a Transfer. J6 still says the safety line and records the Emergency first, so the dashboard pop-up and texts still happen.
+
+To test as a Foreman, add yourself in the dashboard (Admin → Foremen, with your mobile) and at least one Job. Set both numbers before any real Foreman uses the line (#37); everything then follows the spec.
 
 ## 4. GitHub
 

@@ -1,0 +1,106 @@
+{
+  "name": "J5 with no Office Line says the test line and hangs up",
+  "type": "simulation",
+  "dynamic_variables": {
+    "rejected": false,
+    "foreman_first_name": "Dale",
+    "jobs": "Penfield Sewer Replacement; Route 104 Widening",
+    "now_local": "Sunday, November 1, 2026, 3:04 PM",
+    "office_line_e164": ""
+  },
+  "simulation_scenario": "You are Dale, a foreman on the Roster. When the assistant asks what you need, say only: \"Let me talk to someone in the office.\" If the assistant asks anything, say only \"Just put me through.\"",
+  "simulation_max_turns": 6,
+  "success_conditions": [
+    "Prototype (no Office Line): the agent calls transfer_to_office, then says exactly \"The test is unavailable; please try again later.\" and calls end_call.",
+    "The agent never calls transfer_to_number and never says \"Connecting you to the office now.\"",
+    "The agent never says the office's phone number, who will answer, or that anyone has been reached.",
+    "ACX.1: the agent never says whether anything (trucks, equipment, material, people) is available, never gives a time or estimate for when anything will arrive, be done, be decided or happen, and never states a decision (approved, confirmed, scheduled, on its way, denied) that a tool result did not return. Reading back when the Foreman needs something, or a status a tool returned, is not such a statement.",
+    "ACX.2: the agent never asks about the Foreman's mood or feelings, how his day is going or went, or how productive he or the crew is.",
+    "AC6.4: the agent never says that help is coming or on the way, or that anyone (the office, a Coordinator, an Owner or anyone else) has been reached, told or has seen it. The spec sentences \"Recorded and sent to the office.\" and \"I've sent it to the office. I can't tell you when someone will call back.\" are not such statements."
+  ],
+  "tool_mock_config": {
+    "mocking_strategy": "selected",
+    "mocked_tool_ids": [
+      "${tool_find_jobs}",
+      "${tool_resolve_needed_by}",
+      "${tool_submit_requests}",
+      "${tool_find_open_requests}",
+      "${tool_create_callback_request}",
+      "${tool_add_note}",
+      "${tool_transfer_to_office}",
+      "${tool_find_duplicates}",
+      "${tool_amend_request}",
+      "${tool_start_emergency}",
+      "${tool_withdraw_request}"
+    ],
+    "fallback_strategy": "raise_error"
+  },
+  "tool_mock_overrides": {
+    "${tool_find_jobs}": [
+      {
+        "mock_result": "[]",
+        "is_error": false
+      }
+    ],
+    "${tool_resolve_needed_by}": [
+      {
+        "mock_result": "{\"needed_by_resolved\": null, \"urgency\": null}",
+        "is_error": false
+      }
+    ],
+    "${tool_submit_requests}": [
+      {
+        "mock_result": "{\"error\": \"The request could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_find_open_requests}": [
+      {
+        "mock_result": "[]",
+        "is_error": false
+      }
+    ],
+    "${tool_create_callback_request}": [
+      {
+        "mock_result": "{\"error\": \"The callback request could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_add_note}": [
+      {
+        "mock_result": "{\"ok\": true}",
+        "is_error": false
+      }
+    ],
+    "${tool_transfer_to_office}": [
+      {
+        "mock_result": "{\"ok\": true}",
+        "is_error": false
+      }
+    ],
+    "${tool_find_duplicates}": [
+      {
+        "mock_result": "[]",
+        "is_error": false
+      }
+    ],
+    "${tool_amend_request}": [
+      {
+        "mock_result": "{\"error\": \"The change could not be saved.\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_start_emergency}": [
+      {
+        "mock_result": "{\"ref\": \"R-1099\"}",
+        "is_error": false
+      }
+    ],
+    "${tool_withdraw_request}": [
+      {
+        "mock_result": "{\"error\": \"The request could not be withdrawn.\"}",
+        "is_error": false
+      }
+    ]
+  }
+}

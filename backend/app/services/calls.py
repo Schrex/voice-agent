@@ -41,8 +41,16 @@ class CallStart:
     """The Foreman's open Requests, one per line (ticket #18, spec J2)."""
 
 
-def rejection_line(main_number: str) -> str:
-    """Spec J8, verbatim."""
+# Prototype testing with no office behind the line (product owner, 2026-11-02): said instead of
+# the J8 rejection line when OFFICE_MAIN_NUMBER is unset, and by the agent instead of a Transfer
+# when the Office Line is unset (prompt.md J5/J6). The prompt holds the same words.
+TEST_UNAVAILABLE_LINE = "The test is unavailable; please try again later."
+
+
+def rejection_line(main_number: str | None) -> str:
+    """Spec J8, verbatim; the prototype test line when no office number is set."""
+    if not main_number:
+        return TEST_UNAVAILABLE_LINE
     return f"This line is for registered crew leaders. Please call the office at {main_number}."
 
 
