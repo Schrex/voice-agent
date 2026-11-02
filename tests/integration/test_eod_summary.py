@@ -236,3 +236,14 @@ def test_the_scheduled_tick_opens_its_own_session_and_sends_once(
         end_of_day_summary_tick(lambda: roster, lambda: email, partial(_fixed, at))
 
     assert len(email.sent) == 1
+
+
+def test_a_removed_person_gets_no_summary(roster: Session, email: FakeEmail) -> None:
+    _staff(roster, "Pat Lee", "pat@example.com")
+    gone = _staff(roster, "Alex Gone", "alex@example.com")
+    gone.removed_at = FIVE_PM - timedelta(days=1)
+    roster.flush()
+
+    send_end_of_day_summary(roster, email, now=FIVE_PM)
+
+    assert [to for to, _, _ in email.sent] == ["pat@example.com"]

@@ -32,7 +32,7 @@ class NotAuthenticated(Exception):
 
 
 class NotStaff(Exception):
-    """A valid Supabase user who is not in the staff table."""
+    """A valid Supabase user who is not on the staff list, or was removed from it."""
 
 
 @dataclass(frozen=True)
@@ -52,7 +52,7 @@ def _jwks_client(url: str) -> jwt.PyJWKClient:
 def staff_for_token(session: Session, token: str | None, keys: TokenKeys) -> Staff:
     user_id = _verified_user_id(token, keys)
     staff = session.get(Staff, user_id)
-    if staff is None:
+    if staff is None or staff.removed_at is not None:
         raise NotStaff
     return staff
 

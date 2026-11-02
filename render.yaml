@@ -20,6 +20,9 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.8"
+      # The build also runs npm for the dashboard; same major version as CI.
+      - key: NODE_VERSION
+        value: "22"
       - key: APP_ENV
         value: staging
       - key: DATABASE_URL
@@ -41,4 +44,16 @@ services:
       - key: VITE_SUPABASE_URL
         sync: false
       - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      # Alert SMS (Twilio) and the 17:00 email (Postmark). Leave empty until the account is
+      # ready: each alert is then recorded as failed on the dashboard, nothing breaks.
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_E164
+        sync: false
+      - key: POSTMARK_SERVER_TOKEN
+        sync: false
+      - key: POSTMARK_FROM
         sync: false

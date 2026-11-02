@@ -374,11 +374,13 @@ def test_ac9_5_no_route_can_delete_a_request() -> None:
     # The app's full route list, as FastAPI publishes it (included routers flattened).
     paths: dict[str, dict[str, Any]] = app.openapi()["paths"]
     assert "post" in paths["/api/requests/{ref}/resolve"], "the request routes are listed"
-    # The only DELETE routes are the admin's removal of a duty day, a roster phone and a Job alias.
+    # The only DELETE routes are the admin's removal of a duty day, a roster phone, a Job alias
+    # and a person from the staff list (which keeps the row: `staff.removed_at`).
     assert sorted(path for path, ops in paths.items() if "delete" in ops) == [
         "/api/admin/duty/{day}",
         "/api/admin/foremen/{foreman_id}/phones/{phone_id}",
         "/api/admin/jobs/{job_id}/aliases/{alias_id}",
+        "/api/admin/staff/{staff_id}",
     ]
 
 

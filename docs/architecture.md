@@ -185,7 +185,7 @@ All timestamps `timestamptz` (UTC); displayed and parsed in `America/New_York`.
 | `job_aliases` | id, job_id, alias |
 | `owners` | id, name, phone_e164?, email? |
 | `category_owner_defaults` | category (pk), owner_id |
-| `staff` | id = Supabase auth user id, name, phone_e164, email (no role: ADR 0006) |
+| `staff` | id = Supabase auth user id, name, phone_e164, email, removed_at? (no role: ADR 0006; removed = no access, no alerts, row kept for the audit history) |
 | `duty_roster` | date (pk), on_duty_staff_id, backup_staff_id |
 | `settings` | singleton: office_line_e164, ack_window_today_min (15), ack_window_planned_min (120), uninformed_after_min (120), timezone |
 | `requests` | id, ref (seq from 1000, rendered R-1042), foreman_id, job_id?, job_spoken, category, need, quantity?, unit?, needed_by?, needed_by_spoken?, urgency, status, owner_id?, outcome?, explanation?, foreman_informed_at?, source (`ai_call` \| `coordinator`), flags (unverified fields, change_requested), merged_into_id?, recorded_at, acknowledged_at, ack_due_at, resolved_at |

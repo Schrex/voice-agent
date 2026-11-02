@@ -1,8 +1,9 @@
 """Admin upkeep of Owners, category defaults, staff and the duty roster (spec §3 Admin, #35).
 
 Owners and staff are never deleted (Requests, alerts and duty days point at them); the admin
-edits them instead. A duty day can be removed. Each function commits its own change; a rule
-violation raises `NotFound`, `Conflict` or `Invalid` and writes nothing.
+edits them instead, and a person who leaves is removed from the staff list (`staff.removed_at`).
+A duty day can be removed. Each function commits its own change; a rule violation raises
+`NotFound`, `Conflict` or `Invalid` and writes nothing.
 """
 
 import uuid
@@ -109,7 +110,11 @@ class StaffChanges(TypedDict, total=False):
 
 
 def list_staff(session: Session) -> list[Staff]:
-    return list(session.scalars(select(Staff).order_by(Staff.name, Staff.id)))
+    return list(
+        session.scalars(
+            select(Staff).where(Staff.removed_at.is_(None)).order_by(Staff.name, Staff.id)
+        )
+    )
 
 
 def add_staff(
@@ -120,18 +125,56 @@ def add_staff(
     email: str,
     phone_e164: str | None,
 ) -> Staff:
-    """Put a Supabase Auth user (`staff_id`) on the staff list, so they can use the dashboard."""
-    if session.get(Staff, staff_id) is not None:
+    """Put a Supabase Auth user (`staff_id`) on the staff list, so they can use the dashboard.
+
+    A person who was removed comes back with the new name, email and phone.
+    """
+    staff = session.get(Staff, staff_id)
+    if staff is not None and staff.removed_at is None:
         raise Conflict("That user is already on the staff list.")
-    staff = Staff(id=staff_id, name=name, email=email, phone_e164=phone_e164)
-    session.add(staff)
+    if staff is None:
+        staff = Staff(id=staff_id)
+        session.add(staff)
+    staff.name = name
+    staff.email = email
+    staff.phone_e164 = phone_e164
+    staff.removed_at = None
     session.commit()
     return staff
 
 
+def remove_staff(session: Session, staff_id: uuid.UUID, *, by: uuid.UUID, now: datetime) -> None:
+    """Take a person off the staff list: they lose dashboard access at once and get no alerts.
+
+    Refused for yourself (someone must stay able to sign in) and for anyone on the duty roster
+    for today or later (change those days first, so no day is left without its Coordinator).
+    """
+    staff = session.get(Staff, staff_id)
+    if staff is None or staff.removed_at is not None:
+        raise NotFound
+    if staff_id == by:
+        raise Conflict("You can't remove yourself.")
+    today = now.astimezone(LOCAL_TZ).date()
+    on_duty = session.scalars(
+        select(DutyRoster.day)
+        .where(
+            DutyRoster.day >= today,
+            (DutyRoster.on_duty_staff_id == staff_id) | (DutyRoster.backup_staff_id == staff_id),
+        )
+        .order_by(DutyRoster.day)
+    ).first()
+    if on_duty is not None:
+        raise Conflict(
+            f"{staff.name} is on the duty roster for {on_duty:%a, %b} {on_duty.day}. "
+            "Change the duty roster first."
+        )
+    staff.removed_at = now
+    session.commit()
+
+
 def update_staff(session: Session, staff_id: uuid.UUID, changes: StaffChanges) -> Staff:
     staff = session.get(Staff, staff_id)
-    if staff is None:
+    if staff is None or staff.removed_at is not None:
         raise NotFound
     if "name" in changes:
         staff.name = changes["name"]
@@ -160,7 +203,10 @@ def set_duty_day(
 ) -> DutyRoster:
     """Name the on-duty Coordinator (and backup) for a New York date, replacing any before."""
     for staff_id in (on_duty, backup):
-        if staff_id is not None and session.get(Staff, staff_id) is None:
+        if staff_id is None:
+            continue
+        staff = session.get(Staff, staff_id)
+        if staff is None or staff.removed_at is not None:
             raise Invalid("No such staff member.")
     duty = session.get(DutyRoster, day)
     if duty is None:

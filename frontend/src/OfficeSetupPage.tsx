@@ -81,7 +81,7 @@ export function OfficeSetupPage({ staff }: { staff: Staff }) {
         <DutyTable days={duty.data ?? []} save={save} />
         <SetDutyDay staff={staffList.data ?? []} save={save} />
         <h2>Staff</h2>
-        <StaffTable staff={staffList.data ?? []} />
+        <StaffTable staff={staffList.data ?? []} save={save} />
         <AddStaff save={save} />
         <h2>Owners</h2>
         <OwnersTable owners={owners.data ?? []} />
@@ -191,7 +191,9 @@ function SetDutyDay({ staff, save }: { staff: StaffMember[]; save: Save }) {
   );
 }
 
-function StaffTable({ staff }: { staff: StaffMember[] }) {
+function StaffTable({ staff, save }: { staff: StaffMember[]; save: Save }) {
+  // The person whose removal waits for a second click; one at a time.
+  const [confirming, setConfirming] = useState<string | null>(null);
   return (
     <table>
       <thead>
@@ -199,6 +201,7 @@ function StaffTable({ staff }: { staff: StaffMember[] }) {
           <th>Name</th>
           <th>Email</th>
           <th>Phone</th>
+          <th>Access</th>
         </tr>
       </thead>
       <tbody>
@@ -207,6 +210,30 @@ function StaffTable({ staff }: { staff: StaffMember[] }) {
             <td>{s.name}</td>
             <td>{s.email}</td>
             <td>{s.phone_e164 ?? "—"}</td>
+            <td>
+              {confirming === s.id ? (
+                <span className="inline">
+                  <span>Remove {s.name}? They lose access at once.</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void save({ method: "DELETE", path: `/staff/${s.id}` }).then(() =>
+                        setConfirming(null),
+                      )
+                    }
+                  >
+                    Yes, remove
+                  </button>
+                  <button type="button" onClick={() => setConfirming(null)}>
+                    Cancel
+                  </button>
+                </span>
+              ) : (
+                <button type="button" onClick={() => setConfirming(s.id)}>
+                  Remove
+                </button>
+              )}
+            </td>
           </tr>
         ))}
       </tbody>

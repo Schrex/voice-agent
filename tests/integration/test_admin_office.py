@@ -4,7 +4,7 @@
 import time
 import uuid
 from collections.abc import Iterator
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import jwt
@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.clock import get_clock
-from app.db.models import CategoryOwnerDefault, Staff
+from app.db.models import CategoryOwnerDefault, DutyRoster, Staff
 from app.main import app
 from app.services.settings import ack_windows
 
@@ -461,3 +461,106 @@ def test_duty_needs_known_staff_and_a_real_date(
         == 422
     )
     assert client.get("/api/admin/duty", headers=admin).json() == []
+
+
+# --- Removing a person from the staff list ----------------------------------------------
+
+
+def _me_status(client: TestClient, staff: Staff) -> int:
+    status: int = client.get("/api/me", headers=_headers(staff)).status_code
+    return status
+
+
+def test_admin_removes_a_person_who_then_loses_access_at_once(
+    client: TestClient, db_session: Session
+) -> None:
+    avery = _staff(db_session, "admin", "Avery Admin")
+    jo = _staff(db_session, "coordinator", "Jo")
+    assert _me_status(client, jo) == 200
+
+    response = client.delete(f"/api/admin/staff/{jo.id}", headers=_headers(avery))
+
+    assert response.status_code == 204
+    assert _me_status(client, jo) == 403
+    names = [s["name"] for s in client.get("/api/admin/staff", headers=_headers(avery)).json()]
+    assert names == ["Avery Admin"]
+    db_session.refresh(jo)
+    assert jo.removed_at == NOW  # the row stays: the audit history keeps the name
+
+
+def test_nobody_can_remove_themselves(client: TestClient, db_session: Session) -> None:
+    avery = _staff(db_session, "admin", "Avery Admin")
+    response = client.delete(f"/api/admin/staff/{avery.id}", headers=_headers(avery))
+    assert response.status_code == 409
+    assert response.json()["detail"] == "You can't remove yourself."
+    assert _me_status(client, avery) == 200
+
+
+@pytest.mark.parametrize("as_backup", [False, True])
+def test_a_person_on_todays_or_a_later_duty_day_cannot_be_removed(
+    client: TestClient, db_session: Session, as_backup: bool
+) -> None:
+    avery = _staff(db_session, "admin", "Avery Admin")
+    jo = _staff(db_session, "coordinator", "Jo")
+    on_duty, backup = (avery, jo) if as_backup else (jo, avery)
+    db_session.add(
+        DutyRoster(day=date(2026, 11, 3), on_duty_staff_id=on_duty.id, backup_staff_id=backup.id)
+    )
+    db_session.flush()
+
+    response = client.delete(f"/api/admin/staff/{jo.id}", headers=_headers(avery))
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Jo is on the duty roster for Tue, Nov 3. Change the duty roster first."
+    )
+    assert _me_status(client, jo) == 200
+
+
+def test_a_past_duty_day_does_not_block_removal(client: TestClient, db_session: Session) -> None:
+    avery = _staff(db_session, "admin", "Avery Admin")
+    jo = _staff(db_session, "coordinator", "Jo")
+    db_session.add(DutyRoster(day=date(2026, 10, 31), on_duty_staff_id=jo.id))
+    db_session.flush()
+
+    assert client.delete(f"/api/admin/staff/{jo.id}", headers=_headers(avery)).status_code == 204
+
+
+def test_removing_an_unknown_or_already_removed_person_is_404(
+    client: TestClient, db_session: Session
+) -> None:
+    avery = _staff(db_session, "admin", "Avery Admin")
+    jo = _staff(db_session, "coordinator", "Jo")
+    headers = _headers(avery)
+    assert client.delete(f"/api/admin/staff/{uuid.uuid4()}", headers=headers).status_code == 404
+    assert client.delete(f"/api/admin/staff/{jo.id}", headers=headers).status_code == 204
+    assert client.delete(f"/api/admin/staff/{jo.id}", headers=headers).status_code == 404
+
+
+def test_a_removed_person_is_not_offered_for_duty(client: TestClient, db_session: Session) -> None:
+    avery = _staff(db_session, "admin", "Avery Admin")
+    jo = _staff(db_session, "coordinator", "Jo")
+    headers = _headers(avery)
+    client.delete(f"/api/admin/staff/{jo.id}", headers=headers)
+
+    response = client.put(
+        "/api/admin/duty/2026-11-04", json={"on_duty_staff_id": str(jo.id)}, headers=headers
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"] == "No such staff member."
+
+
+def test_adding_a_removed_person_again_restores_them(
+    client: TestClient, db_session: Session
+) -> None:
+    avery = _staff(db_session, "admin", "Avery Admin")
+    jo = _staff(db_session, "coordinator", "Jo")
+    headers = _headers(avery)
+    client.delete(f"/api/admin/staff/{jo.id}", headers=headers)
+
+    body = {"id": str(jo.id), "name": "Jo Smith", "email": "jo@x.com", "phone_e164": None}
+    response = client.post("/api/admin/staff", json=body, headers=headers)
+
+    assert response.status_code == 201
+    assert response.json() == body
+    assert _me_status(client, jo) == 200

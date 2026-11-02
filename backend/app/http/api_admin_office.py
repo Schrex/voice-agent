@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.clock import Clock, get_clock
 from app.db.models import DutyRoster, Owner, Settings, Staff
 from app.db.session import get_session
-from app.http.auth import current_staff
+from app.http.auth import CurrentStaff, current_staff
 from app.services import office_admin
 from app.services.office_admin import Invalid
 from app.services.roster_admin import Conflict, NotFound
@@ -190,6 +190,20 @@ def update_staff(staff_id: uuid.UUID, body: StaffPatch, session: DbSession) -> S
     with _http_errors():
         staff = office_admin.update_staff(session, staff_id, changes)
     return StaffOut.of(staff)
+
+
+@router.delete("/staff/{staff_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_staff(
+    staff_id: uuid.UUID,
+    me: CurrentStaff,
+    session: DbSession,
+    clock: Annotated[Clock, Depends(get_clock)],
+) -> Response:
+    """Take a person off the staff list (they lose access at once); 409 for yourself or for
+    someone still on the duty roster. Adding them again (`POST /staff`) restores them."""
+    with _http_errors():
+        office_admin.remove_staff(session, staff_id, by=me.id, now=clock())
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # --- Duty roster -------------------------------------------------------------------------
