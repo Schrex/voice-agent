@@ -11,6 +11,7 @@ The backup is the one on the duty roster for the New York date the Request went 
 """
 
 from datetime import datetime
+from functools import partial
 
 from sqlalchemy import exists, select, text
 from sqlalchemy.dialects.postgresql import insert
@@ -25,7 +26,8 @@ from app.domain.sms_text import (
     overdue_request_text,
     short_date,
 )
-from app.integrations.twilio_sms import SmsNotSent, SmsSender
+from app.integrations.twilio_sms import SmsSender
+from app.services.alerts import deliver
 from app.services.queue import as_said
 
 
@@ -118,11 +120,5 @@ def _alert_overdue(
             urgency=request.urgency,
             recorded_at=request.recorded_at,
         )
-    alert = session.get_one(Alert, alert_id)
-    try:
-        alert.provider_id = sms.send(staff.phone_e164, body)
-        alert.status = "sent"
-    except SmsNotSent as exc:
-        alert.status = "failed"
-        alert.detail = f"SMS not sent: {exc}"
-    session.commit()
+    phone = staff.phone_e164
+    deliver(session, session.get_one(Alert, alert_id), partial(sms.send, phone, body))

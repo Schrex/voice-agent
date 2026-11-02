@@ -1,18 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
-import { fetchCall, fetchCallAudio, type LinkedCall, type TranscriptTurn } from "./api";
+import { fetchCall, fetchCallAudio, officeTime, type LinkedCall, type TranscriptTurn } from "./api";
 import { useAuth } from "./App";
-
-/** Every time on the dashboard is shown in the office's zone, whatever the browser's zone. */
-const timeFormat = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/New_York",
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-});
 
 /** Who spoke: ElevenLabs' "user" is the Foreman. */
 const SPEAKERS: Record<TranscriptTurn["role"], string> = { agent: "Agent", user: "Foreman" };
@@ -37,7 +27,7 @@ function CallRecording({ call }: { call: LinkedCall }) {
     queryFn: () => fetchCall(session!.accessToken, call.id),
     enabled: !!session,
   });
-  const title = `Call ${timeFormat.format(new Date(call.started_at))}`;
+  const title = `Call ${officeTime.format(new Date(call.started_at))}`;
   const duration = record.data?.duration_s;
 
   return (

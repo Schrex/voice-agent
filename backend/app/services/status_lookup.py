@@ -16,8 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import CallRequest, Job, Owner, Request
 from app.domain.lifecycle import Status
-from app.domain.local_time import LOCAL_TZ
-from app.domain.timeparse import NeededBy, speakable
+from app.domain.timeparse import speakable_at
 from app.services.calls import Caller
 from app.services.merges import final_target
 
@@ -94,7 +93,7 @@ def _found(session: Session, request: Request) -> FoundRequest:
         need=request.need,
         quantity=request.quantity,
         unit=request.unit,
-        needed_by=_speakable(request.needed_by),
+        needed_by=_speakable_at(request.needed_by),
         status=request.status,
         owner=owner.name if owner is not None else None,
         outcome=request.outcome,
@@ -102,8 +101,5 @@ def _found(session: Session, request: Request) -> FoundRequest:
     )
 
 
-def _speakable(needed_by: datetime | None) -> str | None:
-    if needed_by is None:
-        return None
-    local = needed_by.astimezone(LOCAL_TZ)
-    return speakable(NeededBy(local.date(), local.time().replace(tzinfo=None)))
+def _speakable_at(at: datetime | None) -> str | None:
+    return None if at is None else speakable_at(at)

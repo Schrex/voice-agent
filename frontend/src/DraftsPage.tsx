@@ -1,20 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
-import { fetchDrafts, recordDraft, type Draft, type Staff } from "./api";
+import { fetchDrafts, officeTime, recordDraft, type Draft, type Staff } from "./api";
 import { useAuth } from "./App";
 
 const REFRESH_MS = 10_000;
-
-/** Every time on the dashboard is shown in the office's zone, whatever the browser's zone. */
-const callFormat = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/New_York",
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-});
 
 /** Drafts: Requests the Foreman did not confirm (hang-up, drop, Transfer). Kept out of the queue. */
 export function DraftsPage({ staff }: { staff: Staff }) {
@@ -101,7 +91,7 @@ function DraftRow({ draft, busy, onRecord }: { draft: Draft; busy: boolean; onRe
       <td>{draft.need}</td>
       <td>{quantity}</td>
       <td>{draft.needed_by_spoken ?? ""}</td>
-      <td>{draft.call_started_at ? callFormat.format(new Date(draft.call_started_at)) : ""}</td>
+      <td>{draft.call_started_at ? officeTime.format(new Date(draft.call_started_at)) : ""}</td>
       <td>{draft.call_summary ?? ""}</td>
       <td>
         <button type="button" disabled={busy} onClick={onRecord}>

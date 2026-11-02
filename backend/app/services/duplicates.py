@@ -19,8 +19,7 @@ from sqlalchemy.orm import Session
 from app.db.models import Job, Request
 from app.domain.dedupe import ExistingRequest, NewNeed, duplicates_of
 from app.domain.lifecycle import OPEN_STATUSES, Status
-from app.domain.local_time import LOCAL_TZ
-from app.domain.timeparse import NeededBy, speakable
+from app.domain.timeparse import speakable_at
 
 _OPEN = tuple(s.value for s in OPEN_STATUSES)
 
@@ -92,8 +91,8 @@ def _duplicate(session: Session, request: Request) -> Duplicate:
         need=request.need,
         quantity=request.quantity,
         unit=request.unit,
-        needed_by=_speakable(request.needed_by),
-        recorded_at=_speakable(request.recorded_at) or "",
+        needed_by=_speakable_at(request.needed_by),
+        recorded_at=_speakable_at(request.recorded_at) or "",
     )
 
 
@@ -114,8 +113,5 @@ def _quantity(quantity: Decimal | None) -> str | None:
     return str(int(quantity)) if quantity == quantity.to_integral_value() else str(quantity)
 
 
-def _speakable(at: datetime | None) -> str | None:
-    if at is None:
-        return None
-    local = at.astimezone(LOCAL_TZ)
-    return speakable(NeededBy(local.date(), local.time().replace(tzinfo=None)))
+def _speakable_at(at: datetime | None) -> str | None:
+    return None if at is None else speakable_at(at)

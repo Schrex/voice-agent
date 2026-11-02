@@ -13,12 +13,12 @@ from datetime import datetime
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from app.db.models import CallRequest, Request, RequestEvent
+from app.db.models import CallRequest, Request
 from app.domain.lifecycle import Status, may_withdraw, withdraw
 from app.services.amend import flag_change_requested
 from app.services.calls import Caller
-from app.services.notes import NoteRequestNotFound, _own_request
-from app.services.requests import _iso
+from app.services.events import agent_event, iso
+from app.services.notes import NoteRequestNotFound, own_request
 
 WITHDRAW_NOTE = "Change requested: withdraw"
 
@@ -34,7 +34,7 @@ def withdraw_request(session: Session, *, caller: Caller, ref: str, now: datetim
     target, as the lookup reports it. Otherwise WithdrawRequestNotFound, with nothing written.
     """
     try:
-        request = _own_request(session, caller, ref)
+        request = own_request(session, caller, ref)
     except NoteRequestNotFound as e:
         raise WithdrawRequestNotFound(ref) from e
     applied = may_withdraw(Status(request.status))
@@ -58,25 +58,16 @@ def _resolve_withdrawn(session: Session, request: Request, now: datetime) -> Non
         "status": request.status,
         "outcome": request.outcome,
         "explanation": request.explanation,
-        "resolved_at": _iso(request.resolved_at),
+        "resolved_at": iso(request.resolved_at),
     }
     request.status = status.value
     request.outcome = outcome.value
     request.explanation = explanation
     request.resolved_at = now
-    session.add(
-        RequestEvent(
-            request_id=request.id,
-            at=now,
-            actor_type="agent",
-            actor_id=None,
-            kind="resolved",
-            before=before,
-            after={
-                "status": status.value,
-                "outcome": outcome.value,
-                "explanation": explanation,
-                "resolved_at": _iso(now),
-            },
-        )
-    )
+    after = {
+        "status": status.value,
+        "outcome": outcome.value,
+        "explanation": explanation,
+        "resolved_at": iso(now),
+    }
+    agent_event(session, request, now, "resolved", before, after)

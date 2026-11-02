@@ -159,6 +159,12 @@ def speakable(needed_by: NeededBy) -> str:
     return f"{day} at {hour}:{needed_by.time.minute:02d} {meridiem}"
 
 
+def speakable_at(at: datetime) -> str:
+    """An instant as `speakable` reads it, in New York time: "Monday, November 2 at 7:00 AM"."""
+    local = at.astimezone(LOCAL_TZ)
+    return speakable(NeededBy(local.date(), local.time().replace(tzinfo=None)))
+
+
 def _words(spoken: str) -> list[str]:
     text = spoken.lower().replace("a.m.", "am").replace("p.m.", "pm").replace("'", "")
     text = re.sub(r"[^a-z0-9:]+", " ", text)

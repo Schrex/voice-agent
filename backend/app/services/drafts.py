@@ -14,10 +14,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, aliased
 
 from app.db.models import Call, CallRequest, Foreman, Job, Request
-from app.db.models import RequestEvent as Event
 from app.domain.draft import DraftItem
 from app.domain.lifecycle import Status, transition
+from app.domain.ref import parse_ref
 from app.services.ack_window import set_ack_due_at
+from app.services.events import agent_event, staff_event
 from app.services.jobs import find_jobs
 
 
@@ -52,28 +53,25 @@ def save_draft(
     )
     session.add(draft)
     session.flush()
-    session.add(
-        Event(
-            request_id=draft.id,
-            at=now,
-            actor_type="agent",
-            actor_id=None,
-            kind="drafted",
-            before=None,
-            after={
-                "ref": draft.ref_display,
-                "foreman_id": draft.foreman_id,
-                "job_id": draft.job_id,
-                "job_spoken": draft.job_spoken,
-                "category": draft.category,
-                "need": draft.need,
-                "quantity": None if draft.quantity is None else str(draft.quantity),
-                "unit": draft.unit,
-                "needed_by_spoken": draft.needed_by_spoken,
-                "status": draft.status,
-                "source": draft.source,
-            },
-        )
+    agent_event(
+        session,
+        draft,
+        now,
+        "drafted",
+        None,
+        {
+            "ref": draft.ref_display,
+            "foreman_id": draft.foreman_id,
+            "job_id": draft.job_id,
+            "job_spoken": draft.job_spoken,
+            "category": draft.category,
+            "need": draft.need,
+            "quantity": None if draft.quantity is None else str(draft.quantity),
+            "unit": draft.unit,
+            "needed_by_spoken": draft.needed_by_spoken,
+            "status": draft.status,
+            "source": draft.source,
+        },
     )
     session.add(CallRequest(call_id=call_id, request_id=draft.id, relation="created"))
     return draft
@@ -128,14 +126,6 @@ class RequestNotFound(LookupError):
     pass
 
 
-def parse_ref(ref: str) -> int | None:
-    """ "R-1042" → 1042; anything else → None."""
-    prefix, _, number = ref.partition("-")
-    if prefix != "R" or not number.isdigit():
-        return None
-    return int(number)
-
-
 def record_draft(session: Session, *, ref: str, staff_id: uuid.UUID, now: datetime) -> Request:
     """A coordinator promotes a Draft to Recorded (Draft → Recorded guard).
 
@@ -165,16 +155,6 @@ def record_draft(session: Session, *, ref: str, staff_id: uuid.UUID, now: dateti
     if request.ack_due_at is not None:  # changed fields only: a Draft has no ack window
         before["ack_due_at"] = None
         after["ack_due_at"] = request.ack_due_at.isoformat()
-    session.add(
-        Event(
-            request_id=request.id,
-            at=now,
-            actor_type="staff",
-            actor_id=str(staff_id),
-            kind="recorded",
-            before=before,
-            after=after,
-        )
-    )
+    staff_event(session, request, staff_id, now, "recorded", before, after)
     session.commit()
     return request

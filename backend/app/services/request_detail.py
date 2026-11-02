@@ -1,6 +1,5 @@
 """One Request with its audit history (ticket #10). Read-only; writes stay in `requests.py`."""
 
-import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -20,10 +19,9 @@ from app.db.models import (
     RequestEvent,
     Staff,
 )
+from app.domain.ref import parse_ref
 from app.services.notes import notes_of
 from app.services.queue import as_said
-
-_REF = re.compile(r"^R-(\d{1,18})$")
 
 
 @dataclass(frozen=True)
@@ -105,14 +103,14 @@ class RequestDetail:
 
 def request_detail(session: Session, ref: str) -> RequestDetail | None:
     """The Request rendered `ref` ("R-1000") and its events, oldest first; None if unknown."""
-    match = _REF.match(ref)
-    if match is None:
+    number = parse_ref(ref)
+    if number is None:
         return None
     row = session.execute(
         select(Request, Foreman, Job.name)
         .join(Foreman, Request.foreman_id == Foreman.id)
         .outerjoin(Job, Request.job_id == Job.id)
-        .where(Request.ref == int(match.group(1)))
+        .where(Request.ref == number)
     ).one_or_none()
     if row is None:
         return None

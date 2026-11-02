@@ -8,6 +8,7 @@ retried (as #21's SMS).
 """
 
 from datetime import datetime
+from functools import partial
 
 from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert
@@ -25,7 +26,8 @@ from app.domain.eod_summary import (
 from app.domain.lifecycle import Status
 from app.domain.sms_text import TodayRequestFacts
 from app.domain.urgency import Urgency
-from app.integrations.postmark import EmailNotSent, EmailSender
+from app.integrations.postmark import EmailSender
+from app.services.alerts import deliver
 from app.services.queue import as_said
 
 
@@ -63,14 +65,11 @@ def send_end_of_day_summary(session: Session, email: EmailSender, *, now: dateti
     subject = summary_subject(day)
     body = summary_text(day, _new_planned(session, now), _open_counts(session))
     for alert_id, address in pending:
-        alert = session.get_one(Alert, alert_id)
-        try:
-            alert.provider_id = email.send(address, subject, body)
-            alert.status = "sent"
-        except EmailNotSent as exc:
-            alert.status = "failed"
-            alert.detail = f"Email not sent: {exc}"
-        session.commit()
+        deliver(
+            session,
+            session.get_one(Alert, alert_id),
+            partial(email.send, address, subject, body),
+        )
 
 
 def _new_planned(session: Session, now: datetime) -> list[tuple[TodayRequestFacts, str]]:

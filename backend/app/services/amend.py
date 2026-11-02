@@ -16,16 +16,15 @@ from decimal import Decimal
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from app.db.models import CallRequest, Request, RequestEvent
+from app.db.models import CallRequest, Request
 from app.domain.lifecycle import Status, may_amend
-from app.domain.timeparse import parse_needed_by, speakable, urgency_for
+from app.domain.timeparse import parse_needed_by, speakable, speakable_at, urgency_for
 from app.domain.urgency import Urgency
 from app.services.ack_window import set_ack_due_at
 from app.services.calls import Caller
-from app.services.notes import NoteRequestNotFound, _own_request, add_note
+from app.services.events import agent_event, iso
+from app.services.notes import NoteRequestNotFound, add_note, own_request
 from app.services.queue import as_said
-from app.services.requests import _iso
-from app.services.status_lookup import _speakable
 
 # What a Foreman can change by phone: the details he gave and confirmed on the call.
 AMENDABLE_FIELDS = ("need", "quantity", "unit", "needed_by_spoken")
@@ -66,7 +65,7 @@ def amend_request(
     if not changes or unknown:
         raise ValueError(f"Not amendable: {sorted(unknown)}")
     try:
-        request = _own_request(session, caller, ref)
+        request = own_request(session, caller, ref)
     except NoteRequestNotFound as e:
         raise AmendRequestNotFound(ref) from e
     applied = may_amend(Status(request.status))
@@ -100,7 +99,7 @@ def _apply(
     for name in ("need", "quantity", "unit"):
         if name in changes:
             setattr(request, name, changes[name])
-    readback = _speakable(request.needed_by)
+    readback = None if request.needed_by is None else speakable_at(request.needed_by)
     if "needed_by_spoken" in changes:
         spoken = changes["needed_by_spoken"]
         assert isinstance(spoken, str)
@@ -115,16 +114,13 @@ def _apply(
     after = _snapshot(request)
     changed = [name for name in after if after[name] != before[name]]
     if changed:
-        session.add(
-            RequestEvent(
-                request_id=request.id,
-                at=now,
-                actor_type="agent",
-                actor_id=None,
-                kind="amended",
-                before={name: before[name] for name in changed},
-                after={name: after[name] for name in changed},
-            )
+        agent_event(
+            session,
+            request,
+            now,
+            "amended",
+            {n: before[n] for n in changed},
+            {n: after[n] for n in changed},
         )
     return readback
 
@@ -144,16 +140,13 @@ def flag_change_requested(session: Session, request: Request, note: str, now: da
     if request.change_requested:
         return
     request.change_requested = True
-    session.add(
-        RequestEvent(
-            request_id=request.id,
-            at=now,
-            actor_type="agent",
-            actor_id=None,
-            kind="change_requested",
-            before={"change_requested": False},
-            after={"change_requested": True},
-        )
+    agent_event(
+        session,
+        request,
+        now,
+        "change_requested",
+        {"change_requested": False},
+        {"change_requested": True},
     )
 
 
@@ -181,7 +174,7 @@ def _snapshot(request: Request) -> dict[str, object]:
         "quantity": as_said(request.quantity),
         "unit": request.unit,
         "needed_by_spoken": request.needed_by_spoken,
-        "needed_by": _iso(request.needed_by),
+        "needed_by": iso(request.needed_by),
         "urgency": request.urgency,
-        "ack_due_at": _iso(request.ack_due_at),
+        "ack_due_at": iso(request.ack_due_at),
     }

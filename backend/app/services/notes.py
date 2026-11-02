@@ -4,19 +4,18 @@ A note never changes the Request's fields and never creates a Request (AC3.5). E
 a `note_added` event in the same transaction. #18/#19 reuse `add_note`.
 """
 
-import re
 from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import Request, RequestEvent, RequestNote
+from app.db.models import Request, RequestNote
 from app.domain.lifecycle import Status
+from app.domain.ref import parse_ref
 from app.services.calls import Caller
+from app.services.events import add_event
 from app.services.merges import final_target
-
-_REF = re.compile(r"^R-(\d{1,18})$")
 
 
 class NoteRequestNotFound(Exception):
@@ -41,7 +40,7 @@ def add_note_for_caller(
     another (#33) takes the note on its final target, as the lookup reports it. Anything else,
     including another Foreman's Request, raises `NoteRequestNotFound` and writes nothing.
     """
-    request = _own_request(session, caller, ref)
+    request = own_request(session, caller, ref)
     add_note(
         session,
         request=request,
@@ -75,16 +74,15 @@ def add_note(
             urgent=urgent,
         )
     )
-    session.add(
-        RequestEvent(
-            request_id=request.id,
-            at=now,
-            actor_type=author_type,
-            actor_id=author_id,
-            kind="note_added",
-            before=None,
-            after={"text": text, "urgent": urgent},
-        )
+    add_event(
+        session,
+        request,
+        actor_type=author_type,
+        actor_id=author_id,
+        now=now,
+        kind="note_added",
+        before=None,
+        after={"text": text, "urgent": urgent},
     )
 
 
@@ -103,13 +101,13 @@ def notes_of(session: Session, request_id: int) -> list[Note]:
     ]
 
 
-def _own_request(session: Session, caller: Caller, ref: str) -> Request:
-    match = _REF.match(ref)
+def own_request(session: Session, caller: Caller, ref: str) -> Request:
+    number = parse_ref(ref)
     request = (
         session.scalars(
-            select(Request).where(Request.ref == int(match.group(1))).with_for_update()
+            select(Request).where(Request.ref == number).with_for_update()
         ).one_or_none()
-        if match
+        if number is not None
         else None
     )
     if (

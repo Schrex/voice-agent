@@ -168,3 +168,9 @@ def test_am_pm_typed_against_the_hour_is_understood(typed: str, expected: dateti
 def test_naive_now_is_refused() -> None:
     with pytest.raises(ValueError):
         parse_needed_by("tomorrow at seven", datetime(2026, 11, 1, 15, 4))
+
+
+def test_speakable_at_reads_an_instant_in_new_york_time() -> None:
+    from app.domain.timeparse import speakable_at
+
+    assert speakable_at(utc(11, 2, 12, 0)) == "Monday, November 2 at 7:00 AM"
